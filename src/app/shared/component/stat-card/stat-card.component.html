@@ -1,0 +1,14 @@
+<div class="border-muted/20 bg-background flex flex-col rounded-xl border p-5">
+  <div class="flex items-start justify-between">
+    <div>
+      <p class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{{ label() }}</p>
+      <p class="text-foreground mt-2 text-2xl font-bold">{{ value() }}</p>
+    </div>
+    <div class="bg-primary/10 text-primary rounded-md p-2">
+      <svg-icon [src]="icon()" [svgClass]="'h-5 w-5'"></svg-icon>
+    </div>
+  </div>
+  @if (hint()) {
+    <p class="text-muted-foreground mt-3 text-xs">{{ hint() }}</p>
+  }
+</div>

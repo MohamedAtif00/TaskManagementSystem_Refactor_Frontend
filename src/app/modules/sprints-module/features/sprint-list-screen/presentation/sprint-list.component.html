@@ -1,0 +1,157 @@
+<app-page-header title="Sprints" subtitle="Time-boxed boards scoped to learning objectives">
+  @if (isAdmin) {
+    <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">
+      Add Sprint
+    </app-button>
+  }
+</app-page-header>
+
+@if (isAdmin) {
+  <div class="mb-4 flex gap-2">
+    <button
+      type="button"
+      class="rounded-lg px-3 py-1.5 text-sm font-semibold"
+      [class.bg-primary]="!archived"
+      [class.text-primary-foreground]="!archived"
+      [class.bg-muted]="archived"
+      [class.text-muted-foreground]="archived"
+      (click)="setTab(false)">
+      Active
+    </button>
+    <button
+      type="button"
+      class="rounded-lg px-3 py-1.5 text-sm font-semibold"
+      [class.bg-primary]="archived"
+      [class.text-primary-foreground]="archived"
+      [class.bg-muted]="!archived"
+      [class.text-muted-foreground]="!archived"
+      (click)="setTab(true)">
+      Archived
+    </button>
+  </div>
+}
+
+<div class="border-muted/20 bg-background flex min-w-full flex-col rounded-xl border p-2">
+  <div class="scrollbar-thumb-rounded scrollbar-track-rounded scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted grow overflow-x-auto px-5">
+    <table class="text-muted-foreground table w-full table-auto border-collapse border-0 text-left align-middle leading-5">
+      <thead class="border-muted/20 text-muted-foreground border text-xs">
+        <tr>
+          <th class="px-3 py-3">ID</th>
+          <th class="px-3 py-3">Name</th>
+          <th class="px-3 py-3">Start</th>
+          <th class="px-3 py-3">End</th>
+          <th class="px-3 py-3">LOs</th>
+          <th class="px-3 py-3">Progress</th>
+          <th class="px-3 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr class="hover:bg-card/50 cursor-pointer" (click)="openBoard(row)">
+            <td class="px-3 py-3 text-sm">{{ row.id }}</td>
+            <td class="text-foreground px-3 py-3 text-sm font-semibold">{{ row.name }}</td>
+            <td class="px-3 py-3 text-sm">{{ row.startDate }}</td>
+            <td class="px-3 py-3 text-sm">{{ row.endDate }}</td>
+            <td class="px-3 py-3 text-sm">{{ row.loNumber }}</td>
+            <td class="px-3 py-3 text-sm">{{ row.progressPercent }}%</td>
+            <td class="px-3 py-3 text-sm">
+              <div class="flex items-center gap-3">
+                @if (!row.isArchived) {
+                  <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openBoard(row, $event)">
+                    Board
+                  </button>
+                }
+                @if (isAdmin) {
+                  <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEdit(row, $event)">
+                    Edit
+                  </button>
+                  <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askArchive(row, $event)">
+                    {{ row.isArchived ? 'Restore' : 'Archive' }}
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td class="py-8 text-center text-sm" colspan="7">No sprints found</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (showForm()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-4 text-lg font-semibold">{{ editingId ? 'Edit sprint' : 'Create sprint' }}</h3>
+      <div class="space-y-3">
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Name</span>
+          <input type="text" [(ngModel)]="form.name" name="sprintName" />
+        </label>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Description</span>
+          <textarea rows="3" [(ngModel)]="form.description" name="sprintDescription"></textarea>
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Start</span>
+            <input type="date" [(ngModel)]="form.startDate" name="startDate" />
+          </label>
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">End</span>
+            <input type="date" [(ngModel)]="form.endDate" name="endDate" />
+          </label>
+        </div>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Subject (scopes LO picker)</span>
+          <select [(ngModel)]="subjectId" name="subjectId" (ngModelChange)="onSubjectChange()">
+            <option [ngValue]="0">Select a subject</option>
+            @for (subject of subjects(); track subject.id) {
+              <option [ngValue]="subject.id">{{ subject.name }}</option>
+            }
+          </select>
+        </label>
+        @if (availableLos().length) {
+          <div class="border-border max-h-40 space-y-2 overflow-y-auto rounded-md border p-2">
+            @for (lo of availableLos(); track lo.id) {
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" [checked]="isLoSelected(lo.id)" (change)="toggleLo(lo, $any($event.target).checked)" />
+                <span>{{ lo.name }} <span class="text-muted-foreground text-xs">({{ lo.unitName }} / {{ lo.lessonName }})</span></span>
+              </label>
+            }
+          </div>
+        }
+        @if (selectedLos.length) {
+          <p class="text-muted-foreground text-xs">{{ selectedLos.length }} learning objective(s) selected</p>
+        }
+        @if (formError) {
+          <p class="text-destructive text-xs">{{ formError }}</p>
+        }
+      </div>
+      <div class="mt-5 flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="closeForm()">Cancel</app-button>
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="save()">Save</app-button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (confirmSprint(); as row) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border w-full max-w-sm rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-2 text-lg font-semibold">{{ row.isArchived ? 'Restore sprint' : 'Archive sprint' }}</h3>
+      <p class="text-muted-foreground mb-5 text-sm">
+        {{ row.isArchived ? 'Restore' : 'Archive' }} “{{ row.name }}”?
+      </p>
+      <div class="flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="closeConfirm()">Cancel</app-button>
+        <app-button impact="bold" tone="danger" size="small" type="button" (buttonClick)="confirmArchive()">
+          {{ row.isArchived ? 'Restore' : 'Archive' }}
+        </app-button>
+      </div>
+    </div>
+  </div>
+}

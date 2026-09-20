@@ -1,0 +1,50 @@
+<app-page-header title="Kanban" subtitle="Subjects with year and term path filters"></app-page-header>
+
+<div class="mb-4 flex flex-wrap gap-3">
+  <input type="search" class="max-w-sm" placeholder="Search subjects" [(ngModel)]="search" (ngModelChange)="load()" />
+  <select class="max-w-40" [(ngModel)]="year" (ngModelChange)="load()">
+    <option value="">All years</option>
+    @for (item of years; track item) {
+      <option [value]="item">{{ item }}</option>
+    }
+  </select>
+  <select class="max-w-40" [(ngModel)]="term" (ngModelChange)="load()">
+    <option value="">All terms</option>
+    @for (item of terms; track item) {
+      <option [value]="item">{{ item }}</option>
+    }
+  </select>
+</div>
+
+<div class="border-muted/20 bg-background flex min-w-full flex-col rounded-xl border p-2">
+  <div class="scrollbar-thumb-rounded scrollbar-track-rounded scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted grow overflow-x-auto px-5">
+    <table class="text-muted-foreground table w-full table-auto border-collapse border-0 text-left align-middle leading-5">
+      <thead class="border-muted/20 text-muted-foreground border text-xs">
+        <tr>
+          <th class="px-3 py-3">Name</th>
+          <th class="px-3 py-3">Path</th>
+          <th class="px-3 py-3">Year</th>
+          <th class="px-3 py-3">Term</th>
+          <th class="px-3 py-3">Status</th>
+          <th class="px-3 py-3">Progress</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr class="hover:bg-card/50 cursor-pointer" (click)="openBoard(row)">
+            <td class="text-foreground px-3 py-3 text-sm font-semibold">{{ row.name }}</td>
+            <td class="px-3 py-3 text-sm">{{ row.folderPath }}</td>
+            <td class="px-3 py-3 text-sm">{{ row.year }}</td>
+            <td class="px-3 py-3 text-sm">{{ row.term }}</td>
+            <td class="px-3 py-3 text-sm">{{ row.status }}</td>
+            <td class="px-3 py-3 text-sm">{{ row.progressPercent }}%</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td class="py-8 text-center text-sm" colspan="6">No subjects found</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

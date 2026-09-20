@@ -1,0 +1,364 @@
+<app-page-header title="My time off" subtitle="See what you have left and track requests">
+  <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">New request</app-button>
+</app-page-header>
+
+@if (data(); as current) {
+  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <app-stat-card
+      label="Annual"
+      [value]="ratio(current.balances.annualUsed, current.balances.annualMax)"
+      icon="assets/icons/heroicons/outline/sun.svg"
+      hint="Used / max days"></app-stat-card>
+    <app-stat-card
+      label="Sick"
+      [value]="current.balances.sickUsed"
+      icon="assets/icons/heroicons/outline/shield-exclamation.svg"
+      hint="Days used"></app-stat-card>
+    <app-stat-card
+      label="Emergency"
+      [value]="ratio(current.balances.emergencyUsed, current.balances.emergencyMax)"
+      icon="assets/icons/heroicons/outline/exclamation-triangle.svg"
+      hint="Used / max days"></app-stat-card>
+    <app-stat-card
+      label="Permissions"
+      [value]="ratio(current.balances.permissionUsed, current.balances.permissionMax)"
+      icon="assets/icons/heroicons/outline/cursor-click.svg"
+      hint="Used / max hours"></app-stat-card>
+    <app-stat-card
+      label="WFH"
+      [value]="ratio(current.balances.wfhUsed, current.balances.wfhMax)"
+      icon="assets/icons/heroicons/outline/folder.svg"
+      hint="Used / max days"></app-stat-card>
+  </div>
+
+  <div class="mb-4 flex flex-wrap gap-2">
+    <button
+      type="button"
+      class="rounded-lg px-3 py-2 text-sm font-semibold"
+      [class.bg-primary]="tab === 'leave'"
+      [class.text-primary-foreground]="tab === 'leave'"
+      [class.bg-muted]="tab !== 'leave'"
+      [class.text-muted-foreground]="tab !== 'leave'"
+      (click)="tab = 'leave'">
+      Time off
+      <span class="ml-1 text-xs opacity-80">{{ current.leaves.length }}</span>
+    </button>
+    <button
+      type="button"
+      class="rounded-lg px-3 py-2 text-sm font-semibold"
+      [class.bg-primary]="tab === 'permission'"
+      [class.text-primary-foreground]="tab === 'permission'"
+      [class.bg-muted]="tab !== 'permission'"
+      [class.text-muted-foreground]="tab !== 'permission'"
+      (click)="tab = 'permission'">
+      Short absence
+      <span class="ml-1 text-xs opacity-80">{{ current.permissions.length }}</span>
+    </button>
+    <button
+      type="button"
+      class="rounded-lg px-3 py-2 text-sm font-semibold"
+      [class.bg-primary]="tab === 'wfh'"
+      [class.text-primary-foreground]="tab === 'wfh'"
+      [class.bg-muted]="tab !== 'wfh'"
+      [class.text-muted-foreground]="tab !== 'wfh'"
+      (click)="tab = 'wfh'">
+      Work from home
+      <span class="ml-1 text-xs opacity-80">{{ current.wfh.length }}</span>
+    </button>
+  </div>
+
+  @if (tab === 'leave') {
+    @if (!current.leaves.length) {
+      <div class="border-border bg-background rounded-xl border px-6 py-12 text-center">
+        <p class="text-foreground mb-1 font-semibold">No time off requests yet</p>
+        <p class="text-muted-foreground mb-4 text-sm">Request annual, sick, emergency, or unpaid leave.</p>
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate('leave')">New request</app-button>
+      </div>
+    } @else {
+      @if (upcomingLeaves().length) {
+        <h4 class="text-foreground mb-2 text-sm font-semibold">Upcoming</h4>
+        <div class="border-muted/20 bg-background mb-6 overflow-x-auto rounded-xl border">
+          <table class="text-muted-foreground w-full table-auto text-left text-sm">
+            <thead class="border-muted/20 text-xs border-b">
+              <tr>
+                <th class="px-4 py-3">Type</th>
+                <th class="px-4 py-3">Dates</th>
+                <th class="px-4 py-3">Length</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of upcomingLeaves(); track row.id) {
+                <tr class="border-muted/10 border-t">
+                  <td class="text-foreground px-4 py-3 font-semibold">{{ leaveTypeLabels[row.type] }}</td>
+                  <td class="px-4 py-3">{{ formatRange(row.startDate, row.endDate) }}</td>
+                  <td class="px-4 py-3">{{ row.duration }} day{{ row.duration === 1 ? '' : 's' }}</td>
+                  <td class="px-4 py-3"><span [class]="statusClass(row.status)">{{ row.status }}</span></td>
+                  <td class="px-4 py-3 text-right">
+                    @if (canCancel(row.status, row.startDate)) {
+                      <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askCancel('leave', row.id, leaveTypeLabels[row.type], formatRange(row.startDate, row.endDate))">Cancel</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      @if (earlierLeaves().length) {
+        <h4 class="text-foreground mb-2 text-sm font-semibold">Earlier</h4>
+        <div class="border-muted/20 bg-background overflow-x-auto rounded-xl border">
+          <table class="text-muted-foreground w-full table-auto text-left text-sm">
+            <thead class="border-muted/20 text-xs border-b">
+              <tr>
+                <th class="px-4 py-3">Type</th>
+                <th class="px-4 py-3">Dates</th>
+                <th class="px-4 py-3">Length</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of earlierLeaves(); track row.id) {
+                <tr class="border-muted/10 border-t">
+                  <td class="text-foreground px-4 py-3 font-semibold">{{ leaveTypeLabels[row.type] }}</td>
+                  <td class="px-4 py-3">{{ formatRange(row.startDate, row.endDate) }}</td>
+                  <td class="px-4 py-3">{{ row.duration }} day{{ row.duration === 1 ? '' : 's' }}</td>
+                  <td class="px-4 py-3"><span [class]="statusClass(row.status)">{{ row.status }}</span></td>
+                  <td class="px-4 py-3 text-right">
+                    @if (canCancel(row.status, row.startDate)) {
+                      <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askCancel('leave', row.id, leaveTypeLabels[row.type], formatRange(row.startDate, row.endDate))">Cancel</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+
+  @if (tab === 'permission') {
+    @if (!current.permissions.length) {
+      <div class="border-border bg-background rounded-xl border px-6 py-12 text-center">
+        <p class="text-foreground mb-1 font-semibold">No short absences yet</p>
+        <p class="text-muted-foreground mb-4 text-sm">Request a few hours away during the workday.</p>
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate('permission')">New request</app-button>
+      </div>
+    } @else {
+      @if (upcomingPermissions().length) {
+        <h4 class="text-foreground mb-2 text-sm font-semibold">Upcoming</h4>
+        <div class="border-muted/20 bg-background mb-6 overflow-x-auto rounded-xl border">
+          <table class="text-muted-foreground w-full table-auto text-left text-sm">
+            <thead class="border-muted/20 text-xs border-b">
+              <tr>
+                <th class="px-4 py-3">Type</th>
+                <th class="px-4 py-3">When</th>
+                <th class="px-4 py-3">Length</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of upcomingPermissions(); track row.id) {
+                <tr class="border-muted/10 border-t">
+                  <td class="text-foreground px-4 py-3 font-semibold">{{ permissionTypeLabels[row.type] }}</td>
+                  <td class="px-4 py-3">{{ formatDate(row.permissionDate) }} · {{ row.fromTime }}–{{ row.toTime }}</td>
+                  <td class="px-4 py-3">{{ row.duration }} hour{{ row.duration === 1 ? '' : 's' }}</td>
+                  <td class="px-4 py-3"><span [class]="statusClass(row.status)">{{ row.status }}</span></td>
+                  <td class="px-4 py-3 text-right">
+                    @if (canCancel(row.status, row.permissionDate)) {
+                      <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askCancel('permission', row.id, permissionTypeLabels[row.type], formatDate(row.permissionDate) + ' · ' + row.fromTime + '–' + row.toTime)">Cancel</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      @if (earlierPermissions().length) {
+        <h4 class="text-foreground mb-2 text-sm font-semibold">Earlier</h4>
+        <div class="border-muted/20 bg-background overflow-x-auto rounded-xl border">
+          <table class="text-muted-foreground w-full table-auto text-left text-sm">
+            <thead class="border-muted/20 text-xs border-b">
+              <tr>
+                <th class="px-4 py-3">Type</th>
+                <th class="px-4 py-3">When</th>
+                <th class="px-4 py-3">Length</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of earlierPermissions(); track row.id) {
+                <tr class="border-muted/10 border-t">
+                  <td class="text-foreground px-4 py-3 font-semibold">{{ permissionTypeLabels[row.type] }}</td>
+                  <td class="px-4 py-3">{{ formatDate(row.permissionDate) }} · {{ row.fromTime }}–{{ row.toTime }}</td>
+                  <td class="px-4 py-3">{{ row.duration }} hour{{ row.duration === 1 ? '' : 's' }}</td>
+                  <td class="px-4 py-3"><span [class]="statusClass(row.status)">{{ row.status }}</span></td>
+                  <td class="px-4 py-3 text-right">
+                    @if (canCancel(row.status, row.permissionDate)) {
+                      <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askCancel('permission', row.id, permissionTypeLabels[row.type], formatDate(row.permissionDate) + ' · ' + row.fromTime + '–' + row.toTime)">Cancel</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+
+  @if (tab === 'wfh') {
+    @if (!current.wfh.length) {
+      <div class="border-border bg-background rounded-xl border px-6 py-12 text-center">
+        <p class="text-foreground mb-1 font-semibold">No work-from-home requests yet</p>
+        <p class="text-muted-foreground mb-4 text-sm">Ask to work remotely for a specific day.</p>
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate('wfh')">New request</app-button>
+      </div>
+    } @else {
+      @if (upcomingWfh().length) {
+        <h4 class="text-foreground mb-2 text-sm font-semibold">Upcoming</h4>
+        <div class="border-muted/20 bg-background mb-6 overflow-x-auto rounded-xl border">
+          <table class="text-muted-foreground w-full table-auto text-left text-sm">
+            <thead class="border-muted/20 text-xs border-b">
+              <tr>
+                <th class="px-4 py-3">Date</th>
+                <th class="px-4 py-3">Note</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of upcomingWfh(); track row.id) {
+                <tr class="border-muted/10 border-t">
+                  <td class="text-foreground px-4 py-3 font-semibold">{{ formatDate(row.date) }}</td>
+                  <td class="px-4 py-3">{{ row.note || '—' }}</td>
+                  <td class="px-4 py-3"><span [class]="statusClass(row.status)">{{ row.status }}</span></td>
+                  <td class="px-4 py-3 text-right">
+                    @if (canCancel(row.status, row.date)) {
+                      <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askCancel('wfh', row.id, 'Work from home', formatDate(row.date))">Cancel</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      @if (earlierWfh().length) {
+        <h4 class="text-foreground mb-2 text-sm font-semibold">Earlier</h4>
+        <div class="border-muted/20 bg-background overflow-x-auto rounded-xl border">
+          <table class="text-muted-foreground w-full table-auto text-left text-sm">
+            <thead class="border-muted/20 text-xs border-b">
+              <tr>
+                <th class="px-4 py-3">Date</th>
+                <th class="px-4 py-3">Note</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of earlierWfh(); track row.id) {
+                <tr class="border-muted/10 border-t">
+                  <td class="text-foreground px-4 py-3 font-semibold">{{ formatDate(row.date) }}</td>
+                  <td class="px-4 py-3">{{ row.note || '—' }}</td>
+                  <td class="px-4 py-3"><span [class]="statusClass(row.status)">{{ row.status }}</span></td>
+                  <td class="px-4 py-3 text-right">
+                    @if (canCancel(row.status, row.date)) {
+                      <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askCancel('wfh', row.id, 'Work from home', formatDate(row.date))">Cancel</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+}
+
+@if (showForm()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-1 text-lg font-semibold">New request</h3>
+      <p class="text-muted-foreground mb-4 text-sm">Choose a type, then fill in the details.</p>
+      <div class="mb-4 grid grid-cols-3 gap-2">
+        <button type="button" class="rounded-lg border px-2 py-3 text-center text-xs font-semibold" [class.border-primary]="formKind === 'leave'" [class.bg-primary/10]="formKind === 'leave'" [class.text-primary]="formKind === 'leave'" [class.border-border]="formKind !== 'leave'" [class.text-muted-foreground]="formKind !== 'leave'" (click)="formKind = 'leave'">Time off</button>
+        <button type="button" class="rounded-lg border px-2 py-3 text-center text-xs font-semibold" [class.border-primary]="formKind === 'permission'" [class.bg-primary/10]="formKind === 'permission'" [class.text-primary]="formKind === 'permission'" [class.border-border]="formKind !== 'permission'" [class.text-muted-foreground]="formKind !== 'permission'" (click)="formKind = 'permission'">Short absence</button>
+        <button type="button" class="rounded-lg border px-2 py-3 text-center text-xs font-semibold" [class.border-primary]="formKind === 'wfh'" [class.bg-primary/10]="formKind === 'wfh'" [class.text-primary]="formKind === 'wfh'" [class.border-border]="formKind !== 'wfh'" [class.text-muted-foreground]="formKind !== 'wfh'" (click)="formKind = 'wfh'">Work from home</button>
+      </div>
+      <div class="space-y-3">
+        @if (formKind === 'leave') {
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Leave type</span>
+            <select [(ngModel)]="leaveType" name="leaveType">
+              @for (item of leaveTypes; track item) {
+                <option [ngValue]="item">{{ leaveTypeLabels[item] }}</option>
+              }
+            </select>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Start</span><input type="date" [(ngModel)]="leaveStart" name="leaveStart" /></label>
+            <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">End</span><input type="date" [(ngModel)]="leaveEnd" name="leaveEnd" /></label>
+          </div>
+          <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Reason (optional)</span><textarea rows="2" [(ngModel)]="leaveReason" name="leaveReason"></textarea></label>
+        }
+        @if (formKind === 'permission') {
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Absence type</span>
+            <select [(ngModel)]="permissionType" name="permissionType">
+              @for (item of permissionTypes; track item) {
+                <option [ngValue]="item">{{ permissionTypeLabels[item] }}</option>
+              }
+            </select>
+          </label>
+          <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Date</span><input type="date" [(ngModel)]="permissionDate" name="permissionDate" /></label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">From</span><input type="time" [(ngModel)]="fromTime" name="fromTime" /></label>
+            <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">To</span><input type="time" [(ngModel)]="toTime" name="toTime" /></label>
+          </div>
+          <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Reason (optional)</span><input type="text" [(ngModel)]="permissionReason" name="permissionReason" /></label>
+        }
+        @if (formKind === 'wfh') {
+          <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Date</span><input type="date" [(ngModel)]="wfhDate" name="wfhDate" /></label>
+          <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Note (optional)</span><textarea rows="2" [(ngModel)]="wfhNote" name="wfhNote"></textarea></label>
+        }
+        @if (durationPreview() || remainingPreview()) {
+          <p class="bg-muted/40 text-muted-foreground rounded-lg px-3 py-2 text-xs">
+            @if (durationPreview()) {
+              <span class="text-foreground font-semibold">{{ durationPreview() }}</span>
+              <span> · </span>
+            }
+            {{ remainingPreview() }}
+          </p>
+        }
+        @if (formError) {
+          <p class="text-destructive text-xs">{{ formError }}</p>
+        }
+      </div>
+      <div class="mt-5 flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="showForm.set(false)">Close</app-button>
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="save()">Submit request</app-button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (confirm(); as item) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border w-full max-w-sm rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-2 text-lg font-semibold">Cancel this request?</h3>
+      <p class="text-muted-foreground mb-5 text-sm">{{ item.label }} · {{ item.dates }}</p>
+      <div class="flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="confirm.set(null)">Keep this request</app-button>
+        <app-button impact="bold" tone="danger" size="small" type="button" (buttonClick)="confirmCancel()">Yes, cancel it</app-button>
+      </div>
+    </div>
+  </div>
+}

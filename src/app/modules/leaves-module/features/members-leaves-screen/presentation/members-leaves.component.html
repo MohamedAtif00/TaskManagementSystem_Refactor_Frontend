@@ -1,0 +1,32 @@
+<app-page-header title="Members Leaves" subtitle="Organization leave balances"></app-page-header>
+
+<div class="border-muted/20 bg-background flex min-w-full flex-col rounded-xl border p-2">
+  <div class="grow overflow-x-auto px-5">
+    <table class="text-muted-foreground table w-full table-auto border-collapse text-left text-sm">
+      <thead class="border-muted/20 border text-xs">
+        <tr>
+          <th class="px-3 py-3">HR Code</th>
+          <th class="px-3 py-3">Name</th>
+          <th class="px-3 py-3">Annual</th>
+          <th class="px-3 py-3">Sick</th>
+          <th class="px-3 py-3">Emergency</th>
+          <th class="px-3 py-3">Permission</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr class="hover:bg-card/50 cursor-pointer" (click)="open(row)">
+            <td class="px-3 py-3">{{ row.code }}</td>
+            <td class="text-foreground px-3 py-3 font-semibold">{{ row.name }}</td>
+            <td class="px-3 py-3">{{ row.balances.annualUsed }}/{{ row.balances.annualMax }}</td>
+            <td class="px-3 py-3">{{ row.balances.sickUsed }}</td>
+            <td class="px-3 py-3">{{ row.balances.emergencyUsed }}/{{ row.balances.emergencyMax }}</td>
+            <td class="px-3 py-3">{{ row.balances.permissionUsed }}/{{ row.balances.permissionMax }}</td>
+          </tr>
+        } @empty {
+          <tr><td class="py-8 text-center" colspan="6">No members</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

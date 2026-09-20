@@ -1,0 +1,57 @@
+{
+  "/auth": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/hr": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/sprints": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/tickets": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/identity": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/curriculum": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/subjects": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/learning-objectives": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/organization": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/notifications": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/workflows": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

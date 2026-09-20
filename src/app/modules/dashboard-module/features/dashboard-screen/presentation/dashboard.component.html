@@ -1,0 +1,91 @@
+<app-page-header title="Dashboard" [subtitle]="'Welcome back, ' + (authService.user()?.name ?? '')"></app-page-header>
+
+@if (data()?.projectManager; as pm) {
+  <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <app-stat-card label="Users" [value]="pm.numberOfUsers" icon="assets/icons/heroicons/outline/users.svg" hint="Active people"></app-stat-card>
+    <app-stat-card label="Projects" [value]="pm.numberOfProject" icon="assets/icons/heroicons/outline/folder.svg" hint="Year roots"></app-stat-card>
+    <app-stat-card label="Schemas" [value]="pm.numberOfSchemas" icon="assets/icons/heroicons/outline/cube.svg" hint="Task templates"></app-stat-card>
+    <app-stat-card label="Active Tasks" [value]="pm.numberOfActiveTasks" icon="assets/icons/heroicons/outline/view-grid.svg" hint="In progress"></app-stat-card>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+    <app-chart-card title="Learning objectives" subtitle="Idle, running, and done across projects">
+      <apx-chart
+        [series]="pieSeries"
+        [chart]="pieChart"
+        [labels]="pieLabels"
+        [colors]="pieColors"
+        [legend]="pieLegend"
+        [dataLabels]="pieDataLabels">
+      </apx-chart>
+    </app-chart-card>
+    <app-chart-card title="Users by group" subtitle="Headcount per group">
+      <apx-chart
+        [series]="barSeries"
+        [chart]="barChart"
+        [xaxis]="barXaxis"
+        [colors]="barColors"
+        [plotOptions]="barPlot"
+        [dataLabels]="barDataLabels">
+      </apx-chart>
+    </app-chart-card>
+  </div>
+}
+
+@if (data()?.teamLeader; as tl) {
+  <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <app-stat-card label="Members" [value]="tl.members" icon="assets/icons/heroicons/outline/users.svg"></app-stat-card>
+    <app-stat-card label="Active Tasks" [value]="tl.activeTasks" icon="assets/icons/heroicons/outline/view-grid.svg"></app-stat-card>
+    <app-stat-card label="Projects" [value]="tl.projects" icon="assets/icons/heroicons/outline/folder.svg"></app-stat-card>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+    <div class="border-muted/20 bg-background rounded-xl border p-5">
+      <h3 class="text-foreground mb-3 text-sm font-semibold">Project load</h3>
+      <table class="text-muted-foreground w-full text-left text-sm">
+        <thead class="text-xs uppercase">
+          <tr>
+            <th class="pb-2">Project</th>
+            <th class="pb-2">Tasks</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of tl.projectsDetails; track row.id) {
+            <tr class="border-muted/20 border-t">
+              <td class="py-2">{{ row.name }}</td>
+              <td class="py-2">{{ row.tasksCount }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="border-muted/20 bg-background rounded-xl border p-5">
+      <h3 class="text-foreground mb-3 text-sm font-semibold">Tasks per member</h3>
+      <table class="text-muted-foreground w-full text-left text-sm">
+        <thead class="text-xs uppercase">
+          <tr>
+            <th class="pb-2">Member</th>
+            <th class="pb-2">Tasks</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of tl.tasksPerUser; track row.id) {
+            <tr class="border-muted/20 border-t">
+              <td class="py-2">{{ row.name }}</td>
+              <td class="py-2">{{ row.tasksCount }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+@if (data()?.member; as mine) {
+  <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <app-stat-card label="Assigned" [value]="mine.assignedTasks" icon="assets/icons/heroicons/outline/bookmark.svg" hint="My open work"></app-stat-card>
+    <app-stat-card label="In progress" [value]="mine.inProgressTasks" icon="assets/icons/heroicons/outline/cursor-click.svg"></app-stat-card>
+    <app-stat-card label="Done" [value]="mine.doneTasks" icon="assets/icons/heroicons/outline/shield-check.svg"></app-stat-card>
+    <app-stat-card label="Overdue" [value]="mine.overdueTasks" icon="assets/icons/heroicons/outline/exclamation-triangle.svg"></app-stat-card>
+  </div>
+}

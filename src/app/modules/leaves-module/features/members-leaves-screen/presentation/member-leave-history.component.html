@@ -1,0 +1,49 @@
+@if (history(); as current) {
+  <app-page-header [title]="current.user.name" [subtitle]="current.user.code + ' · leave history'">
+    <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="membersPath">Back to members</a>
+  </app-page-header>
+
+  <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <app-stat-card label="Annual" [value]="current.balances.annualUsed + '/' + current.balances.annualMax"></app-stat-card>
+    <app-stat-card label="Sick" [value]="current.balances.sickUsed"></app-stat-card>
+    <app-stat-card label="Emergency" [value]="current.balances.emergencyUsed + '/' + current.balances.emergencyMax"></app-stat-card>
+    <app-stat-card label="Permission" [value]="current.balances.permissionUsed + '/' + current.balances.permissionMax"></app-stat-card>
+  </div>
+
+  <div class="mb-4 flex gap-2">
+    <button type="button" class="rounded-lg px-3 py-1.5 text-sm font-semibold" [class.bg-primary]="tab === 'leave'" [class.text-primary-foreground]="tab === 'leave'" [class.bg-muted]="tab !== 'leave'" [class.text-muted-foreground]="tab !== 'leave'" (click)="tab = 'leave'">Leaves</button>
+    <button type="button" class="rounded-lg px-3 py-1.5 text-sm font-semibold" [class.bg-primary]="tab === 'permission'" [class.text-primary-foreground]="tab === 'permission'" [class.bg-muted]="tab !== 'permission'" [class.text-muted-foreground]="tab !== 'permission'" (click)="tab = 'permission'">Permissions</button>
+    <button type="button" class="rounded-lg px-3 py-1.5 text-sm font-semibold" [class.bg-primary]="tab === 'wfh'" [class.text-primary-foreground]="tab === 'wfh'" [class.bg-muted]="tab !== 'wfh'" [class.text-muted-foreground]="tab !== 'wfh'" (click)="tab = 'wfh'">Work From Home</button>
+  </div>
+
+  <div class="border-muted/20 bg-background rounded-xl border p-2">
+    <div class="overflow-x-auto px-5">
+      <table class="text-muted-foreground table w-full text-left text-sm">
+        @if (tab === 'leave') {
+          <thead class="border-muted/20 border text-xs"><tr><th class="px-3 py-3">Type</th><th class="px-3 py-3">Dates</th><th class="px-3 py-3">Days</th><th class="px-3 py-3">Status</th></tr></thead>
+          <tbody>
+            @for (row of current.leaves; track row.id) {
+              <tr><td class="text-foreground px-3 py-3 font-semibold">{{ row.type }}</td><td class="px-3 py-3">{{ row.startDate }} – {{ row.endDate }}</td><td class="px-3 py-3">{{ row.duration }}</td><td class="px-3 py-3">{{ row.status }}</td></tr>
+            } @empty { <tr><td class="py-8 text-center" colspan="4">No leave requests</td></tr> }
+          </tbody>
+        }
+        @if (tab === 'permission') {
+          <thead class="border-muted/20 border text-xs"><tr><th class="px-3 py-3">Type</th><th class="px-3 py-3">Date</th><th class="px-3 py-3">Time</th><th class="px-3 py-3">Status</th></tr></thead>
+          <tbody>
+            @for (row of current.permissions; track row.id) {
+              <tr><td class="text-foreground px-3 py-3 font-semibold">{{ row.type }}</td><td class="px-3 py-3">{{ row.permissionDate }}</td><td class="px-3 py-3">{{ row.fromTime }}–{{ row.toTime }}</td><td class="px-3 py-3">{{ row.status }}</td></tr>
+            } @empty { <tr><td class="py-8 text-center" colspan="4">No permission requests</td></tr> }
+          </tbody>
+        }
+        @if (tab === 'wfh') {
+          <thead class="border-muted/20 border text-xs"><tr><th class="px-3 py-3">Date</th><th class="px-3 py-3">Note</th><th class="px-3 py-3">Status</th></tr></thead>
+          <tbody>
+            @for (row of current.wfh; track row.id) {
+              <tr><td class="text-foreground px-3 py-3 font-semibold">{{ row.date }}</td><td class="px-3 py-3">{{ row.note || '—' }}</td><td class="px-3 py-3">{{ row.status }}</td></tr>
+            } @empty { <tr><td class="py-8 text-center" colspan="3">No WFH requests</td></tr> }
+          </tbody>
+        }
+      </table>
+    </div>
+  </div>
+}

@@ -1,0 +1,55 @@
+@if (board(); as current) {
+  <app-page-header [title]="current.name" [subtitle]="source === 'project' ? 'Project board' : 'Sprint board'">
+    <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="backLink()">Back to list</a>
+    @if (source === 'project') {
+      <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="goSheet()">Sheet View</app-button>
+    }
+    @if (canCreate()) {
+      <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">New Task</app-button>
+    }
+  </app-page-header>
+
+  <div class="mb-4 flex flex-wrap items-end gap-3">
+    <label class="block max-w-40">
+      <span class="text-muted-foreground mb-1 block text-xs font-medium">Search type</span>
+      <select [ngModel]="searchType()" (ngModelChange)="searchType.set($event)" name="searchType">
+        <option value="lo">Learning objective</option>
+        <option value="task">Task name</option>
+      </select>
+    </label>
+    @if (searchType() === 'lo') {
+      <label class="block max-w-64">
+        <span class="text-muted-foreground mb-1 block text-xs font-medium">Learning objective</span>
+        <select [ngModel]="selectedLoId()" (ngModelChange)="selectedLoId.set($event)" name="selectedLoId">
+          <option [ngValue]="0">All</option>
+          @for (lo of current.learningObjectives; track lo.id) {
+            <option [ngValue]="lo.id">{{ lo.name }}</option>
+          }
+        </select>
+      </label>
+    } @else {
+      <label class="block max-w-64">
+        <span class="text-muted-foreground mb-1 block text-xs font-medium">Task name</span>
+        <input type="search" [ngModel]="taskQuery()" (ngModelChange)="taskQuery.set($event)" name="taskQuery" placeholder="Filter cards" />
+      </label>
+    }
+  </div>
+
+  <div class="flex gap-4 overflow-x-auto pb-4">
+    @for (column of columns; track column.label) {
+      <app-task-column [label]="column.label" [cards]="cardsFor(column)" (openCard)="openCard($event)" />
+    }
+  </div>
+
+  @if (selected(); as task) {
+    <app-task-drawer [task]="task" [users]="current.users" (closed)="closeDrawer()" (changed)="onDrawerChanged()" />
+  }
+  @if (showCreate()) {
+    <app-new-task-modal
+      [subjectId]="entityId"
+      [learningObjectives]="current.learningObjectives"
+      [users]="current.users"
+      (closed)="showCreate.set(false)"
+      (created)="onCreated()" />
+  }
+}

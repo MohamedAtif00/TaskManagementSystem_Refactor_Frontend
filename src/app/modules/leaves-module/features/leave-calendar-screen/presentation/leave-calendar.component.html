@@ -1,0 +1,107 @@
+<app-page-header title="Calendar" subtitle="Approval queue for vacancy, permissions, and work from home"></app-page-header>
+
+<div class="mb-4 flex gap-2">
+  <button type="button" class="rounded-lg px-3 py-1.5 text-sm font-semibold" [class.bg-primary]="tab === 'leave'" [class.text-primary-foreground]="tab === 'leave'" [class.bg-muted]="tab !== 'leave'" [class.text-muted-foreground]="tab !== 'leave'" (click)="setTab('leave')">Vacancy</button>
+  <button type="button" class="rounded-lg px-3 py-1.5 text-sm font-semibold" [class.bg-primary]="tab === 'permission'" [class.text-primary-foreground]="tab === 'permission'" [class.bg-muted]="tab !== 'permission'" [class.text-muted-foreground]="tab !== 'permission'" (click)="setTab('permission')">Permissions</button>
+  <button type="button" class="rounded-lg px-3 py-1.5 text-sm font-semibold" [class.bg-primary]="tab === 'wfh'" [class.text-primary-foreground]="tab === 'wfh'" [class.bg-muted]="tab !== 'wfh'" [class.text-muted-foreground]="tab !== 'wfh'" (click)="setTab('wfh')">Work From Home</button>
+</div>
+
+<div class="mb-4 flex flex-wrap gap-3">
+  <label class="block max-w-40">
+    <span class="text-muted-foreground mb-1 block text-xs font-medium">Status</span>
+    <select [(ngModel)]="status" name="status" (ngModelChange)="load()">
+      <option value="">All</option>
+      <option value="Pending">Pending</option>
+      <option value="Approved">Approved</option>
+      <option value="Rejected">Rejected</option>
+      <option value="Cancelled">Cancelled</option>
+    </select>
+  </label>
+  @if (tab !== 'wfh') {
+    <label class="block max-w-48">
+      <span class="text-muted-foreground mb-1 block text-xs font-medium">Type</span>
+      <select [(ngModel)]="type" name="type" (ngModelChange)="load()">
+        <option value="">All</option>
+        @for (item of tab === 'leave' ? leaveTypes : permissionTypes; track item) {
+          <option [value]="item">{{ item }}</option>
+        }
+      </select>
+    </label>
+  }
+  <label class="block max-w-40">
+    <span class="text-muted-foreground mb-1 block text-xs font-medium">From</span>
+    <input type="date" [(ngModel)]="dateFrom" name="dateFrom" (ngModelChange)="load()" />
+  </label>
+  <label class="block max-w-40">
+    <span class="text-muted-foreground mb-1 block text-xs font-medium">To</span>
+    <input type="date" [(ngModel)]="dateTo" name="dateTo" (ngModelChange)="load()" />
+  </label>
+</div>
+
+<div class="border-muted/20 bg-background flex min-w-full flex-col rounded-xl border p-2">
+  <div class="grow overflow-x-auto px-5">
+    <table class="text-muted-foreground table w-full table-auto border-collapse text-left text-sm">
+      <thead class="border-muted/20 border text-xs">
+        <tr>
+          <th class="px-3 py-3">User</th>
+          <th class="px-3 py-3">Requested</th>
+          <th class="px-3 py-3">Type</th>
+          <th class="px-3 py-3">Dates</th>
+          <th class="px-3 py-3">Status</th>
+          <th class="px-3 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.kind + row.id) {
+          <tr class="hover:bg-card/50">
+            <td class="text-foreground px-3 py-3 font-semibold">{{ row.user.name }}</td>
+            <td class="px-3 py-3">{{ row.dateCreated }}</td>
+            <td class="px-3 py-3">{{ row.typeLabel }}</td>
+            <td class="px-3 py-3">{{ row.datesLabel }}</td>
+            <td class="px-3 py-3">{{ row.status }}</td>
+            <td class="px-3 py-3">
+              <div class="flex gap-3">
+                <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="open(row)">View</button>
+                @if (row.status === 'Pending') {
+                  <button class="text-green-600 hover:text-green-500 text-xs font-semibold" type="button" (click)="decide(true, row)">Approve</button>
+                  <button class="text-destructive hover:text-destructive/80 text-xs font-semibold" type="button" (click)="decide(false, row)">Reject</button>
+                }
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td class="py-8 text-center" colspan="6">No requests</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (selected(); as item) {
+  <div class="fixed inset-0 z-50 flex justify-end bg-black/40">
+    <aside class="bg-card border-border flex h-full w-full max-w-md flex-col border-l shadow-xl">
+      <div class="flex items-center justify-between border-b border-border px-5 py-4">
+        <h3 class="text-foreground text-lg font-semibold">Request</h3>
+        <button type="button" class="text-muted-foreground hover:text-foreground text-sm font-semibold" (click)="selected.set(null)">Close</button>
+      </div>
+      <div class="grow space-y-4 overflow-y-auto px-5 py-4 text-sm">
+        <p class="text-foreground font-semibold">{{ item.user.name }}</p>
+        <p class="text-muted-foreground text-xs">{{ item.user.code }}</p>
+        <p><span class="text-muted-foreground text-xs">Type</span><br />{{ item.typeLabel }}</p>
+        <p><span class="text-muted-foreground text-xs">Dates</span><br />{{ item.datesLabel }} ({{ item.durationLabel }})</p>
+        <p><span class="text-muted-foreground text-xs">Status</span><br />{{ item.status }}</p>
+        <p><span class="text-muted-foreground text-xs">Reason</span><br />{{ item.reason || item.note || '—' }}</p>
+        @if (item.status === 'Pending') {
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Comment (optional)</span>
+            <textarea rows="3" [(ngModel)]="comment" name="comment"></textarea>
+          </label>
+          <div class="flex gap-2">
+            <app-button impact="bold" tone="success" size="small" type="button" (buttonClick)="decide(true)">Approve</app-button>
+            <app-button impact="bold" tone="danger" size="small" type="button" (buttonClick)="decide(false)">Reject</app-button>
+          </div>
+        }
+      </div>
+    </aside>
+  </div>
+}

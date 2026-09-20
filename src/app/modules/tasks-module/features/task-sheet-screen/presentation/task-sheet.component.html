@@ -1,0 +1,49 @@
+@if (sheet(); as current) {
+  <app-page-header [title]="current.name" subtitle="Curriculum sheet">
+    <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="tasksPath">Back to list</a>
+    <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="goBoard()">Board View</app-button>
+  </app-page-header>
+
+  <div class="space-y-6">
+    @for (unit of current.units; track unit.id) {
+      <section class="border-border bg-background rounded-xl border p-4">
+        <h3 class="text-foreground mb-3 text-base font-semibold">{{ unit.name }}</h3>
+        @for (lesson of unit.lessons; track lesson.id) {
+          <div class="mb-4 last:mb-0">
+            <h4 class="text-muted-foreground mb-2 text-sm font-semibold">{{ lesson.name }}</h4>
+            @for (lo of lesson.learningObjectives; track lo.id) {
+              <div class="border-border mb-3 rounded-lg border p-3 last:mb-0">
+                <div class="mb-2 flex flex-wrap items-baseline gap-2">
+                  <p class="text-foreground text-sm font-semibold">{{ lo.name }}</p>
+                  <span class="text-muted-foreground text-xs">{{ lo.tag }} · {{ lo.template }} · {{ lo.environment }} · {{ lo.schemaName }}</span>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  @for (task of lo.tasks; track task.id) {
+                    <button
+                      type="button"
+                      class="rounded-full px-3 py-1 text-xs font-semibold"
+                      [ngClass]="chipClass(task.status)"
+                      (click)="openTask(task.id)">
+                      {{ task.name }}
+                      @if (task.flagged) {
+                        <span>!</span>
+                      }
+                    </button>
+                  } @empty {
+                    <p class="text-muted-foreground text-xs">No tasks</p>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    } @empty {
+      <p class="text-muted-foreground text-sm">No curriculum rows</p>
+    }
+  </div>
+
+  @if (selected(); as task) {
+    <app-task-drawer [task]="task" [users]="current.users" (closed)="closeDrawer()" (changed)="onDrawerChanged()" />
+  }
+}
