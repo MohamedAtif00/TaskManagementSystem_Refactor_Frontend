@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { catchError, map, shareReplay, switchMap } from 'rxjs/operators';
 import { SUBJECT_STATUS_LABELS } from '@core/models/role-map';
 import { API, apiPath } from './api/api.const';
 import { mapHttpError } from './http-error';
@@ -48,6 +48,7 @@ export interface FlatProject {
   status: string;
   subjectCount: number;
   year: string;
+  yearId: number;
 }
 
 export interface FlatSubject {
@@ -82,10 +83,17 @@ export interface LoItem {
 
 @Injectable({ providedIn: 'root' })
 export class CurriculumCatalogService {
+  private treesCache$?: Observable<YearTree[]>;
+  private readonly subjectUnitsCache = new Map<number, Observable<UnitItem[]>>();
+  private readonly unitLessonsCache = new Map<number, Observable<LessonItem[]>>();
+  private readonly lessonLosCache = new Map<number, Observable<LoItem[]>>();
+  private readonly subjectSheetCache = new Map<number, Observable<{ units: { id: number; name: string; lessons: { id: number; name: string; learningObjectives: LoItem[] }[] }[] }>>();
+  private readonly losForSubjectCache = new Map<number, Observable<{ id: number; name: string; unitName: string; lessonName: string }[]>>();
+
   constructor(private network: NetworkService) {}
 
   getTrees(): Observable<YearTree[]> {
-    return this.network.get<{ id: number; name: string }[]>(API.Curriculum.Years).pipe(
+    this.treesCache$ ??= this.network.get<{ id: number; name: string }[]>(API.Curriculum.Years).pipe(
       switchMap((years) => {
         if (!years.length) {
           return of([] as YearTree[]);
@@ -99,7 +107,18 @@ export class CurriculumCatalogService {
         );
       }),
       catchError(mapHttpError),
+      shareReplay(1),
     );
+    return this.treesCache$;
+  }
+
+  clearCache(): void {
+    this.treesCache$ = undefined;
+    this.subjectUnitsCache.clear();
+    this.unitLessonsCache.clear();
+    this.lessonLosCache.clear();
+    this.subjectSheetCache.clear();
+    this.losForSubjectCache.clear();
   }
 
   flattenProjects(trees: YearTree[]): FlatProject[] {
@@ -114,6 +133,7 @@ export class CurriculumCatalogService {
           status: SUBJECT_STATUS_LABELS[subjects[0]?.status ?? 0] ?? 'Active',
           subjectCount: subjects.length,
           year: year.name,
+          yearId: year.id,
         });
       }
     }
@@ -145,24 +165,51 @@ export class CurriculumCatalogService {
   }
 
   getSubjectUnits(subjectId: number): Observable<UnitItem[]> {
-    return this.network
-      .get<UnitItem[]>(apiPath(API.Curriculum.SubjectUnits, { subjectId }))
-      .pipe(catchError(mapHttpError));
+    if (!this.subjectUnitsCache.has(subjectId)) {
+      this.subjectUnitsCache.set(
+        subjectId,
+        this.network
+          .get<UnitItem[]>(apiPath(API.Curriculum.SubjectUnits, { subjectId }))
+          .pipe(catchError(mapHttpError), shareReplay(1)),
+      );
+    }
+    return this.subjectUnitsCache.get(subjectId)!;
   }
 
   getUnitLessons(unitId: number): Observable<LessonItem[]> {
-    return this.network
-      .get<LessonItem[]>(apiPath(API.Curriculum.UnitLessons, { unitId }))
-      .pipe(catchError(mapHttpError));
+    if (!this.unitLessonsCache.has(unitId)) {
+      this.unitLessonsCache.set(
+        unitId,
+        this.network
+          .get<LessonItem[]>(apiPath(API.Curriculum.UnitLessons, { unitId }))
+          .pipe(catchError(mapHttpError), shareReplay(1)),
+      );
+    }
+    return this.unitLessonsCache.get(unitId)!;
   }
 
   getLessonLos(lessonId: number): Observable<LoItem[]> {
-    return this.network
-      .get<LoItem[]>(apiPath(API.Curriculum.LessonLos, { lessonId }))
-      .pipe(catchError(mapHttpError));
+    if (!this.lessonLosCache.has(lessonId)) {
+      this.lessonLosCache.set(
+        lessonId,
+        this.network
+          .get<LoItem[]>(apiPath(API.Curriculum.LessonLos, { lessonId }))
+          .pipe(catchError(mapHttpError), shareReplay(1)),
+      );
+    }
+    return this.lessonLosCache.get(lessonId)!;
   }
 
   getSubjectSheet(subjectId: number): Observable<{
+    units: { id: number; name: string; lessons: { id: number; name: string; learningObjectives: LoItem[] }[] }[];
+  }> {
+    if (!this.subjectSheetCache.has(subjectId)) {
+      this.subjectSheetCache.set(subjectId, this.loadSubjectSheet(subjectId).pipe(shareReplay(1)));
+    }
+    return this.subjectSheetCache.get(subjectId)!;
+  }
+
+  private loadSubjectSheet(subjectId: number): Observable<{
     units: { id: number; name: string; lessons: { id: number; name: string; learningObjectives: LoItem[] }[] }[];
   }> {
     return this.getSubjectUnits(subjectId).pipe(
@@ -193,20 +240,27 @@ export class CurriculumCatalogService {
   }
 
   getLosForSubject(subjectId: number): Observable<{ id: number; name: string; unitName: string; lessonName: string }[]> {
-    return this.getSubjectSheet(subjectId).pipe(
-      map((sheet) =>
-        sheet.units.flatMap((unit) =>
-          unit.lessons.flatMap((lesson) =>
-            lesson.learningObjectives.map((lo) => ({
-              id: lo.id,
-              name: lo.name,
-              unitName: unit.name,
-              lessonName: lesson.name,
-            })),
+    if (!this.losForSubjectCache.has(subjectId)) {
+      this.losForSubjectCache.set(
+        subjectId,
+        this.getSubjectSheet(subjectId).pipe(
+          map((sheet) =>
+            sheet.units.flatMap((unit) =>
+              unit.lessons.flatMap((lesson) =>
+                lesson.learningObjectives.map((lo) => ({
+                  id: lo.id,
+                  name: lo.name,
+                  unitName: unit.name,
+                  lessonName: lesson.name,
+                })),
+              ),
+            ),
           ),
+          shareReplay(1),
         ),
-      ),
-    );
+      );
+    }
+    return this.losForSubjectCache.get(subjectId)!;
   }
 
   private collectSubjects(project: YearTreeProject): YearTreeSubject[] {
