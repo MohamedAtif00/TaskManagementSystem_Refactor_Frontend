@@ -1,17 +1,29 @@
 {
   "name": "tms",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "e2e": "playwright test",
+    "e2e:integration": "playwright test -c playwright.integration.config.ts",
+    "e2e:all": "npm run e2e && npm run e2e:integration",
+    "e2e:ui": "playwright test --ui",
+    "stack:seed": "powershell -File scripts/seed-stack.ps1",
+    "stack:start": "powershell -File scripts/dev-stack.ps1",
+    "postinstall": "node node_modules/esbuild/install.js"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "@esbuild/win32-x64@0.28.2": true
   },
   "private": true,
   "packageManager": "npm@11.19.0",
   "dependencies": {
     "@angular/animations": "^22.1.6",
+    "@angular/cdk": "^22.1.7",
     "@angular/common": "^22.1.0",
     "@angular/compiler": "^22.1.0",
     "@angular/core": "^22.1.0",
@@ -29,6 +41,8 @@
     "@angular/build": "^22.1.8",
     "@angular/cli": "^22.1.8",
     "@angular/compiler-cli": "^22.1.0",
+    "@esbuild/win32-x64": "^0.28.2",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/postcss": "^4.3.3",
