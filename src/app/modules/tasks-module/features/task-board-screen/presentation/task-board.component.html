@@ -35,9 +35,14 @@
     }
   </div>
 
-  <div class="flex gap-4 overflow-x-auto pb-4">
-    @for (column of columns; track column.label) {
-      <app-task-column [label]="column.label" [cards]="cardsFor(column)" (openCard)="openCard($event)" />
+  <div class="flex gap-4 overflow-x-auto pb-4" cdkDropListGroup>
+    @for (column of columns; track column.key) {
+      <app-task-column
+        [label]="column.label"
+        [columnKey]="column.key"
+        [cards]="cardsFor(column)"
+        (openCard)="openCard($event)"
+        (dropped)="onCardDropped($event, column)" />
     }
   </div>
 

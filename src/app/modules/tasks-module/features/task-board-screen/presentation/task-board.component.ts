@@ -1,3 +1,4 @@
+import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -14,14 +15,17 @@ import {
   TaskDetailsEntity,
   TaskStatus,
 } from '../domain/entity/task-board.entity';
+import { CompleteTaskUseCase } from '../domain/usecase/complete-task.usecase';
 import { GetTaskBoardUseCase } from '../domain/usecase/get-task-board.usecase';
 import { GetTaskDetailsUseCase } from '../domain/usecase/get-task-details.usecase';
+import { ProceedTaskUseCase } from '../domain/usecase/proceed-task.usecase';
 import { NewTaskModalComponent } from './new-task-modal.component';
 import { TaskColumnComponent } from './task-column.component';
 import { TaskDrawerComponent } from './task-drawer.component';
 
 interface BoardColumn {
   label: string;
+  key: string;
   statuses: TaskStatus[];
 }
 
@@ -30,6 +34,7 @@ interface BoardColumn {
   imports: [
     FormsModule,
     RouterLink,
+    DragDropModule,
     PageHeaderComponent,
     ButtonComponent,
     TaskColumnComponent,
@@ -40,10 +45,10 @@ interface BoardColumn {
 })
 export class TaskBoardComponent implements OnInit {
   readonly columns: BoardColumn[] = [
-    { label: 'Backlog', statuses: [0] },
-    { label: 'To Do', statuses: [1] },
-    { label: 'Doing', statuses: [2] },
-    { label: 'Done', statuses: [3, 4] },
+    { label: 'Backlog', key: 'backlog', statuses: [0] },
+    { label: 'To Do', key: 'todo', statuses: [1] },
+    { label: 'Doing', key: 'doing', statuses: [2] },
+    { label: 'Done', key: 'done', statuses: [3, 4] },
   ];
   readonly board = signal<TaskBoardEntity | null>(null);
   readonly selected = signal<TaskDetailsEntity | null>(null);
@@ -77,6 +82,8 @@ export class TaskBoardComponent implements OnInit {
     private auth: AuthService,
     private boardUseCase: GetTaskBoardUseCase,
     private detailsUseCase: GetTaskDetailsUseCase,
+    private proceedUseCase: ProceedTaskUseCase,
+    private completeUseCase: CompleteTaskUseCase,
   ) {}
 
   ngOnInit(): void {
@@ -99,6 +106,53 @@ export class TaskBoardComponent implements OnInit {
 
   cardsFor(column: BoardColumn): TaskCardEntity[] {
     return this.filteredCards().filter((card) => column.statuses.includes(card.status));
+  }
+
+  onCardDropped(event: CdkDragDrop<TaskCardEntity[]>, targetColumn: BoardColumn): void {
+    if (event.previousContainer === event.container) {
+      return;
+    }
+    if (!this.canCreate()) {
+      toast.error('You cannot move tasks on this board');
+      return;
+    }
+
+    const card = event.item.data as TaskCardEntity;
+    const sourceColumn = this.columns.find((column) => column.statuses.includes(card.status));
+    if (!sourceColumn) {
+      return;
+    }
+
+    const sourceIndex = this.columns.indexOf(sourceColumn);
+    const targetIndex = this.columns.indexOf(targetColumn);
+    if (targetIndex !== sourceIndex + 1) {
+      toast.error('Tasks can only move forward one column at a time');
+      return;
+    }
+
+    if (card.status === 2 && targetColumn.key === 'done') {
+      this.completeUseCase.execute(card.id).subscribe({
+        next: () => {
+          toast.success('Task completed');
+          this.load();
+        },
+        error: (err: Error) => toast.error(err.message),
+      });
+      return;
+    }
+
+    if (card.status === 0 || card.status === 1) {
+      this.proceedUseCase.execute(card.id).subscribe({
+        next: () => {
+          toast.success(card.status === 0 ? 'Moved to To Do' : 'Started');
+          this.load();
+        },
+        error: (err: Error) => toast.error(err.message),
+      });
+      return;
+    }
+
+    toast.error('Use the task drawer to move backward');
   }
 
   openCard(card: TaskCardEntity): void {
