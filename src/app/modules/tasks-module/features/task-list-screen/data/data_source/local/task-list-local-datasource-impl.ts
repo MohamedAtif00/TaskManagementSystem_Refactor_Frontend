@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { delay, map } from 'rxjs/operators';
 import { TmsMockStore } from '@core/mock/tms-mock.store';
-import { TaskListParams } from '../../../domain/entity/task-list.entity';
+import { TaskFilterOptions, TaskListParams } from '../../../domain/entity/task-list.entity';
 import { TaskSubjectModel } from '../../model/task-list.model';
 import { TaskListLocalDataSource } from './task-list-local-datasource';
 
@@ -32,6 +32,16 @@ export class TaskListLocalDataSourceImpl extends TaskListLocalDataSource {
             return matchesSearch && matchesYear && matchesTerm;
           }),
       ),
+    );
+  }
+
+  getFilterOptions(): Observable<TaskFilterOptions> {
+    return of(this.store.subjects).pipe(
+      delay(80),
+      map((rows) => ({
+        years: [...new Set(rows.map((row) => row.year))].sort((a, b) => b.localeCompare(a)),
+        terms: [...new Set(rows.map((row) => row.term))].sort((a, b) => a.localeCompare(b)),
+      })),
     );
   }
 }

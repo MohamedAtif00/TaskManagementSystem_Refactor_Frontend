@@ -4,13 +4,13 @@
   <input type="search" class="max-w-sm" placeholder="Search subjects" [(ngModel)]="search" (ngModelChange)="load()" />
   <select class="max-w-40" [(ngModel)]="year" (ngModelChange)="load()">
     <option value="">All years</option>
-    @for (item of years; track item) {
+    @for (item of years(); track item) {
       <option [value]="item">{{ item }}</option>
     }
   </select>
   <select class="max-w-40" [(ngModel)]="term" (ngModelChange)="load()">
     <option value="">All terms</option>
-    @for (item of terms; track item) {
+    @for (item of terms(); track item) {
       <option [value]="item">{{ item }}</option>
     }
   </select>

@@ -13,3 +13,8 @@ export interface TaskListParams {
   year: string;
   term: string;
 }
+
+export interface TaskFilterOptions {
+  years: string[];
+  terms: string[];
+}
