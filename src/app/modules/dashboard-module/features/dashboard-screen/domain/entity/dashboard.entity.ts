@@ -40,8 +40,16 @@ export interface MemberDashboard {
   overdueTasks: number;
 }
 
+export interface SectionHeadDashboard {
+  teamsCount: number;
+  members: number;
+  activeTasks: number;
+  teamsDetails: { id: number; name: string; membersCount: number; tasksCount: number }[];
+}
+
 export interface DashboardEntity {
   projectManager?: ProjectManagerDashboard;
   teamLeader?: TeamLeaderDashboard;
+  sectionHead?: SectionHeadDashboard;
   member?: MemberDashboard;
 }

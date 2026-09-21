@@ -46,12 +46,12 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const role = this.authService.user()?.role;
-    if (role === undefined) {
+    const user = this.authService.user();
+    if (!user || user.role === undefined) {
       return;
     }
 
-    this.dashboardUseCase.execute(role).subscribe((result) => {
+    this.dashboardUseCase.execute({ role: user.role, userId: user.id }).subscribe((result) => {
       this.data.set(result);
       this.buildCharts(result);
       this.cdr.markForCheck();

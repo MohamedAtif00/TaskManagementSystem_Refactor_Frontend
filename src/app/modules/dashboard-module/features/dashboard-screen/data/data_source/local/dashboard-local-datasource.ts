@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
-import { UserRole } from '@core/models/user-role';
+import { DashboardParams } from '../../../domain/entity/dashboard-params.entity';
 import { DashboardModel } from '../../model/dashboard.model';
 
 export abstract class DashboardLocalDataSource {
-  abstract getDashboard(role: UserRole): Observable<DashboardModel>;
+  abstract getDashboard(params: DashboardParams): Observable<DashboardModel>;
 }

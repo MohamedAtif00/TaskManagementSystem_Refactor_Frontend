@@ -2,17 +2,22 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { delay } from 'rxjs/operators';
 import { UserRole } from '@core/models/user-role';
+import { DashboardParams } from '../../../domain/entity/dashboard-params.entity';
 import { DashboardModel } from '../../model/dashboard.model';
 import { DashboardLocalDataSource } from './dashboard-local-datasource';
 
 @Injectable()
 export class DashboardLocalDataSourceImpl extends DashboardLocalDataSource {
-  getDashboard(role: UserRole): Observable<DashboardModel> {
+  getDashboard(params: DashboardParams): Observable<DashboardModel> {
+    const role = params.role;
     if (role === UserRole.ProjectManager || role === UserRole.Owner) {
       return of(this.pmDashboard()).pipe(delay(150));
     }
     if (role === UserRole.TeamLeader) {
       return of(this.tlDashboard()).pipe(delay(150));
+    }
+    if (role === UserRole.SectionHead) {
+      return of(this.sectionHeadDashboard()).pipe(delay(150));
     }
     return of(this.memberDashboard()).pipe(delay(150));
   }
@@ -73,6 +78,21 @@ export class DashboardLocalDataSourceImpl extends DashboardLocalDataSource {
           { id: 5, name: 'Mona Member', tasksCount: 4 },
           { id: 6, name: 'Karim Member', tasksCount: 3 },
           { id: 7, name: 'Nour Member', tasksCount: 2 },
+        ],
+      },
+    };
+  }
+
+  private sectionHeadDashboard(): DashboardModel {
+    return {
+      sectionHead: {
+        teamsCount: 3,
+        members: 18,
+        activeTasks: 22,
+        teamsDetails: [
+          { id: 1, name: 'Math Team', membersCount: 8, tasksCount: 10 },
+          { id: 2, name: 'Science Team', membersCount: 6, tasksCount: 7 },
+          { id: 3, name: 'Arabic Team', membersCount: 4, tasksCount: 5 },
         ],
       },
     };

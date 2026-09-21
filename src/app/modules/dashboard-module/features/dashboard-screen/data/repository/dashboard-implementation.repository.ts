@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '@environments/environment';
-import { UserRole } from '@core/models/user-role';
+import { DashboardParams } from '../../domain/entity/dashboard-params.entity';
 import { DashboardEntity } from '../../domain/entity/dashboard.entity';
 import { DashboardRepository } from '../../domain/repository/dashboard.repository';
 import { DashboardLocalDataSource } from '../data_source/local/dashboard-local-datasource';
@@ -16,10 +16,10 @@ export class DashboardImplementationRepository implements DashboardRepository {
     private remote: DashboardRemoteDataSource,
   ) {}
 
-  getDashboard(role: UserRole): Observable<DashboardEntity> {
+  getDashboard(params: DashboardParams): Observable<DashboardEntity> {
     if (environment.useMock) {
-      return this.local.getDashboard(role).pipe(map((model) => DashboardMapper.toEntity(model)));
+      return this.local.getDashboard(params).pipe(map((model) => DashboardMapper.toEntity(model)));
     }
-    return this.remote.getDashboard(role).pipe(map((model) => DashboardMapper.toEntity(model)));
+    return this.remote.getDashboard(params).pipe(map((model) => DashboardMapper.toEntity(model)));
   }
 }

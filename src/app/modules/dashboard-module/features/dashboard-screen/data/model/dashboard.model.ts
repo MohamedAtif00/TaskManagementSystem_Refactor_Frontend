@@ -2,12 +2,14 @@ import {
   DashboardEntity,
   MemberDashboard,
   ProjectManagerDashboard,
+  SectionHeadDashboard,
   TeamLeaderDashboard,
 } from '../../domain/entity/dashboard.entity';
 
 export interface DashboardModel {
   projectManager?: ProjectManagerDashboard;
   teamLeader?: TeamLeaderDashboard;
+  sectionHead?: SectionHeadDashboard;
   member?: MemberDashboard;
 }
 

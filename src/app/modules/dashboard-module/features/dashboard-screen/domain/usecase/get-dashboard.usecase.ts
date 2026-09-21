@@ -1,15 +1,15 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { BaseUseCase } from '@core/base/usecase/base-usecase';
-import { UserRole } from '@core/models/user-role';
+import { DashboardParams } from '../entity/dashboard-params.entity';
 import { DashboardEntity } from '../entity/dashboard.entity';
 import { DashboardRepository } from '../repository/dashboard.repository';
 
 @Injectable()
-export class GetDashboardUseCase implements BaseUseCase<UserRole, DashboardEntity> {
+export class GetDashboardUseCase implements BaseUseCase<DashboardParams, DashboardEntity> {
   constructor(private repository: DashboardRepository) {}
 
-  execute(role: UserRole): Observable<DashboardEntity> {
-    return this.repository.getDashboard(role);
+  execute(params: DashboardParams): Observable<DashboardEntity> {
+    return this.repository.getDashboard(params);
   }
 }

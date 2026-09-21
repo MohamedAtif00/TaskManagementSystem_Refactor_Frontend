@@ -81,6 +81,36 @@
   </div>
 }
 
+@if (data()?.sectionHead; as sh) {
+  <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <app-stat-card label="Teams" [value]="sh.teamsCount" icon="assets/icons/heroicons/outline/user-group.svg"></app-stat-card>
+    <app-stat-card label="Members" [value]="sh.members" icon="assets/icons/heroicons/outline/users.svg"></app-stat-card>
+    <app-stat-card label="Active Tasks" [value]="sh.activeTasks" icon="assets/icons/heroicons/outline/view-grid.svg"></app-stat-card>
+  </div>
+
+  <div class="border-muted/20 bg-background rounded-xl border p-5">
+    <h3 class="text-foreground mb-3 text-sm font-semibold">Teams in section</h3>
+    <table class="text-muted-foreground w-full text-left text-sm">
+      <thead class="text-xs uppercase">
+        <tr>
+          <th class="pb-2">Team</th>
+          <th class="pb-2">Members</th>
+          <th class="pb-2">Tasks</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of sh.teamsDetails; track row.id) {
+          <tr class="border-muted/20 border-t">
+            <td class="py-2">{{ row.name }}</td>
+            <td class="py-2">{{ row.membersCount }}</td>
+            <td class="py-2">{{ row.tasksCount }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
 @if (data()?.member; as mine) {
   <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
     <app-stat-card label="Assigned" [value]="mine.assignedTasks" icon="assets/icons/heroicons/outline/bookmark.svg" hint="My open work"></app-stat-card>
