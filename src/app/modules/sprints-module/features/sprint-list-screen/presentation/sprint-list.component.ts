@@ -2,6 +2,8 @@ import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
+import { environment } from '@environments/environment';
+import { PermissionCodes } from '@core/models/permission-codes';
 import { ADMIN_ROLES } from '@core/models/user-role';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { AuthService } from '@core/services/auth.service';
@@ -32,6 +34,7 @@ export class SprintListComponent implements OnInit {
   readonly showForm = signal(false);
   readonly confirmSprint = signal<SprintEntity | null>(null);
   readonly isAdmin: boolean;
+  readonly canRestore = environment.useMock;
 
   formError = '';
   subjectId = 0;
@@ -48,7 +51,7 @@ export class SprintListComponent implements OnInit {
     private subjectsUseCase: SprintSubjectsUseCase,
     private losUseCase: SprintLosUseCase,
   ) {
-    this.isAdmin = this.auth.hasRole(ADMIN_ROLES);
+    this.isAdmin = this.auth.hasRole(ADMIN_ROLES) || this.auth.hasPermission(PermissionCodes.Sprints.Manage);
   }
 
   ngOnInit(): void {
@@ -93,6 +96,7 @@ export class SprintListComponent implements OnInit {
       startDate: row.startDate,
       endDate: row.endDate,
       learningObjectIds: row.learningObjects.map((lo) => lo.id),
+      previousLearningObjectIds: row.learningObjects.map((lo) => lo.id),
     };
     this.selectedLos = row.learningObjects.map((lo) => ({
       id: lo.id,

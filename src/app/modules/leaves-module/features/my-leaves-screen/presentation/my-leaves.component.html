@@ -1,9 +1,9 @@
-<app-page-header title="My time off" subtitle="See what you have left and track requests">
+<app-page-header title="My leaves" subtitle="See what you have left and track requests">
   <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">New request</app-button>
 </app-page-header>
 
 @if (data(); as current) {
-  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
     <app-stat-card
       label="Annual"
       [value]="ratio(current.balances.annualUsed, current.balances.annualMax)"
@@ -29,6 +29,11 @@
       [value]="ratio(current.balances.wfhUsed, current.balances.wfhMax)"
       icon="assets/icons/heroicons/outline/folder.svg"
       hint="Used / max days"></app-stat-card>
+    <app-stat-card
+      label="From next year"
+      [value]="ratio(current.balances.fromNextUsed, current.balances.fromNextMax)"
+      icon="assets/icons/heroicons/outline/calendar.svg"
+      hint="Used / max days"></app-stat-card>
   </div>
 
   <div class="mb-4 flex flex-wrap gap-2">
@@ -40,7 +45,7 @@
       [class.bg-muted]="tab !== 'leave'"
       [class.text-muted-foreground]="tab !== 'leave'"
       (click)="tab = 'leave'">
-      Time off
+      Leave
       <span class="ml-1 text-xs opacity-80">{{ current.leaves.length }}</span>
     </button>
     <button
@@ -65,12 +70,23 @@
       Work from home
       <span class="ml-1 text-xs opacity-80">{{ current.wfh.length }}</span>
     </button>
+    <button
+      type="button"
+      class="rounded-lg px-3 py-2 text-sm font-semibold"
+      [class.bg-primary]="tab === 'forgotClock'"
+      [class.text-primary-foreground]="tab === 'forgotClock'"
+      [class.bg-muted]="tab !== 'forgotClock'"
+      [class.text-muted-foreground]="tab !== 'forgotClock'"
+      (click)="tab = 'forgotClock'">
+      Forgot clock
+      <span class="ml-1 text-xs opacity-80">{{ current.forgotClock.length }}</span>
+    </button>
   </div>
 
   @if (tab === 'leave') {
     @if (!current.leaves.length) {
       <div class="border-border bg-background rounded-xl border px-6 py-12 text-center">
-        <p class="text-foreground mb-1 font-semibold">No time off requests yet</p>
+        <p class="text-foreground mb-1 font-semibold">No leave requests yet</p>
         <p class="text-muted-foreground mb-4 text-sm">Request annual, sick, emergency, or unpaid leave.</p>
         <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate('leave')">New request</app-button>
       </div>
@@ -281,6 +297,75 @@
       }
     }
   }
+
+  @if (tab === 'forgotClock') {
+    @if (!current.forgotClock.length) {
+      <div class="border-border bg-background rounded-xl border px-6 py-12 text-center">
+        <p class="text-foreground mb-1 font-semibold">No forgot-clock requests yet</p>
+        <p class="text-muted-foreground mb-4 text-sm">Ask to correct a missed clock-in or clock-out.</p>
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate('forgotClock')">New request</app-button>
+      </div>
+    } @else {
+      @if (upcomingForgot().length) {
+        <h4 class="text-foreground mb-2 text-sm font-semibold">Upcoming</h4>
+        <div class="border-muted/20 bg-background mb-6 overflow-x-auto rounded-xl border">
+          <table class="text-muted-foreground w-full table-auto text-left text-sm">
+            <thead class="border-muted/20 text-xs border-b">
+              <tr>
+                <th class="px-4 py-3">Punch</th>
+                <th class="px-4 py-3">When</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of upcomingForgot(); track row.id) {
+                <tr class="border-muted/10 border-t">
+                  <td class="text-foreground px-4 py-3 font-semibold">{{ punchTypeLabels[row.punchType] }}</td>
+                  <td class="px-4 py-3">{{ formatDate(row.attendanceDate) }} · {{ row.intendedTime }}</td>
+                  <td class="px-4 py-3"><span [class]="statusClass(row.status)">{{ row.status }}</span></td>
+                  <td class="px-4 py-3 text-right">
+                    @if (canCancel(row.status, row.attendanceDate)) {
+                      <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askCancel('forgotClock', row.id, punchTypeLabels[row.punchType], formatDate(row.attendanceDate) + ' · ' + row.intendedTime)">Cancel</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      @if (earlierForgot().length) {
+        <h4 class="text-foreground mb-2 text-sm font-semibold">Earlier</h4>
+        <div class="border-muted/20 bg-background overflow-x-auto rounded-xl border">
+          <table class="text-muted-foreground w-full table-auto text-left text-sm">
+            <thead class="border-muted/20 text-xs border-b">
+              <tr>
+                <th class="px-4 py-3">Punch</th>
+                <th class="px-4 py-3">When</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of earlierForgot(); track row.id) {
+                <tr class="border-muted/10 border-t">
+                  <td class="text-foreground px-4 py-3 font-semibold">{{ punchTypeLabels[row.punchType] }}</td>
+                  <td class="px-4 py-3">{{ formatDate(row.attendanceDate) }} · {{ row.intendedTime }}</td>
+                  <td class="px-4 py-3"><span [class]="statusClass(row.status)">{{ row.status }}</span></td>
+                  <td class="px-4 py-3 text-right">
+                    @if (canCancel(row.status, row.attendanceDate)) {
+                      <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askCancel('forgotClock', row.id, punchTypeLabels[row.punchType], formatDate(row.attendanceDate) + ' · ' + row.intendedTime)">Cancel</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
 }
 
 @if (showForm()) {
@@ -288,10 +373,11 @@
     <div class="bg-card border-border max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-5 shadow-lg">
       <h3 class="text-foreground mb-1 text-lg font-semibold">New request</h3>
       <p class="text-muted-foreground mb-4 text-sm">Choose a type, then fill in the details.</p>
-      <div class="mb-4 grid grid-cols-3 gap-2">
-        <button type="button" class="rounded-lg border px-2 py-3 text-center text-xs font-semibold" [class.border-primary]="formKind === 'leave'" [class.bg-primary/10]="formKind === 'leave'" [class.text-primary]="formKind === 'leave'" [class.border-border]="formKind !== 'leave'" [class.text-muted-foreground]="formKind !== 'leave'" (click)="formKind = 'leave'">Time off</button>
+      <div class="mb-4 grid grid-cols-4 gap-2">
+        <button type="button" class="rounded-lg border px-2 py-3 text-center text-xs font-semibold" [class.border-primary]="formKind === 'leave'" [class.bg-primary/10]="formKind === 'leave'" [class.text-primary]="formKind === 'leave'" [class.border-border]="formKind !== 'leave'" [class.text-muted-foreground]="formKind !== 'leave'" (click)="formKind = 'leave'">Leave</button>
         <button type="button" class="rounded-lg border px-2 py-3 text-center text-xs font-semibold" [class.border-primary]="formKind === 'permission'" [class.bg-primary/10]="formKind === 'permission'" [class.text-primary]="formKind === 'permission'" [class.border-border]="formKind !== 'permission'" [class.text-muted-foreground]="formKind !== 'permission'" (click)="formKind = 'permission'">Short absence</button>
         <button type="button" class="rounded-lg border px-2 py-3 text-center text-xs font-semibold" [class.border-primary]="formKind === 'wfh'" [class.bg-primary/10]="formKind === 'wfh'" [class.text-primary]="formKind === 'wfh'" [class.border-border]="formKind !== 'wfh'" [class.text-muted-foreground]="formKind !== 'wfh'" (click)="formKind = 'wfh'">Work from home</button>
+        <button type="button" class="rounded-lg border px-2 py-3 text-center text-xs font-semibold" [class.border-primary]="formKind === 'forgotClock'" [class.bg-primary/10]="formKind === 'forgotClock'" [class.text-primary]="formKind === 'forgotClock'" [class.border-border]="formKind !== 'forgotClock'" [class.text-muted-foreground]="formKind !== 'forgotClock'" (click)="formKind = 'forgotClock'">Forgot clock</button>
       </div>
       <div class="space-y-3">
         @if (formKind === 'leave') {
@@ -304,10 +390,29 @@
             </select>
           </label>
           <div class="grid grid-cols-2 gap-3">
-            <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Start</span><input type="date" [(ngModel)]="leaveStart" name="leaveStart" /></label>
-            <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">End</span><input type="date" [(ngModel)]="leaveEnd" name="leaveEnd" /></label>
+            <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Start</span><input type="date" [(ngModel)]="leaveStart" name="leaveStart" (ngModelChange)="onLeaveDatesChange()" /></label>
+            <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">End</span><input type="date" [(ngModel)]="leaveEnd" name="leaveEnd" (ngModelChange)="onLeaveDatesChange()" /></label>
           </div>
+          <p class="text-muted-foreground text-xs">Fridays, Saturdays, and holidays are not counted.</p>
           <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Reason (optional)</span><textarea rows="2" [(ngModel)]="leaveReason" name="leaveReason"></textarea></label>
+          @if (leaveType === 'Sick') {
+            <label class="block">
+              <span class="text-muted-foreground mb-1 block text-xs font-medium">Medical certificate</span>
+              <input type="file" name="medicalCertificate" accept=".pdf,.jpg,.jpeg,.png" (change)="onMedicalSelected($event)" />
+              @if (medicalFile) {
+                <span class="text-muted-foreground mt-1 block text-xs">{{ medicalFile.name }}</span>
+              }
+            </label>
+          }
+          <div>
+            <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="runPreview()">Preview days</app-button>
+          </div>
+          @if (leavePreview?.requiresConfirmation) {
+            <label class="flex items-start gap-2 text-sm">
+              <input type="checkbox" [(ngModel)]="confirmFromNext" name="confirmFromNext" class="mt-1" />
+              <span>Use {{ leavePreview?.neededFromNext }} day{{ leavePreview?.neededFromNext === 1 ? '' : 's' }} from next year’s annual balance.</span>
+            </label>
+          }
         }
         @if (formKind === 'permission') {
           <label class="block">
@@ -328,6 +433,19 @@
         @if (formKind === 'wfh') {
           <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Date</span><input type="date" [(ngModel)]="wfhDate" name="wfhDate" /></label>
           <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Note (optional)</span><textarea rows="2" [(ngModel)]="wfhNote" name="wfhNote"></textarea></label>
+        }
+        @if (formKind === 'forgotClock') {
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Punch</span>
+            <select [(ngModel)]="punchType" name="punchType">
+              @for (item of punchTypes; track item) {
+                <option [ngValue]="item">{{ punchTypeLabels[item] }}</option>
+              }
+            </select>
+          </label>
+          <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Date</span><input type="date" [(ngModel)]="forgotDate" name="forgotDate" /></label>
+          <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Intended time</span><input type="time" [(ngModel)]="forgotTime" name="forgotTime" /></label>
+          <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Reason (optional)</span><textarea rows="2" [(ngModel)]="forgotReason" name="forgotReason"></textarea></label>
         }
         @if (durationPreview() || remainingPreview()) {
           <p class="bg-muted/40 text-muted-foreground rounded-lg px-3 py-2 text-xs">

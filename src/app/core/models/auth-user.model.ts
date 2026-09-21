@@ -7,4 +7,6 @@ export interface AuthUser {
   role: UserRole;
   group: string;
   token: string;
+  permissions: string[];
+  notifications: number;
 }

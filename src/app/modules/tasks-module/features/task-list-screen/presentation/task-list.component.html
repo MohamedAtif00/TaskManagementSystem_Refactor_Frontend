@@ -16,7 +16,7 @@
   </select>
 </div>
 
-<div class="border-muted/20 bg-background flex min-w-full flex-col rounded-xl border p-2">
+<div class="border-border/60 bg-card shadow-sm flex min-w-full flex-col rounded-xl border p-2">
   <div class="scrollbar-thumb-rounded scrollbar-track-rounded scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted grow overflow-x-auto px-5">
     <table class="text-muted-foreground table w-full table-auto border-collapse border-0 text-left align-middle leading-5">
       <thead class="border-muted/20 text-muted-foreground border text-xs">
@@ -31,7 +31,7 @@
       </thead>
       <tbody>
         @for (row of rows(); track row.id) {
-          <tr class="hover:bg-card/50 cursor-pointer" (click)="openBoard(row)">
+          <tr class="hover:bg-muted/40 cursor-pointer" (click)="openBoard(row)">
             <td class="text-foreground px-3 py-3 text-sm font-semibold">{{ row.name }}</td>
             <td class="px-3 py-3 text-sm">{{ row.folderPath }}</td>
             <td class="px-3 py-3 text-sm">{{ row.year }}</td>

@@ -34,7 +34,71 @@ const API_PREFIXES = [
 
 
 
-function isApiPath(pathname: string): boolean {
+const MANAGE_PERMISSIONS = [
+  'organization.manage',
+  'workflows.manage',
+  'curriculum.manage',
+  'sprints.manage',
+  'tickets.manage',
+  'notifications.manage',
+  'hr.leave.manage',
+  'hr.holidays.manage',
+  'hr.timeoff.manage',
+  'hr.workfromhome.manage',
+  'hr.forgotclock.manage',
+  'identity.users.manage',
+  'identity.roles.manage',
+];
+
+const MEMBER_PERMISSIONS = [
+  'tickets.read',
+  'sprints.read',
+  'notifications.read',
+  'hr.leave.read',
+  'hr.leave.create',
+  'hr.timeoff.read',
+  'hr.timeoff.create',
+  'hr.workfromhome.read',
+  'hr.workfromhome.create',
+  'hr.forgotclock.read',
+  'hr.forgotclock.create',
+];
+
+function permissionsForRole(role: number): string[] {
+  if (role === 4) {
+    return MANAGE_PERMISSIONS;
+  }
+  if (role === 0) {
+    return [
+      ...MANAGE_PERMISSIONS.filter((code) => !code.startsWith('hr.leave.manage') && !code.startsWith('hr.holidays.manage')),
+      'notifications.read',
+      'hr.leave.read',
+      'hr.leave.create',
+      'hr.leave.update',
+      'hr.holidays.read',
+      'hr.timeoff.read',
+      'hr.timeoff.create',
+      'hr.timeoff.update',
+      'hr.workfromhome.read',
+      'hr.workfromhome.create',
+      'hr.workfromhome.update',
+      'hr.forgotclock.read',
+      'hr.forgotclock.create',
+      'hr.forgotclock.update',
+    ];
+  }
+  if (role === 3) {
+    return MEMBER_PERMISSIONS;
+  }
+  return [
+    ...MEMBER_PERMISSIONS,
+    'tickets.update',
+    'hr.leave.update',
+    'hr.timeoff.update',
+    'hr.workfromhome.update',
+    'hr.forgotclock.update',
+  ];
+}
 
   return API_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
@@ -61,6 +125,64 @@ function json(route: Route, body: unknown, status = 200): Promise<void> {
 function cloneTickets() {
 
   return [...data.subjectTickets, ...data.sprintTickets].map((ticket) => ({ ...ticket }));
+
+}
+
+
+
+function pagedTickets(tickets: typeof data.subjectTickets, url: URL) {
+
+  const statuses = url.searchParams.getAll('status').map(Number).filter((value) => Number.isFinite(value));
+
+  const learningObjectiveId = Number(url.searchParams.get('learningObjectiveId') ?? 0);
+
+  const name = (url.searchParams.get('name') ?? '').trim().toLowerCase();
+
+  let filtered = [...tickets];
+
+  if (statuses.length) {
+
+    filtered = filtered.filter((ticket) => statuses.includes(ticket.status));
+
+  }
+
+  if (learningObjectiveId) {
+
+    filtered = filtered.filter((ticket) => ticket.learningObjectiveId === learningObjectiveId);
+
+  }
+
+  if (name) {
+
+    filtered = filtered.filter((ticket) => ticket.name.toLowerCase().includes(name));
+
+  }
+
+  const pageParam = url.searchParams.get('page');
+
+  if (!pageParam) {
+
+    return filtered;
+
+  }
+
+  const page = Math.max(1, Number(pageParam) || 1);
+
+  const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
+
+  const start = (page - 1) * pageSize;
+
+  return {
+
+    items: filtered.slice(start, start + pageSize),
+
+    page,
+
+    pageSize,
+
+    totalCount: filtered.length,
+
+  };
 
 }
 
@@ -159,6 +281,10 @@ export async function setupApiMocks(page: Page): Promise<void> {
         roleName: user.roleName,
 
         group: user.group,
+
+        permissions: permissionsForRole(user.role),
+
+        notifications: user.role === 4 ? 2 : 0,
 
       });
 
@@ -442,7 +568,7 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
     if (method === 'GET' && /^\/sprints\/\d+\/tickets$/.test(pathname)) {
 
-      await json(route, data.sprintTickets);
+      await json(route, pagedTickets(data.sprintTickets, url));
 
       return;
 
@@ -492,7 +618,7 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
     if (method === 'GET' && /^\/subjects\/\d+\/tickets$/.test(pathname)) {
 
-      await json(route, data.subjectTickets);
+      await json(route, pagedTickets(data.subjectTickets, url));
 
       return;
 
@@ -560,6 +686,84 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
 
 
+    if (method === 'GET' && pathname === '/tickets/stats') {
+
+      await json(route, {
+
+        tickets: tickets.map((ticket) => ({
+
+          id: ticket.id,
+
+          status: ticket.status,
+
+          userId: ticket.userId ?? null,
+
+          learningObjectiveId: ticket.learningObjectiveId,
+
+          subjectId: ticket.subjectId ?? 1,
+
+        })),
+
+        learningObjectives: [],
+
+      });
+
+      return;
+
+    }
+
+
+
+    if (method === 'GET' && pathname === '/notifications') {
+
+      await json(route, { items: [], page: 1, pageSize: 50, totalCount: 0 });
+
+      return;
+
+    }
+
+
+
+    if (method === 'PATCH' && pathname === '/notifications/read-all') {
+
+      await json(route, {}, 204);
+
+      return;
+
+    }
+
+
+
+    if (method === 'GET' && pathname === '/hr/holidays') {
+
+      await json(route, []);
+
+      return;
+
+    }
+
+
+
+    if (method === 'GET' && pathname === '/hr/forgot-clock') {
+
+      await json(route, []);
+
+      return;
+
+    }
+
+
+
+    if (method === 'GET' && pathname === '/identity/users/team-leaders') {
+
+      await json(route, data.users.filter((user) => user.roleId === 1 || user.roleId === 2).map((user) => ({ id: user.id, name: user.name })));
+
+      return;
+
+    }
+
+
+
     if (method === 'GET' && /^\/tickets\/\d+$/.test(pathname)) {
 
       const id = Number(pathname.split('/').pop());
@@ -603,6 +807,54 @@ export async function setupApiMocks(page: Page): Promise<void> {
       if (ticket) {
 
         ticket.status = 3;
+
+      }
+
+      await json(route, ticket ?? data.subjectTickets[0]);
+
+      return;
+
+    }
+
+
+
+    if (method === 'PATCH' && /^\/tickets\/\d+\/flag$/.test(pathname)) {
+
+      const id = Number(pathname.split('/')[2]);
+
+      const ticket = findTicket(id);
+
+      if (ticket) {
+
+        ticket.flagged = !ticket.flagged;
+
+      }
+
+      await json(route, ticket ?? data.subjectTickets[0]);
+
+      return;
+
+    }
+
+
+
+    if (method === 'PATCH' && /^\/tickets\/\d+\/rollback$/.test(pathname)) {
+
+      const id = Number(pathname.split('/')[2]);
+
+      const ticket = findTicket(id);
+
+      if (ticket) {
+
+        ticket.isRollback = true;
+
+        ticket.rollbackCount = (ticket.rollbackCount ?? 0) + 1;
+
+        if (ticket.status > 0) {
+
+          ticket.status -= 1;
+
+        }
 
       }
 

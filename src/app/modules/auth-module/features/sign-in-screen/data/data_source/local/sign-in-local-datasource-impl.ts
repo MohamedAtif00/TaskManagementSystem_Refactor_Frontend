@@ -1,6 +1,12 @@
 import { Injectable } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
+import {
+  APPROVER_PERMISSIONS,
+  MEMBER_PERMISSIONS,
+  OWNER_PERMISSIONS,
+  PROJECT_MANAGER_PERMISSIONS,
+} from '@core/models/permission-codes';
 import { UserRole } from '@core/models/user-role';
 import { SignInModel } from '../../model/sign-in.model';
 import { SignInLocalDataSource } from './sign-in-local-datasource';
@@ -14,7 +20,9 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
       code: 'OWN001',
       role: UserRole.Owner,
       group: 'Leadership',
-      token: 'fake-jwt-own001',
+      token: 'fake.jwt.own001',
+      permissions: OWNER_PERMISSIONS,
+      notifications: 2,
     },
     {
       id: 2,
@@ -22,7 +30,9 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
       code: 'PM001',
       role: UserRole.ProjectManager,
       group: 'PMO',
-      token: 'fake-jwt-pm001',
+      token: 'fake.jwt.pm001',
+      permissions: PROJECT_MANAGER_PERMISSIONS,
+      notifications: 0,
     },
     {
       id: 3,
@@ -30,7 +40,9 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
       code: 'TL001',
       role: UserRole.TeamLeader,
       group: 'Math Team',
-      token: 'fake-jwt-tl001',
+      token: 'fake.jwt.tl001',
+      permissions: APPROVER_PERMISSIONS,
+      notifications: 1,
     },
     {
       id: 4,
@@ -38,7 +50,9 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
       code: 'SH001',
       role: UserRole.SectionHead,
       group: 'Science Section',
-      token: 'fake-jwt-sh001',
+      token: 'fake.jwt.sh001',
+      permissions: APPROVER_PERMISSIONS,
+      notifications: 0,
     },
     {
       id: 5,
@@ -46,7 +60,9 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
       code: 'MEM001',
       role: UserRole.Member,
       group: 'Math Team',
-      token: 'fake-jwt-mem001',
+      token: 'fake.jwt.mem001',
+      permissions: MEMBER_PERMISSIONS,
+      notifications: 0,
     },
   ];
 
@@ -55,6 +71,6 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
     if (!user) {
       return throwError(() => new Error('Invalid employee code'));
     }
-    return of({ ...user }).pipe(delay(250));
+    return of({ ...user, permissions: [...user.permissions] }).pipe(delay(250));
   }
 }

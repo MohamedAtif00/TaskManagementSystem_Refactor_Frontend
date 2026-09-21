@@ -20,5 +20,8 @@ export const ROUTE_PATHS = {
   sections: '/resources/sections',
   schemas: '/workflows/schemas',
   taskBank: '/workflows/task-bank',
+  notifications: '/notifications',
+  holidays: '/leaves/holidays',
+  forgotClock: '/leaves/forgot-clock',
   notFound: '/errors/404',
 } as const;

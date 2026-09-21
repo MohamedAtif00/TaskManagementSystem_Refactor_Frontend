@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
+import { HttpParams } from '@angular/common/http';
 import { Observable, forkJoin, of, throwError } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { mapApiPriority } from '@core/models/role-map';
+import { TicketListPageResponse } from '@core/api/tms-contracts';
 import { API, apiPath } from '@core/network/api/api.const';
 import { CurriculumCatalogService } from '@core/network/curriculum-catalog.service';
 import { mapHttpError } from '@core/network/http-error';
@@ -11,11 +13,12 @@ import {
   AssignTaskPayload,
   CreateTaskPayload,
   TaskBoardParams,
+  TaskColumnPageParams,
   TaskComment,
   TaskStatus,
   TaskWorkTime,
 } from '../../../domain/entity/task-board.entity';
-import { TaskBoardModel, TaskCardModel, TaskDetailsModel } from '../../model/task-board.model';
+import { TaskBoardModel, TaskCardModel, TaskColumnPageModel, TaskDetailsModel } from '../../model/task-board.model';
 import { TaskBoardRemoteDataSource } from './task-board-remote-datasource';
 
 interface TicketDto {
@@ -79,11 +82,6 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   }
 
   getBoard(params: TaskBoardParams): Observable<TaskBoardModel> {
-    const tickets$ =
-      params.source === 'sprint'
-        ? this.network.get<TicketDto[]>(apiPath(API.Tickets.ListBySprint, { id: params.id }))
-        : this.network.get<TicketDto[]>(apiPath(API.Tickets.ListBySubject, { id: params.id }));
-
     const meta$ =
       params.source === 'sprint'
         ? forkJoin({
@@ -108,14 +106,44 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
             })),
           );
 
-    return forkJoin({ tickets: tickets$, meta: meta$, directory: this.users.list() }).pipe(
-      map(({ tickets, meta, directory }) => ({
+    return meta$.pipe(
+      map((meta) => ({
         source: params.source,
         id: params.id,
         name: meta.name,
-        cards: tickets.map((ticket) => this.toCard(ticket, meta.learningObjectives, directory)),
+        cards: [],
         learningObjectives: meta.learningObjectives,
         users: meta.users,
+      })),
+      catchError(mapHttpError),
+    );
+  }
+
+  getColumnPage(params: TaskColumnPageParams): Observable<TaskColumnPageModel> {
+    const path =
+      params.source === 'sprint'
+        ? apiPath(API.Tickets.ListBySprint, { id: params.id })
+        : apiPath(API.Tickets.ListBySubject, { id: params.id });
+    let httpParams = new HttpParams().set('page', String(params.page)).set('pageSize', String(params.pageSize));
+    for (const status of params.statuses) {
+      httpParams = httpParams.append('status', String(status));
+    }
+    if (params.learningObjectiveId) {
+      httpParams = httpParams.set('learningObjectiveId', String(params.learningObjectiveId));
+    }
+    if (params.name?.trim()) {
+      httpParams = httpParams.set('name', params.name.trim());
+    }
+
+    return forkJoin({
+      page: this.network.get<TicketListPageResponse>(path, httpParams),
+      directory: this.users.list(),
+    }).pipe(
+      map(({ page, directory }) => ({
+        items: (page.items ?? []).map((ticket) => this.toCard(ticket, [], directory)),
+        page: page.page,
+        pageSize: page.pageSize,
+        totalCount: page.totalCount,
       })),
       catchError(mapHttpError),
     );
@@ -157,8 +185,18 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
     );
   }
 
-  flag(_id: number): Observable<TaskCardModel> {
-    return throwError(() => new Error('Flag is not available on the API yet'));
+  flag(id: number): Observable<TaskCardModel> {
+    return this.network.patch<TicketDto>(apiPath(API.Tickets.Flag, { id })).pipe(
+      switchMap((ticket) => this.cardFromTicket(ticket)),
+      catchError(mapHttpError),
+    );
+  }
+
+  rollback(id: number): Observable<TaskCardModel> {
+    return this.network.patch<TicketDto>(apiPath(API.Tickets.Rollback, { id })).pipe(
+      switchMap((ticket) => this.cardFromTicket(ticket)),
+      catchError(mapHttpError),
+    );
   }
 
   createTask(payload: CreateTaskPayload): Observable<TaskCardModel> {

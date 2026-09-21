@@ -14,6 +14,7 @@ import { AddCommentUseCase } from '../domain/usecase/add-comment.usecase';
 import { AssignTaskUseCase } from '../domain/usecase/assign-task.usecase';
 import { CompleteTaskUseCase } from '../domain/usecase/complete-task.usecase';
 import { FlagTaskUseCase } from '../domain/usecase/flag-task.usecase';
+import { RollbackTaskUseCase } from '../domain/usecase/rollback-task.usecase';
 import { ListCommentsUseCase } from '../domain/usecase/list-comments.usecase';
 import { ProceedTaskUseCase } from '../domain/usecase/proceed-task.usecase';
 import { StartWorkUseCase } from '../domain/usecase/start-work.usecase';
@@ -46,6 +47,7 @@ export class TaskDrawerComponent implements OnChanges {
     private completeUseCase: CompleteTaskUseCase,
     private assignUseCase: AssignTaskUseCase,
     private flagUseCase: FlagTaskUseCase,
+    private rollbackUseCase: RollbackTaskUseCase,
     private listCommentsUseCase: ListCommentsUseCase,
     private addCommentUseCase: AddCommentUseCase,
     private startWorkUseCase: StartWorkUseCase,
@@ -185,6 +187,16 @@ export class TaskDrawerComponent implements OnChanges {
     this.flagUseCase.execute(this.task.id).subscribe({
       next: () => {
         toast.success(this.task.flagged ? 'Flag cleared' : 'Flagged');
+        this.changed.emit();
+      },
+      error: (err: Error) => toast.error(err.message),
+    });
+  }
+
+  rollback(): void {
+    this.rollbackUseCase.execute(this.task.id).subscribe({
+      next: () => {
+        toast.success('Rolled back');
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),

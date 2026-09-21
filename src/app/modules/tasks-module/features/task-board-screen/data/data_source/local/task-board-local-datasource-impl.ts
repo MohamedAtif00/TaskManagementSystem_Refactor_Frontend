@@ -7,10 +7,11 @@ import {
   AssignTaskPayload,
   CreateTaskPayload,
   TaskBoardParams,
+  TaskColumnPageParams,
   TaskComment,
   TaskWorkTime,
 } from '../../../domain/entity/task-board.entity';
-import { TaskBoardModel, TaskCardModel, TaskDetailsModel } from '../../model/task-board.model';
+import { TaskBoardModel, TaskCardModel, TaskColumnPageModel, TaskDetailsModel } from '../../model/task-board.model';
 import { TaskBoardLocalDataSource } from './task-board-local-datasource';
 
 @Injectable()
@@ -35,7 +36,6 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
     if (!name) {
       return throwError(() => new Error('Board not found'));
     }
-    const cards = this.store.cardsFor(params.source, params.id).map((task) => this.toCard(task));
     const sprint = params.source === 'sprint' ? this.store.getSprint(params.id) : undefined;
     const learningObjectives =
       params.source === 'project'
@@ -47,10 +47,31 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
       source: params.source,
       id: params.id,
       name,
-      cards,
+      cards: [],
       learningObjectives,
       users: this.store.users.map((user) => ({ id: user.id, name: user.name })),
     }).pipe(delay(120));
+  }
+
+  getColumnPage(params: TaskColumnPageParams): Observable<TaskColumnPageModel> {
+    let cards = this.store.cardsFor(params.source, params.id);
+    if (params.statuses.length) {
+      cards = cards.filter((card) => params.statuses.includes(card.status));
+    }
+    if (params.learningObjectiveId) {
+      cards = cards.filter((card) => card.learningObjective.id === params.learningObjectiveId);
+    }
+    const query = params.name?.trim().toLowerCase() ?? '';
+    if (query) {
+      cards = cards.filter((card) => card.name.toLowerCase().includes(query));
+    }
+    const start = Math.max(0, (params.page - 1) * params.pageSize);
+    return of({
+      items: cards.slice(start, start + params.pageSize).map((task) => this.toCard(task)),
+      page: params.page,
+      pageSize: params.pageSize,
+      totalCount: cards.length,
+    }).pipe(delay(80));
   }
 
   getTask(id: number): Observable<TaskDetailsModel> {
@@ -88,6 +109,11 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
   flag(id: number): Observable<TaskCardModel> {
     const task = this.store.flag(id);
     return task ? of(this.toCard(task)).pipe(delay(80)) : throwError(() => new Error('Task not found'));
+  }
+
+  rollback(id: number): Observable<TaskCardModel> {
+    const task = this.store.rollback(id);
+    return task ? of(this.toCard(task)).pipe(delay(80)) : throwError(() => new Error('Task cannot be rolled back'));
   }
 
   createTask(payload: CreateTaskPayload): Observable<TaskCardModel> {

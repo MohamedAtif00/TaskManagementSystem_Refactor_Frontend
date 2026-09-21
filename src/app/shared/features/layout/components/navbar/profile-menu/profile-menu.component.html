@@ -10,7 +10,7 @@
   </button>
   <div
     [@openClose]="isOpen ? 'open' : 'closed'"
-    class="bg-background shadow-custom border-muted absolute z-20 mt-2 w-60 origin-top-right transform rounded-md border border-dashed py-4 ring-1 ring-transparent ring-opacity-5 transition focus:outline-hidden ltr:right-0 rtl:left-0">
+    class="bg-card shadow-custom border-border absolute z-20 mt-2 w-60 origin-top-right transform rounded-md border py-4 ring-1 ring-transparent ring-opacity-5 transition focus:outline-hidden ltr:right-0 rtl:left-0">
     <div class="flex items-center px-4 pb-4">
       <div
         class="bg-primary text-primary-foreground flex size-10 shrink-0 items-center justify-center rounded-md text-xs font-bold">
@@ -29,7 +29,7 @@
     <ul class="my-2 mx-2 flex flex-col">
       <li
         (click)="logout()"
-        class="text-muted-foreground hover:bg-card hover:text-primary inline-flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-xs font-semibold">
+        class="text-muted-foreground hover:bg-muted/50 hover:text-primary inline-flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-xs font-semibold">
         <svg-icon src="./assets/icons/heroicons/outline/logout.svg" [svgClass]="'h-5 w-5 text-muted-foreground/50'"></svg-icon>
         Log out
       </li>
@@ -42,7 +42,7 @@
           <div
             (click)="toggleThemeColor(item.name)"
             [ngClass]="{ 'border-muted-foreground/30 bg-card': item.name == themeService.theme().color }"
-            class="border-border bg-background text-muted-foreground hover:bg-card hover:text-foreground inline-flex h-8 cursor-pointer items-center justify-start space-x-2 whitespace-nowrap rounded-md border border-dashed px-3 text-xs font-medium">
+            class="border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground inline-flex h-8 cursor-pointer items-center justify-start space-x-2 whitespace-nowrap rounded-md border border-dashed px-3 text-xs font-medium">
             <span [style.backgroundColor]="item.code" class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"></span>
             <p class="capitalize">{{ item.name }}</p>
           </div>
@@ -56,7 +56,7 @@
           <div
             (click)="toggleThemeMode()"
             [ngClass]="{ 'border-muted-foreground/30 bg-card': item == themeService.theme().mode }"
-            class="border-border bg-background text-muted-foreground hover:bg-card hover:text-foreground inline-flex h-8 cursor-pointer items-center justify-start space-x-2 whitespace-nowrap rounded-md border border-dashed px-3 text-xs font-medium">
+            class="border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground inline-flex h-8 cursor-pointer items-center justify-start space-x-2 whitespace-nowrap rounded-md border border-dashed px-3 text-xs font-medium">
             <svg-icon
               [src]="item == 'light' ? 'assets/icons/heroicons/outline/sun.svg' : 'assets/icons/heroicons/outline/moon.svg'"
               [svgClass]="'h-5 w-5 text-muted-foreground/50'">
@@ -73,7 +73,7 @@
           <div
             (click)="setDirection(item)"
             [ngClass]="{ 'border-muted-foreground/30 bg-card': item == themeService.theme().direction }"
-            class="border-border bg-background text-muted-foreground hover:bg-card hover:text-foreground inline-flex h-8 cursor-pointer items-center justify-start space-x-2 whitespace-nowrap rounded-md border border-dashed px-3 text-xs font-medium">
+            class="border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground inline-flex h-8 cursor-pointer items-center justify-start space-x-2 whitespace-nowrap rounded-md border border-dashed px-3 text-xs font-medium">
             <svg-icon
               [src]="
                 item == 'ltr'

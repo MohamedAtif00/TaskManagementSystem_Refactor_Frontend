@@ -1,4 +1,4 @@
-export type LeaveKind = 'leave' | 'permission' | 'wfh';
+export type LeaveKind = 'leave' | 'permission' | 'wfh' | 'forgotClock';
 export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
 
 export interface LeaveQueueUser {
@@ -30,6 +30,14 @@ export interface LeaveQueueFilters {
 export interface DecidePayload {
   kind: LeaveKind;
   id: number;
+  approved: boolean;
+  comment?: string;
+  asOwner?: boolean;
+}
+
+export interface BulkDecidePayload {
+  kind: LeaveKind;
+  ids: number[];
   approved: boolean;
   comment?: string;
 }

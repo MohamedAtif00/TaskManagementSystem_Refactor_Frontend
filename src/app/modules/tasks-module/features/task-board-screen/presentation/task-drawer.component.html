@@ -87,6 +87,9 @@
                 <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="flag()">
                   {{ task.flagged ? 'Clear flag' : 'Flag' }}
                 </app-button>
+                <app-button impact="light" tone="danger" size="small" type="button" (buttonClick)="rollback()">
+                  Rollback
+                </app-button>
               }
             </div>
             @if (lastWork) {

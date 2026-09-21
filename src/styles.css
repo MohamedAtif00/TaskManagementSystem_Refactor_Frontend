@@ -129,6 +129,18 @@
   ::file-selector-button {
     border-color: var(--color-gray-200, currentColor);
   }
+
+  button,
+  [type='button'],
+  [type='submit'],
+  [type='reset'] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [disabled] {
+    cursor: default;
+  }
 }
 
 @utility dropdown-content {

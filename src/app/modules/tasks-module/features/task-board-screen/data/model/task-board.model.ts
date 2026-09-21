@@ -1,7 +1,8 @@
-import { TaskBoardEntity, TaskCardEntity, TaskDetailsEntity, TaskIdName } from '../../domain/entity/task-board.entity';
+import { TaskBoardEntity, TaskCardEntity, TaskColumnPageEntity, TaskDetailsEntity, TaskIdName } from '../../domain/entity/task-board.entity';
 
 export type TaskBoardModel = TaskBoardEntity;
 export type TaskCardModel = TaskCardEntity;
+export type TaskColumnPageModel = TaskColumnPageEntity;
 export type TaskDetailsModel = Omit<TaskDetailsEntity, 'access'> & { access?: TaskDetailsEntity['access'] };
 export type TaskIdNameModel = TaskIdName;
 
@@ -12,6 +13,15 @@ export class TaskBoardMapper {
       cards: model.cards.map((card) => ({ ...card, learningObjective: { ...card.learningObjective }, user: card.user ? { ...card.user } : undefined })),
       learningObjectives: model.learningObjectives.map((lo) => ({ ...lo })),
       users: model.users.map((user) => ({ ...user })),
+    };
+  }
+
+  static toColumnPage(model: TaskColumnPageModel): TaskColumnPageEntity {
+    return {
+      items: model.items.map((card) => this.toCard(card)),
+      page: model.page,
+      pageSize: model.pageSize,
+      totalCount: model.totalCount,
     };
   }
 

@@ -19,6 +19,10 @@ export class NetworkService {
     return this.http.post<T>(`${API.baseUrl}${url}`, body, { ...withCredentials, headers });
   }
 
+  postForm<T>(url: string, body: FormData): Observable<T> {
+    return this.http.post<T>(`${API.baseUrl}${url}`, body, withCredentials);
+  }
+
   put<T>(url: string, body: unknown): Observable<T> {
     return this.http.put<T>(`${API.baseUrl}${url}`, body, withCredentials);
   }

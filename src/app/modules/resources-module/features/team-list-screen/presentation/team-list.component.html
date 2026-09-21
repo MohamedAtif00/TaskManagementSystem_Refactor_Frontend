@@ -11,6 +11,7 @@
         <tr>
           <th class="px-3 py-3">ID</th>
           <th class="px-3 py-3">Name</th>
+          <th class="px-3 py-3">Leader</th>
           <th class="px-3 py-3">Members</th>
           <th class="px-3 py-3">Actions</th>
         </tr>
@@ -20,6 +21,7 @@
           <tr class="hover:bg-card/50">
             <td class="px-3 py-3 text-sm">{{ row.id }}</td>
             <td class="text-foreground px-3 py-3 text-sm font-semibold">{{ row.name }}</td>
+            <td class="px-3 py-3 text-sm">{{ row.teamleaderName || '—' }}</td>
             <td class="px-3 py-3 text-sm">{{ row.memberCount }}</td>
             <td class="px-3 py-3 text-sm">
               <div class="flex items-center gap-3">
@@ -34,7 +36,7 @@
           </tr>
         } @empty {
           <tr>
-            <td class="py-8 text-center text-sm" colspan="4">No teams found</td>
+            <td class="py-8 text-center text-sm" colspan="5">No teams found</td>
           </tr>
         }
       </tbody>
@@ -50,6 +52,15 @@
         <label class="block">
           <span class="text-muted-foreground mb-1 block text-xs font-medium">Name</span>
           <input type="text" [(ngModel)]="form.name" name="teamName" />
+        </label>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Team leader</span>
+          <select [(ngModel)]="form.teamleaderId" name="teamleaderId">
+            <option [ngValue]="null">No leader</option>
+            @for (option of leaderOptions(); track option.id) {
+              <option [ngValue]="option.id">{{ option.name }}</option>
+            }
+          </select>
         </label>
         <div>
           <p class="text-muted-foreground mb-1 text-xs font-medium">Members</p>

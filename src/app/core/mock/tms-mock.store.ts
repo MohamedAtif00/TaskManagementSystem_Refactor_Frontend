@@ -1,4 +1,6 @@
 import { Injectable } from '@angular/core';
+import { MOCK_PUBLIC_HOLIDAYS } from '@core/hr/mock-holidays';
+import { countWorkingDays } from '@core/hr/working-days';
 
 export type TaskStatus = 0 | 1 | 2 | 3 | 4;
 export type TaskPriority = 0 | 1 | 2 | 3;
@@ -41,6 +43,8 @@ export interface MockLeaveBalance {
   permissionMax: number;
   wfhUsed: number;
   wfhMax: number;
+  fromNextUsed: number;
+  fromNextMax: number;
 }
 
 export interface MockUser {
@@ -79,6 +83,7 @@ export interface MockTeam {
   id: number;
   name: string;
   archived?: boolean;
+  teamleaderId?: number | null;
 }
 
 export interface MockSection {
@@ -254,6 +259,8 @@ const DEFAULT_BALANCES = (): MockLeaveBalance => ({
   permissionMax: 12,
   wfhUsed: 0,
   wfhMax: 8,
+  fromNextUsed: 0,
+  fromNextMax: 5,
 });
 
 @Injectable({ providedIn: 'root' })
@@ -809,6 +816,19 @@ export class TmsMockStore {
     return this.cloneTask(task);
   }
 
+  rollback(id: number): MockTask | undefined {
+    const task = this.tasks.find((row) => row.id === id);
+    if (!task) {
+      return undefined;
+    }
+    task.isRollback = true;
+    task.rollbackCount += 1;
+    if (task.status > 0) {
+      task.status = (task.status - 1) as MockTask['status'];
+    }
+    return this.cloneTask(task);
+  }
+
   createTask(input: CreateTaskInput): MockTask {
     const lo = this.learningObjectives.find((row) => row.id === input.learningObjectiveId);
     const user = input.userId ? this.users.find((row) => row.id === input.userId) : undefined;
@@ -883,7 +903,7 @@ export class TmsMockStore {
   }
 
   createLeave(input: CreateLeaveInput): MockLeaveRequest {
-    const duration = this.inclusiveDays(input.startDate, input.endDate);
+    const duration = countWorkingDays(input.startDate, input.endDate, MOCK_PUBLIC_HOLIDAYS);
     const row: MockLeaveRequest = {
       id: this.nextLeaveId++,
       userId: input.userId,
@@ -1015,12 +1035,6 @@ export class TmsMockStore {
       return false;
     }
     return true;
-  }
-
-  private inclusiveDays(startDate: string, endDate: string): number {
-    const start = new Date(`${startDate}T00:00:00`);
-    const end = new Date(`${endDate}T00:00:00`);
-    return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
   }
 
   private hoursBetween(fromTime: string, toTime: string): number {
@@ -1195,6 +1209,8 @@ export class TmsMockStore {
         id: team.id,
         name: team.name,
         members: this.users.filter((user) => !user.archived && user.teamId === team.id).length,
+        teamleaderId: team.teamleaderId ?? null,
+        teamleaderName: this.users.find((user) => user.id === team.teamleaderId)?.name ?? null,
       }));
   }
 
@@ -1209,10 +1225,12 @@ export class TmsMockStore {
       members: this.users
         .filter((user) => !user.archived && user.teamId === team.id)
         .map((user) => ({ id: user.id, name: user.name })),
+      teamleaderId: team.teamleaderId ?? null,
+      teamleaderName: this.users.find((user) => user.id === team.teamleaderId)?.name ?? null,
     };
   }
 
-  saveTeam(payload: { id?: number; name: string; memberIds?: number[] }) {
+  saveTeam(payload: { id?: number; name: string; memberIds?: number[]; teamleaderId?: number | null }) {
     let teamId: number;
     if (payload.id != null) {
       const team = this.teams.find((row) => row.id === payload.id);
@@ -1220,6 +1238,9 @@ export class TmsMockStore {
         return undefined;
       }
       team.name = payload.name;
+      if (payload.teamleaderId !== undefined) {
+        team.teamleaderId = payload.teamleaderId;
+      }
       teamId = team.id;
       for (const user of this.users) {
         if (user.teamId === team.id) {
@@ -1228,7 +1249,7 @@ export class TmsMockStore {
       }
     } else {
       teamId = Math.max(0, ...this.teams.map((row) => row.id)) + 1;
-      this.teams.push({ id: teamId, name: payload.name });
+      this.teams.push({ id: teamId, name: payload.name, teamleaderId: payload.teamleaderId ?? null });
     }
 
     if (payload.memberIds) {

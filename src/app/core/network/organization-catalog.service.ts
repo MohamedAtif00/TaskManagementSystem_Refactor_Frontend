@@ -9,12 +9,16 @@ export interface CatalogTeam {
   id: number;
   name: string;
   members: number;
+  teamleaderId?: number | null;
+  teamleaderName?: string | null;
 }
 
 export interface CatalogTeamDetail {
   id: number;
   name: string;
   members: { id: number; name: string }[];
+  teamleaderId?: number | null;
+  teamleaderName?: string | null;
 }
 
 export interface CatalogSection {

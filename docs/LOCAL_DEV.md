@@ -7,12 +7,20 @@
 - SQL Server or LocalDB
 - Playwright browsers: `npx playwright install chromium`
 
+The frontend lives in `D:\Full-Stack\frontend_refactor`. The API lives in `D:\Full-Stack\TaskManagementSystem_Refactor\TaskManagementSystem`.
+
+`src/environments/environment.ts` defaults to `useMock: false` so `ng serve` talks to the API through `proxy.conf.json`.
+
+`proxy.conf.json` also forwards `/realtime` with websockets for live ticket and notification updates.
+
+Sync the backend OpenAPI snapshot into the frontend with `npm run openapi:sync`. Typed DTOs live in `src/app/core/api/tms-contracts.ts`.
+
 ## One-time database setup
 
 From the frontend repo:
 
 ```powershell
-cd E:\Software\TaskManagementSystem\TaskManagementSystem_Refactor_Frontend
+cd D:\Full-Stack\frontend_refactor
 .\scripts\seed-stack.ps1
 ```
 
@@ -49,17 +57,17 @@ Or manually:
 
 ```powershell
 # Terminal 1 — API
-cd ..\TaskManagementSystem_Refactor\TaskManagementSystem
+cd D:\Full-Stack\TaskManagementSystem_Refactor\TaskManagementSystem
 dotnet run --project src\Api\TaskManagementSystem.Api --urls http://localhost:61173
 
 # Terminal 2 — Angular (proxies API via proxy.conf.json)
-cd TaskManagementSystem_Refactor_Frontend
+cd D:\Full-Stack\frontend_refactor
 npm start
 ```
 
 Open **http://127.0.0.1:4200** and sign in with **TST001**.
 
-Ensure `src/environments/environment.ts` has `useMock: false` for real API mode.
+Mock mode (`useMock: true` in `environment.ts`) is only for offline UI work. Playwright mock tests use `--configuration e2e` and `e2e/fixtures/api-mocks.ts`.
 
 ## Testing
 

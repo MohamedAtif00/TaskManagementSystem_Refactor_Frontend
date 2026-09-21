@@ -4,6 +4,8 @@ export interface BalancesDto {
   emergencyLeave: number;
   emergencyLeaveMax: number;
   sickLeave: number;
+  fromNextBalanceDaysUsed?: number;
+  fromNextBalanceMaxDays?: number;
   permission: number;
   permissionMax: number;
   workFromHome: number;
@@ -21,6 +23,8 @@ export function mapBalances(dto: BalancesDto) {
     permissionMax: dto.permissionMax,
     wfhUsed: dto.workFromHome,
     wfhMax: dto.workFromHomeMax,
+    fromNextUsed: dto.fromNextBalanceDaysUsed ?? 0,
+    fromNextMax: dto.fromNextBalanceMaxDays ?? 0,
   };
 }
 

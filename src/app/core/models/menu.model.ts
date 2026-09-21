@@ -16,4 +16,5 @@ export interface SubMenuItem {
   active?: boolean;
   children?: Array<SubMenuItem>;
   roles?: UserRole[];
+  permissions?: string[];
 }

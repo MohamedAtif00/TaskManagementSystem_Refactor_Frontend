@@ -116,6 +116,8 @@
     <app-stat-card label="Assigned" [value]="mine.assignedTasks" icon="assets/icons/heroicons/outline/bookmark.svg" hint="My open work"></app-stat-card>
     <app-stat-card label="In progress" [value]="mine.inProgressTasks" icon="assets/icons/heroicons/outline/cursor-click.svg"></app-stat-card>
     <app-stat-card label="Done" [value]="mine.doneTasks" icon="assets/icons/heroicons/outline/shield-check.svg"></app-stat-card>
-    <app-stat-card label="Overdue" [value]="mine.overdueTasks" icon="assets/icons/heroicons/outline/exclamation-triangle.svg"></app-stat-card>
+    @if (showOverdue) {
+      <app-stat-card label="Overdue" [value]="mine.overdueTasks" icon="assets/icons/heroicons/outline/exclamation-triangle.svg"></app-stat-card>
+    }
   </div>
 }

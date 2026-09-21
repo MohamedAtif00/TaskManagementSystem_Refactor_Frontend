@@ -11,6 +11,7 @@
     "e2e:integration": "playwright test -c playwright.integration.config.ts",
     "e2e:all": "npm run e2e && npm run e2e:integration",
     "e2e:ui": "playwright test --ui",
+    "openapi:sync": "node scripts/sync-openapi.mjs",
     "stack:seed": "powershell -File scripts/seed-stack.ps1",
     "stack:start": "powershell -File scripts/dev-stack.ps1",
     "postinstall": "node node_modules/esbuild/install.js"

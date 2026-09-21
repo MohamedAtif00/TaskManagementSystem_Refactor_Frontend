@@ -3,6 +3,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { Menu } from '../constants/menu';
 import { MenuItem, SubMenuItem } from '../models/menu.model';
+import { hasAnyPermission } from '../models/permission-codes';
 import { UserRole } from '../models/user-role';
 
 @Injectable({
@@ -13,6 +14,8 @@ export class MenuService implements OnDestroy {
   private _showMobileMenu = signal(false);
   private _pagesMenu = signal<MenuItem[]>([]);
   private _subscription = new Subscription();
+  private currentRole: UserRole | null = null;
+  private currentPermissions: string[] = [];
 
   constructor(private router: Router) {
     const sub = this.router.events.subscribe((event) => {
@@ -41,7 +44,13 @@ export class MenuService implements OnDestroy {
   }
 
   public applyRole(role: UserRole | null): void {
-    this._pagesMenu.set(this.filterByRole(Menu.pages, role));
+    this.applyAccess(role, this.currentPermissions);
+  }
+
+  public applyAccess(role: UserRole | null, permissions: string[] = []): void {
+    this.currentRole = role;
+    this.currentPermissions = permissions;
+    this._pagesMenu.set(this.filterByAccess(Menu.pages, role, permissions));
     this.markActive();
   }
 
@@ -71,25 +80,34 @@ export class MenuService implements OnDestroy {
     submenu.expanded = !submenu.expanded;
   }
 
-  private filterByRole(pages: MenuItem[], role: UserRole | null): MenuItem[] {
+  private filterByAccess(pages: MenuItem[], role: UserRole | null, permissions: string[]): MenuItem[] {
     return pages
       .map((group) => ({
         ...group,
         items: group.items
-          .filter((item) => this.canSee(item, role))
+          .filter((item) => this.canSee(item, role, permissions))
           .map((item) => ({
             ...item,
-            children: item.children?.filter((child) => this.canSee(child, role)),
+            children: item.children?.filter((child) => this.canSee(child, role, permissions)),
           })),
       }))
       .filter((group) => group.items.length > 0);
   }
 
-  private canSee(item: SubMenuItem, role: UserRole | null): boolean {
-    if (!item.roles || item.roles.length === 0) {
-      return true;
+  private canSee(item: SubMenuItem, role: UserRole | null, permissions: string[]): boolean {
+    const roleOk = !item.roles?.length || (role !== null && item.roles.includes(role));
+    const hasPermissionCatalog = permissions.length > 0;
+    const permOk =
+      !item.permissions?.length ||
+      (hasPermissionCatalog ? hasAnyPermission(permissions, item.permissions) : roleOk);
+
+    if (item.permissions?.length && item.roles?.length && hasPermissionCatalog) {
+      return permOk && roleOk;
     }
-    return role !== null && item.roles.includes(role);
+    if (item.permissions?.length && hasPermissionCatalog) {
+      return permOk;
+    }
+    return roleOk;
   }
 
   private markActive() {

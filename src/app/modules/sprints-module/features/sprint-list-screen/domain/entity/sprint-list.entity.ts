@@ -26,6 +26,7 @@ export interface SprintFormPayload {
   startDate: string;
   endDate: string;
   learningObjectIds: number[];
+  previousLearningObjectIds?: number[];
 }
 
 export interface SprintSubjectOption {

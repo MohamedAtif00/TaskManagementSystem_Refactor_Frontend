@@ -8,6 +8,8 @@ export interface TeamEntity {
   name: string;
   memberCount: number;
   members: TeamMember[];
+  teamleaderId?: number | null;
+  teamleaderName?: string | null;
 }
 
 export interface TeamMemberOption {
@@ -16,8 +18,14 @@ export interface TeamMemberOption {
   teamId?: number | null;
 }
 
+export interface TeamLeaderOption {
+  id: number;
+  name: string;
+}
+
 export interface TeamFormPayload {
   id?: number;
   name: string;
   memberIds: number[];
+  teamleaderId?: number | null;
 }

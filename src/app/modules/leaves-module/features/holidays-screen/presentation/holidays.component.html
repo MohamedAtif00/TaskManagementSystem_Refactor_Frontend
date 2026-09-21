@@ -1,0 +1,71 @@
+<app-page-header title="Holidays" subtitle="Company-wide days off">
+  @if (canManage) {
+    <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">Add holiday</app-button>
+  }
+</app-page-header>
+
+<div class="border-muted/20 bg-background overflow-x-auto rounded-xl border">
+  <table class="text-muted-foreground w-full table-auto text-left text-sm">
+    <thead class="border-muted/20 border-b text-xs">
+      <tr>
+        <th class="px-4 py-3">Name</th>
+        <th class="px-4 py-3">Dates</th>
+        <th class="px-4 py-3">Description</th>
+        <th class="px-4 py-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.id) {
+        <tr class="border-muted/10 border-t">
+          <td class="text-foreground px-4 py-3 font-semibold">{{ row.name }}</td>
+          <td class="px-4 py-3">{{ row.startDate }} – {{ row.endDate }}</td>
+          <td class="px-4 py-3">{{ row.description || '—' }}</td>
+          <td class="px-4 py-3 text-right">
+            @if (canManage) {
+              <button class="text-muted-foreground hover:text-primary mr-3 text-xs font-semibold" type="button" (click)="openEdit(row)">Edit</button>
+              <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askRemove(row)">Delete</button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr><td class="px-4 py-10 text-center" colspan="4">No holidays</td></tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (showForm()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border w-full max-w-lg rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-4 text-lg font-semibold">{{ form.id ? 'Edit holiday' : 'Add holiday' }}</h3>
+      <div class="space-y-3">
+        <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Name</span><input type="text" [(ngModel)]="form.name" name="holidayName" /></label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Start</span><input type="date" [(ngModel)]="form.startDate" name="holidayStart" /></label>
+          <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">End</span><input type="date" [(ngModel)]="form.endDate" name="holidayEnd" /></label>
+        </div>
+        <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Description</span><textarea rows="2" [(ngModel)]="form.description" name="holidayDescription"></textarea></label>
+        @if (formError) {
+          <p class="text-destructive text-xs">{{ formError }}</p>
+        }
+      </div>
+      <div class="mt-5 flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="showForm.set(false)">Cancel</app-button>
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="save()">Save</app-button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (confirm(); as item) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border w-full max-w-sm rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-2 text-lg font-semibold">Delete this holiday?</h3>
+      <p class="text-muted-foreground mb-5 text-sm">{{ item.name }} · {{ item.dates }}</p>
+      <div class="flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="confirm.set(null)">Keep holiday</app-button>
+        <app-button impact="bold" tone="danger" size="small" type="button" (buttonClick)="confirmRemove()">Yes, delete it</app-button>
+      </div>
+    </div>
+  </div>
+}

@@ -7,4 +7,6 @@ export interface SignInModel {
   role: UserRole;
   group: string;
   token: string;
+  permissions: string[];
+  notifications: number;
 }

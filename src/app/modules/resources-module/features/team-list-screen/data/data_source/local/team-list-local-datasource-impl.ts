@@ -19,6 +19,8 @@ export class TeamListLocalDataSourceImpl extends TeamListLocalDataSource {
         name: row.name,
         memberCount: row.members,
         members: [],
+        teamleaderId: row.teamleaderId,
+        teamleaderName: row.teamleaderName,
       })),
     ).pipe(delay(80));
   }
@@ -28,7 +30,14 @@ export class TeamListLocalDataSourceImpl extends TeamListLocalDataSource {
     if (!team) {
       return throwError(() => new Error('Team not found'));
     }
-    return of({ id: team.id, name: team.name, memberCount: team.members.length, members: team.members }).pipe(delay(80));
+    return of({
+      id: team.id,
+      name: team.name,
+      memberCount: team.members.length,
+      members: team.members,
+      teamleaderId: team.teamleaderId,
+      teamleaderName: team.teamleaderName,
+    }).pipe(delay(80));
   }
 
   getMemberOptions(): Observable<TeamMemberOption[]> {
@@ -48,9 +57,25 @@ export class TeamListLocalDataSourceImpl extends TeamListLocalDataSource {
     if (!saved) {
       return throwError(() => new Error('Team not found'));
     }
-    return of({ id: saved.id, name: saved.name, memberCount: saved.members.length, members: saved.members }).pipe(
+    return of({
+      id: saved.id,
+      name: saved.name,
+      memberCount: saved.members.length,
+      members: saved.members,
+      teamleaderId: saved.teamleaderId,
+      teamleaderName: saved.teamleaderName,
+    }).pipe(
       delay(80),
     );
+  }
+
+  getTeamLeaders(): Observable<{ id: number; name: string }[]> {
+    return of(
+      this.store
+        .listAdminUsers()
+        .filter((user) => user.roleId === 1 || user.roleId === 2)
+        .map((user) => ({ id: user.id, name: user.name })),
+    ).pipe(delay(80));
   }
 
   archiveTeam(id: number): Observable<void> {

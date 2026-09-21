@@ -1,12 +1,13 @@
-<app-page-header title="Calendar" subtitle="Approval queue for vacancy, permissions, and work from home"></app-page-header>
+<app-page-header title="Calendar" subtitle="Approval queue for vacancy, permissions, work from home, and forgot clock"></app-page-header>
 
-<div class="mb-4 flex gap-2">
+<div class="mb-4 flex flex-wrap gap-2">
   <button type="button" class="rounded-lg px-3 py-1.5 text-sm font-semibold" [class.bg-primary]="tab === 'leave'" [class.text-primary-foreground]="tab === 'leave'" [class.bg-muted]="tab !== 'leave'" [class.text-muted-foreground]="tab !== 'leave'" (click)="setTab('leave')">Vacancy</button>
   <button type="button" class="rounded-lg px-3 py-1.5 text-sm font-semibold" [class.bg-primary]="tab === 'permission'" [class.text-primary-foreground]="tab === 'permission'" [class.bg-muted]="tab !== 'permission'" [class.text-muted-foreground]="tab !== 'permission'" (click)="setTab('permission')">Permissions</button>
   <button type="button" class="rounded-lg px-3 py-1.5 text-sm font-semibold" [class.bg-primary]="tab === 'wfh'" [class.text-primary-foreground]="tab === 'wfh'" [class.bg-muted]="tab !== 'wfh'" [class.text-muted-foreground]="tab !== 'wfh'" (click)="setTab('wfh')">Work From Home</button>
+  <button type="button" class="rounded-lg px-3 py-1.5 text-sm font-semibold" [class.bg-primary]="tab === 'forgotClock'" [class.text-primary-foreground]="tab === 'forgotClock'" [class.bg-muted]="tab !== 'forgotClock'" [class.text-muted-foreground]="tab !== 'forgotClock'" (click)="setTab('forgotClock')">Forgot clock</button>
 </div>
 
-<div class="mb-4 flex flex-wrap gap-3">
+<div class="mb-4 flex flex-wrap items-end gap-3">
   <label class="block max-w-40">
     <span class="text-muted-foreground mb-1 block text-xs font-medium">Status</span>
     <select [(ngModel)]="status" name="status" (ngModelChange)="load()">
@@ -17,7 +18,7 @@
       <option value="Cancelled">Cancelled</option>
     </select>
   </label>
-  @if (tab !== 'wfh') {
+  @if (tab === 'leave' || tab === 'permission') {
     <label class="block max-w-48">
       <span class="text-muted-foreground mb-1 block text-xs font-medium">Type</span>
       <select [(ngModel)]="type" name="type" (ngModelChange)="load()">
@@ -36,6 +37,10 @@
     <span class="text-muted-foreground mb-1 block text-xs font-medium">To</span>
     <input type="date" [(ngModel)]="dateTo" name="dateTo" (ngModelChange)="load()" />
   </label>
+  @if (selectedIds().length) {
+    <app-button impact="bold" tone="success" size="small" type="button" (buttonClick)="bulkDecide(true)">Bulk approve ({{ selectedIds().length }})</app-button>
+    <app-button impact="bold" tone="danger" size="small" type="button" (buttonClick)="bulkDecide(false)">Bulk reject</app-button>
+  }
 </div>
 
 <div class="border-muted/20 bg-background flex min-w-full flex-col rounded-xl border p-2">
@@ -43,6 +48,7 @@
     <table class="text-muted-foreground table w-full table-auto border-collapse text-left text-sm">
       <thead class="border-muted/20 border text-xs">
         <tr>
+          <th class="px-3 py-3"></th>
           <th class="px-3 py-3">User</th>
           <th class="px-3 py-3">Requested</th>
           <th class="px-3 py-3">Type</th>
@@ -54,6 +60,11 @@
       <tbody>
         @for (row of rows(); track row.kind + row.id) {
           <tr class="hover:bg-card/50">
+            <td class="px-3 py-3">
+              @if (row.status === 'Pending') {
+                <input type="checkbox" [checked]="isSelected(row.id)" (change)="toggleId(row.id, $any($event.target).checked)" />
+              }
+            </td>
             <td class="text-foreground px-3 py-3 font-semibold">{{ row.user.name }}</td>
             <td class="px-3 py-3">{{ row.dateCreated }}</td>
             <td class="px-3 py-3">{{ row.typeLabel }}</td>
@@ -65,12 +76,15 @@
                 @if (row.status === 'Pending') {
                   <button class="text-green-600 hover:text-green-500 text-xs font-semibold" type="button" (click)="decide(true, row)">Approve</button>
                   <button class="text-destructive hover:text-destructive/80 text-xs font-semibold" type="button" (click)="decide(false, row)">Reject</button>
+                  @if (canFinalApprove) {
+                    <button class="text-primary hover:text-primary/80 text-xs font-semibold" type="button" (click)="decide(true, row, true)">Final approve</button>
+                  }
                 }
               </div>
             </td>
           </tr>
         } @empty {
-          <tr><td class="py-8 text-center" colspan="6">No requests</td></tr>
+          <tr><td class="py-8 text-center" colspan="7">No requests</td></tr>
         }
       </tbody>
     </table>
@@ -96,9 +110,12 @@
             <span class="text-muted-foreground mb-1 block text-xs font-medium">Comment (optional)</span>
             <textarea rows="3" [(ngModel)]="comment" name="comment"></textarea>
           </label>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <app-button impact="bold" tone="success" size="small" type="button" (buttonClick)="decide(true)">Approve</app-button>
             <app-button impact="bold" tone="danger" size="small" type="button" (buttonClick)="decide(false)">Reject</app-button>
+            @if (canFinalApprove) {
+              <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="decide(true, undefined, true)">Final approve</app-button>
+            }
           </div>
         }
       </div>

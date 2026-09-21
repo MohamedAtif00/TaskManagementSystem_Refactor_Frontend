@@ -1,6 +1,5 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-
-const TOKEN_KEY = 'access-token';
+import { TOKEN_KEY } from '@core/services/auth.service';
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.url.includes('/auth/login') || req.url.includes('/auth/refresh-token')) {

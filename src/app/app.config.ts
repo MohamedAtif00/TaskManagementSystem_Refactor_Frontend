@@ -8,6 +8,7 @@ import {
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { AngularSvgIconModule } from 'angular-svg-icon';
+import { authRefreshInterceptor } from '@core/interceptors/auth-refresh.interceptor';
 import { jwtInterceptor } from '@core/interceptors/jwt.interceptor';
 import { routes } from './app.routes';
 
@@ -17,7 +18,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideAnimations(),
-    provideHttpClient(withXhr(), withInterceptors([jwtInterceptor])),
+    provideHttpClient(withXhr(), withInterceptors([jwtInterceptor, authRefreshInterceptor])),
     importProvidersFrom(AngularSvgIconModule.forRoot()),
   ],
 };

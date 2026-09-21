@@ -6,11 +6,13 @@ import { TaskBoardRemoteDataSourceImpl } from './data/data_source/remote/task-bo
 import { TaskBoardLocalDataSource } from './data/data_source/local/task-board-local-datasource';
 import { TaskBoardLocalDataSourceImpl } from './data/data_source/local/task-board-local-datasource-impl';
 import { GetTaskBoardUseCase } from './domain/usecase/get-task-board.usecase';
+import { GetTaskColumnPageUseCase } from './domain/usecase/get-task-column-page.usecase';
 import { GetTaskDetailsUseCase } from './domain/usecase/get-task-details.usecase';
 import { ProceedTaskUseCase } from './domain/usecase/proceed-task.usecase';
 import { CompleteTaskUseCase } from './domain/usecase/complete-task.usecase';
 import { AssignTaskUseCase } from './domain/usecase/assign-task.usecase';
 import { FlagTaskUseCase } from './domain/usecase/flag-task.usecase';
+import { RollbackTaskUseCase } from './domain/usecase/rollback-task.usecase';
 import { CreateTaskUseCase } from './domain/usecase/create-task.usecase';
 import { ListTaskBankUseCase } from './domain/usecase/list-task-bank.usecase';
 import { ListCommentsUseCase } from './domain/usecase/list-comments.usecase';
@@ -23,11 +25,13 @@ export const TASK_BOARD_DI_CONTAINER: Provider[] = [
   { provide: TaskBoardRemoteDataSource, useClass: TaskBoardRemoteDataSourceImpl },
   { provide: TaskBoardLocalDataSource, useClass: TaskBoardLocalDataSourceImpl },
   GetTaskBoardUseCase,
+  GetTaskColumnPageUseCase,
   GetTaskDetailsUseCase,
   ProceedTaskUseCase,
   CompleteTaskUseCase,
   AssignTaskUseCase,
   FlagTaskUseCase,
+  RollbackTaskUseCase,
   CreateTaskUseCase,
   ListTaskBankUseCase,
   ListCommentsUseCase,

@@ -14,7 +14,7 @@
             (click)="toggleMenu(item)"
             [ngClass]="{
               'hover:bg-primary/10': !menuService.showSideBar && item.active,
-              'hover:bg-card/50': !menuService.showSideBar
+              'hover:bg-muted/50': !menuService.showSideBar
             }"
             class="text-muted-foreground hover:text-foreground group relative flex grow items-center gap-4 rounded-lg px-2">
             <div [ngClass]="item.active && !menuService.showSideBar ? 'text-primary' : 'text-muted-foreground/50'">

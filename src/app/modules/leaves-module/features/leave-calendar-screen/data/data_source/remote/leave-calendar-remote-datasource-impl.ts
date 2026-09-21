@@ -2,13 +2,20 @@ import { HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { ForgotClockRequestResponse } from '@core/api/tms-contracts';
 import { API, apiPath } from '@core/network/api/api.const';
+import { hoursBetween, lastComment } from '@core/network/hr-map';
 import { mapHttpError } from '@core/network/http-error';
 import { NetworkService } from '@core/network/network.service';
 import { DirectoryUser, UserDirectoryService } from '@core/network/user-directory.service';
-import { DecidePayload, LeaveKind, LeaveQueueFilters, LeaveStatus } from '../../../domain/entity/leave-calendar.entity';
+import {
+  BulkDecidePayload,
+  DecidePayload,
+  LeaveKind,
+  LeaveQueueFilters,
+  LeaveStatus,
+} from '../../../domain/entity/leave-calendar.entity';
 import { LeaveQueueModel } from '../../model/leave-calendar.model';
-import { hoursBetween, lastComment } from '@core/network/hr-map';
 import { LeaveCalendarRemoteDataSource } from './leave-calendar-remote-datasource';
 
 interface LeaveDto {
@@ -70,15 +77,10 @@ export class LeaveCalendarRemoteDataSourceImpl extends LeaveCalendarRemoteDataSo
   }
 
   getDetails(kind: LeaveKind, id: number): Observable<LeaveQueueModel> {
-    const url =
-      kind === 'leave'
-        ? apiPath(API.Leaves.ById, { id })
-        : kind === 'permission'
-          ? apiPath(API.Permissions.ById, { id })
-          : apiPath(API.WorkFromHome.ById, { id });
+    const url = this.byIdUrl(kind, id);
     return this.users.list().pipe(
       switchMap((directory) =>
-        this.network.get<LeaveDto | PermissionDto | WfhDto>(url).pipe(
+        this.network.get<LeaveDto | PermissionDto | WfhDto | ForgotClockRequestResponse>(url).pipe(
           map((row) => this.mapRows(kind, [row], directory, { status: '', type: '', dateFrom: '', dateTo: '' })[0]),
         ),
       ),
@@ -87,22 +89,24 @@ export class LeaveCalendarRemoteDataSourceImpl extends LeaveCalendarRemoteDataSo
   }
 
   decide(payload: DecidePayload): Observable<void> {
-    const url =
-      payload.kind === 'leave'
-        ? apiPath(API.Leaves.Opinion, { id: payload.id })
-        : payload.kind === 'permission'
-          ? apiPath(API.Permissions.Opinion, { id: payload.id })
-          : apiPath(API.WorkFromHome.Opinion, { id: payload.id });
-    return this.network.post(url, { isApproved: payload.approved, comment: payload.comment }).pipe(
+    const url = payload.asOwner ? this.approveUrl(payload.kind, payload.id) : this.opinionUrl(payload.kind, payload.id);
+    const body = payload.asOwner ? {} : { isApproved: payload.approved, comment: payload.comment };
+    return this.network.post(url, body).pipe(
+      map(() => undefined),
+      catchError(mapHttpError),
+    );
+  }
+
+  bulkDecide(payload: BulkDecidePayload): Observable<void> {
+    return this.network.post(this.bulkUrl(payload.kind), this.bulkBody(payload)).pipe(
       map(() => undefined),
       catchError(mapHttpError),
     );
   }
 
   private fetchKind(kind: LeaveKind, filters: LeaveQueueFilters): Observable<unknown[]> {
-    const pendingUrl =
-      kind === 'leave' ? API.Leaves.Pending : kind === 'permission' ? API.Permissions.Pending : API.WorkFromHome.Pending;
-    const searchUrl = kind === 'leave' ? API.Leaves.Search : kind === 'permission' ? API.Permissions.Search : API.WorkFromHome.Search;
+    const pendingUrl = this.pendingUrl(kind);
+    const searchUrl = this.searchUrl(kind);
     const params = new HttpParams({
       fromObject: {
         page: '1',
@@ -168,6 +172,21 @@ export class LeaveCalendarRemoteDataSourceImpl extends LeaveCalendarRemoteDataSo
         reason: row.reason,
       };
     }
+    if (kind === 'forgotClock') {
+      const row = raw as ForgotClockRequestResponse;
+      return {
+        kind,
+        id: row.id,
+        user: userOf(row.userId),
+        typeLabel: row.punchType,
+        datesLabel: `${String(row.attendanceDate).slice(0, 10)} · ${row.intendedTime}`,
+        durationLabel: row.punchType,
+        status: row.status as LeaveStatus,
+        dateCreated: String(row.createdAt).slice(0, 10),
+        reason: row.reason ?? undefined,
+        note: lastComment(row.opinions),
+      };
+    }
     const row = raw as WfhDto;
     return {
       kind,
@@ -180,5 +199,56 @@ export class LeaveCalendarRemoteDataSourceImpl extends LeaveCalendarRemoteDataSo
       dateCreated: String(row.dateCreated ?? row.date).slice(0, 10),
       note: row.noteForManager ?? lastComment(row.opinions),
     };
+  }
+
+  private pendingUrl(kind: LeaveKind): string {
+    if (kind === 'leave') return API.Leaves.Pending;
+    if (kind === 'permission') return API.Permissions.Pending;
+    if (kind === 'forgotClock') return API.ForgotClock.Pending;
+    return API.WorkFromHome.Pending;
+  }
+
+  private searchUrl(kind: LeaveKind): string {
+    if (kind === 'leave') return API.Leaves.Search;
+    if (kind === 'permission') return API.Permissions.Search;
+    if (kind === 'forgotClock') return API.ForgotClock.Search;
+    return API.WorkFromHome.Search;
+  }
+
+  private byIdUrl(kind: LeaveKind, id: number): string {
+    if (kind === 'leave') return apiPath(API.Leaves.ById, { id });
+    if (kind === 'permission') return apiPath(API.Permissions.ById, { id });
+    if (kind === 'forgotClock') return apiPath(API.ForgotClock.ById, { id });
+    return apiPath(API.WorkFromHome.ById, { id });
+  }
+
+  private opinionUrl(kind: LeaveKind, id: number): string {
+    if (kind === 'leave') return apiPath(API.Leaves.Opinion, { id });
+    if (kind === 'permission') return apiPath(API.Permissions.Opinion, { id });
+    if (kind === 'forgotClock') return apiPath(API.ForgotClock.Opinion, { id });
+    return apiPath(API.WorkFromHome.Opinion, { id });
+  }
+
+  private approveUrl(kind: LeaveKind, id: number): string {
+    if (kind === 'leave') return apiPath(API.Leaves.Approve, { id });
+    if (kind === 'permission') return apiPath(API.Permissions.Approve, { id });
+    if (kind === 'forgotClock') return apiPath(API.ForgotClock.Approve, { id });
+    return apiPath(API.WorkFromHome.Approve, { id });
+  }
+
+  private bulkUrl(kind: LeaveKind): string {
+    if (kind === 'leave') return API.Leaves.BulkOpinion;
+    if (kind === 'permission') return API.Permissions.BulkOpinion;
+    if (kind === 'forgotClock') return API.ForgotClock.BulkOpinion;
+    return API.WorkFromHome.BulkOpinion;
+  }
+
+  private bulkBody(payload: BulkDecidePayload): Record<string, unknown> {
+    const comment = payload.comment;
+    const isApproved = payload.approved;
+    if (payload.kind === 'leave') return { leaveRequestIds: payload.ids, isApproved, comment };
+    if (payload.kind === 'permission') return { permissionIds: payload.ids, isApproved, comment };
+    if (payload.kind === 'forgotClock') return { forgotClockRequestIds: payload.ids, isApproved, comment };
+    return { workFromHomeRequestIds: payload.ids, isApproved, comment };
   }
 }

@@ -10,6 +10,7 @@ import { GetTeamUseCase } from './domain/usecase/get-team.usecase';
 import { SaveTeamUseCase } from './domain/usecase/save-team.usecase';
 import { ArchiveTeamUseCase } from './domain/usecase/archive-team.usecase';
 import { TeamMemberOptionsUseCase } from './domain/usecase/team-member-options.usecase';
+import { TeamLeaderOptionsUseCase } from './domain/usecase/team-leader-options.usecase';
 
 export const TEAM_LIST_DI_CONTAINER: Provider[] = [
   { provide: TeamListRepository, useClass: TeamListImplementationRepository },
@@ -20,4 +21,5 @@ export const TEAM_LIST_DI_CONTAINER: Provider[] = [
   SaveTeamUseCase,
   ArchiveTeamUseCase,
   TeamMemberOptionsUseCase,
+  TeamLeaderOptionsUseCase,
 ];

@@ -40,6 +40,8 @@ export class TeamListRemoteDataSourceImpl extends TeamListRemoteDataSource {
           name: row.name,
           memberCount: row.members,
           members: [],
+          teamleaderId: row.teamleaderId,
+          teamleaderName: row.teamleaderName,
         })),
       ),
     );
@@ -62,8 +64,12 @@ export class TeamListRemoteDataSourceImpl extends TeamListRemoteDataSource {
     );
   }
 
+  getTeamLeaders(): Observable<{ id: number; name: string }[]> {
+    return this.network.get<{ id: number; name: string }[]>(API.Users.TeamLeaders).pipe(catchError(mapHttpError));
+  }
+
   saveTeam(payload: TeamFormPayload): Observable<TeamModel> {
-    const body = { name: payload.name };
+    const body = { name: payload.name, teamleaderId: payload.teamleaderId ?? null };
     const teamRequest$ = payload.id
       ? this.network.put<CatalogTeamDetail>(apiPath(API.Teams.Update, { id: payload.id }), body)
       : this.network.post<CatalogTeamDetail>(API.Teams.Create, body);
@@ -133,6 +139,8 @@ export class TeamListRemoteDataSourceImpl extends TeamListRemoteDataSource {
       name: row.name,
       memberCount: row.members.length,
       members: row.members,
+      teamleaderId: row.teamleaderId,
+      teamleaderName: row.teamleaderName,
     };
   }
 }

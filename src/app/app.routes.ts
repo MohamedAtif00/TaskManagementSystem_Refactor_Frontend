@@ -35,6 +35,11 @@ export const routes: Routes = [
           import('./modules/leaves-module/leaves.routes').then((m) => m.LEAVES_ROUTES),
       },
       {
+        path: 'notifications',
+        loadChildren: () =>
+          import('./modules/notifications-module/notifications.routes').then((m) => m.NOTIFICATIONS_ROUTES),
+      },
+      {
         path: 'resources',
         loadChildren: () =>
           import('./modules/resources-module/resources.routes').then((m) => m.RESOURCES_ROUTES),

@@ -4,9 +4,11 @@ import { map } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 import {
   CancelRequestPayload,
+  CreateForgotClockPayload,
   CreateLeavePayload,
   CreatePermissionPayload,
   CreateWfhPayload,
+  LeavePreviewEntity,
   MyLeavesEntity,
 } from '../../domain/entity/my-leaves.entity';
 import { MyLeavesRepository } from '../../domain/repository/my-leaves.repository';
@@ -26,6 +28,10 @@ export class MyLeavesImplementationRepository implements MyLeavesRepository {
     return source.pipe(map((row) => MyLeavesMapper.toEntity(row)));
   }
 
+  previewLeave(payload: Pick<CreateLeavePayload, 'startDate' | 'endDate'>): Observable<LeavePreviewEntity> {
+    return environment.useMock ? this.local.previewLeave(payload) : this.remote.previewLeave(payload);
+  }
+
   createLeave(userId: number, payload: CreateLeavePayload): Observable<void> {
     return environment.useMock
       ? this.local.createLeave(userId, payload)
@@ -42,6 +48,12 @@ export class MyLeavesImplementationRepository implements MyLeavesRepository {
     return environment.useMock
       ? this.local.createWfh(userId, payload)
       : this.remote.createWfh(userId, payload);
+  }
+
+  createForgotClock(userId: number, payload: CreateForgotClockPayload): Observable<void> {
+    return environment.useMock
+      ? this.local.createForgotClock(userId, payload)
+      : this.remote.createForgotClock(userId, payload);
   }
 
   cancel(userId: number, payload: CancelRequestPayload): Observable<void> {

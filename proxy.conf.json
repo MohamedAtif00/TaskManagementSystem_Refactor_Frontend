@@ -53,5 +53,11 @@
     "target": "http://localhost:61173",
     "secure": false,
     "changeOrigin": true
+  },
+  "/realtime": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true,
+    "ws": true
   }
 }

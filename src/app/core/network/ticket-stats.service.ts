@@ -1,10 +1,8 @@
 import { Injectable } from '@angular/core';
-import { Observable, forkJoin, from, of } from 'rxjs';
-import { catchError, map, mergeMap, toArray } from 'rxjs/operators';
-
-const SUBJECT_STATS_CONCURRENCY = 4;
-import { API, apiPath } from './api/api.const';
-import { CurriculumCatalogService } from './curriculum-catalog.service';
+import { Observable, of } from 'rxjs';
+import { catchError, map, shareReplay } from 'rxjs/operators';
+import { TicketStatsResponse } from '@core/api/tms-contracts';
+import { API } from './api/api.const';
 import { mapHttpError } from './http-error';
 import { NetworkService } from './network.service';
 
@@ -44,58 +42,55 @@ export interface AggregatedTicketStats {
   };
 }
 
-interface TicketDto {
-  id: number;
-  status: number;
-  userId?: number | null;
-  learningObjectiveId: number;
-}
-
 @Injectable({ providedIn: 'root' })
 export class TicketStatsService {
-  constructor(
-    private network: NetworkService,
-    private catalog: CurriculumCatalogService,
-  ) {}
+  private snapshot$?: Observable<{ tickets: TicketSnapshot[]; los: { id: number; subjectId: number }[] }>;
+
+  constructor(private network: NetworkService) {}
 
   aggregateForSubjects(subjectIds: number[], memberUserId?: number): Observable<AggregatedTicketStats> {
     const uniqueIds = [...new Set(subjectIds)];
-    if (!uniqueIds.length) {
-      return of(this.emptyAggregate());
-    }
-
-    return from(uniqueIds).pipe(
-      mergeMap(
-        (subjectId) =>
-          this.loadSubjectStats(subjectId).pipe(catchError(() => of(this.emptySubjectStats(subjectId)))),
-        SUBJECT_STATS_CONCURRENCY,
-      ),
-      toArray(),
-      map((rows) => this.mergeStats(rows, memberUserId)),
-    );
+    return this.loadSnapshot().pipe(map((snapshot) => this.mergeStats(snapshot, uniqueIds, memberUserId)));
   }
 
   loadSubjectStats(subjectId: number): Observable<SubjectTicketStats> {
-    return forkJoin({
-      tickets: this.network
-        .get<TicketDto[]>(apiPath(API.Tickets.ListBySubject, { id: subjectId }))
-        .pipe(catchError(() => of([] as TicketDto[]))),
-      los: this.catalog.getLosForSubject(subjectId).pipe(catchError(() => of([]))),
-    }).pipe(
-      map(({ tickets, los }) => {
-        const snapshots = tickets.map((ticket) => ({
+    return this.aggregateForSubjects([subjectId]).pipe(
+      map((aggregate) => aggregate.bySubject.get(subjectId) ?? this.emptySubjectStats(subjectId)),
+    );
+  }
+
+  progressForLos(loIds: number[]): Observable<number> {
+    if (!loIds.length) {
+      return of(0);
+    }
+    return this.loadSnapshot().pipe(
+      map((snapshot) => {
+        const stats = this.classifyLos(loIds, snapshot.tickets);
+        return stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
+      }),
+    );
+  }
+
+  invalidate(): void {
+    this.snapshot$ = undefined;
+  }
+
+  private loadSnapshot(): Observable<{ tickets: TicketSnapshot[]; los: { id: number; subjectId: number }[] }> {
+    this.snapshot$ ??= this.network.get<TicketStatsResponse>(API.Tickets.Stats).pipe(
+      map((response) => ({
+        tickets: (response.tickets ?? []).map((ticket) => ({
           id: ticket.id,
           status: ticket.status,
           userId: ticket.userId,
           learningObjectiveId: ticket.learningObjectiveId,
-          subjectId,
-        }));
-        const loStats = this.classifyLos(los.map((lo) => lo.id), snapshots);
-        const progressPercent = loStats.total ? Math.round((loStats.done / loStats.total) * 100) : 0;
-        return { subjectId, tickets: snapshots, loStats, progressPercent };
-      }),
+          subjectId: ticket.subjectId,
+        })),
+        los: response.learningObjectives ?? [],
+      })),
       catchError(mapHttpError),
+      shareReplay(1),
     );
+    return this.snapshot$;
   }
 
   private classifyLos(loIds: number[], tickets: TicketSnapshot[]): LoStats {
@@ -123,34 +118,62 @@ export class TicketStatsService {
     return { idle, running, done, total: loIds.length };
   }
 
-  private mergeStats(rows: SubjectTicketStats[], memberUserId?: number): AggregatedTicketStats {
-    const bySubject = new Map<number, SubjectTicketStats>();
+  private mergeStats(
+    snapshot: { tickets: TicketSnapshot[]; los: { id: number; subjectId: number }[] },
+    subjectIds: number[],
+    memberUserId?: number,
+  ): AggregatedTicketStats {
+    const subjectFilter = subjectIds.length ? new Set(subjectIds) : null;
+    const tickets = subjectFilter
+      ? snapshot.tickets.filter((ticket) => subjectFilter.has(ticket.subjectId))
+      : snapshot.tickets;
+    const los = subjectFilter
+      ? snapshot.los.filter((lo) => subjectFilter.has(lo.subjectId))
+      : snapshot.los;
+
+    const ticketsBySubject = new Map<number, TicketSnapshot[]>();
+    const losBySubject = new Map<number, number[]>();
     const tasksByUser = new Map<number, number>();
     const tasksBySubject = new Map<number, number>();
-    const allTickets: TicketSnapshot[] = [];
     let activeTaskCount = 0;
 
-    for (const row of rows) {
-      bySubject.set(row.subjectId, row);
-      tasksBySubject.set(row.subjectId, row.tickets.length);
-      for (const ticket of row.tickets) {
-        allTickets.push(ticket);
-        if (ticket.status === 1 || ticket.status === 2) {
-          activeTaskCount += 1;
-        }
-        if (ticket.userId) {
-          tasksByUser.set(ticket.userId, (tasksByUser.get(ticket.userId) ?? 0) + 1);
-        }
+    for (const lo of los) {
+      const ids = losBySubject.get(lo.subjectId) ?? [];
+      ids.push(lo.id);
+      losBySubject.set(lo.subjectId, ids);
+    }
+
+    for (const ticket of tickets) {
+      const subjectTickets = ticketsBySubject.get(ticket.subjectId) ?? [];
+      subjectTickets.push(ticket);
+      ticketsBySubject.set(ticket.subjectId, subjectTickets);
+      if (ticket.status === 1 || ticket.status === 2) {
+        activeTaskCount += 1;
+      }
+      if (ticket.userId) {
+        tasksByUser.set(ticket.userId, (tasksByUser.get(ticket.userId) ?? 0) + 1);
       }
     }
 
-    const memberTickets = memberUserId
-      ? allTickets.filter((ticket) => ticket.userId === memberUserId)
-      : [];
+    const ids = subjectFilter ? [...subjectFilter] : [...new Set([...ticketsBySubject.keys(), ...losBySubject.keys()])];
+    const bySubject = new Map<number, SubjectTicketStats>();
+    for (const subjectId of ids) {
+      const subjectTickets = ticketsBySubject.get(subjectId) ?? [];
+      const loStats = this.classifyLos(losBySubject.get(subjectId) ?? [], subjectTickets);
+      bySubject.set(subjectId, {
+        subjectId,
+        tickets: subjectTickets,
+        loStats,
+        progressPercent: loStats.total ? Math.round((loStats.done / loStats.total) * 100) : 0,
+      });
+      tasksBySubject.set(subjectId, subjectTickets.length);
+    }
+
+    const memberTickets = memberUserId ? tickets.filter((ticket) => ticket.userId === memberUserId) : [];
 
     return {
       bySubject,
-      allTickets,
+      allTickets: tickets,
       activeTaskCount,
       tasksByUser,
       tasksBySubject,
@@ -158,7 +181,6 @@ export class TicketStatsService {
         assigned: memberTickets.filter((ticket) => ticket.status <= 2 || ticket.status === 4).length,
         inProgress: memberTickets.filter((ticket) => ticket.status === 2).length,
         done: memberTickets.filter((ticket) => ticket.status === 3).length,
-        // Overdue cannot be computed until tickets expose a due date.
         overdue: 0,
       },
     };
@@ -170,17 +192,6 @@ export class TicketStatsService {
       tickets: [],
       loStats: { idle: 0, running: 0, done: 0, total: 0 },
       progressPercent: 0,
-    };
-  }
-
-  private emptyAggregate(): AggregatedTicketStats {
-    return {
-      bySubject: new Map(),
-      allTickets: [],
-      activeTaskCount: 0,
-      tasksByUser: new Map(),
-      tasksBySubject: new Map(),
-      memberCounts: { assigned: 0, inProgress: 0, done: 0, overdue: 0 },
     };
   }
 }

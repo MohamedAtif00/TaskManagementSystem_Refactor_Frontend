@@ -6,9 +6,11 @@ import { MyLeavesRemoteDataSourceImpl } from './data/data_source/remote/my-leave
 import { MyLeavesLocalDataSource } from './data/data_source/local/my-leaves-local-datasource';
 import { MyLeavesLocalDataSourceImpl } from './data/data_source/local/my-leaves-local-datasource-impl';
 import { GetMyLeavesUseCase } from './domain/usecase/get-my-leaves.usecase';
+import { PreviewLeaveUseCase } from './domain/usecase/preview-leave.usecase';
 import { CreateLeaveUseCase } from './domain/usecase/create-leave.usecase';
 import { CreatePermissionUseCase } from './domain/usecase/create-permission.usecase';
 import { CreateWfhUseCase } from './domain/usecase/create-wfh.usecase';
+import { CreateForgotClockUseCase } from './domain/usecase/create-forgot-clock.usecase';
 import { CancelLeaveUseCase } from './domain/usecase/cancel-leave.usecase';
 
 export const MY_LEAVES_DI_CONTAINER: Provider[] = [
@@ -16,8 +18,10 @@ export const MY_LEAVES_DI_CONTAINER: Provider[] = [
   { provide: MyLeavesRemoteDataSource, useClass: MyLeavesRemoteDataSourceImpl },
   { provide: MyLeavesLocalDataSource, useClass: MyLeavesLocalDataSourceImpl },
   GetMyLeavesUseCase,
+  PreviewLeaveUseCase,
   CreateLeaveUseCase,
   CreatePermissionUseCase,
   CreateWfhUseCase,
+  CreateForgotClockUseCase,
   CancelLeaveUseCase,
 ];

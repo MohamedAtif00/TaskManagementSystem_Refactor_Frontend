@@ -61,10 +61,12 @@
                     Board
                   </button>
                 }
-                @if (isAdmin) {
+                @if (isAdmin && !row.isArchived) {
                   <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEdit(row, $event)">
                     Edit
                   </button>
+                }
+                @if (isAdmin && (!row.isArchived || canRestore)) {
                   <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askArchive(row, $event)">
                     {{ row.isArchived ? 'Restore' : 'Archive' }}
                   </button>

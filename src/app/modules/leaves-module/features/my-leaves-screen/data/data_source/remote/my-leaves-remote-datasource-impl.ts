@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { ForgotClockRequestResponse, LeavePreviewResponse } from '@core/api/tms-contracts';
 import { API, apiPath } from '@core/network/api/api.const';
 import { mapHttpError } from '@core/network/http-error';
 import { NetworkService } from '@core/network/network.service';
@@ -8,9 +9,13 @@ import { UserDirectoryService } from '@core/network/user-directory.service';
 import { BalancesDto, hoursBetween, lastComment, mapBalances } from '@core/network/hr-map';
 import {
   CancelRequestPayload,
+  CreateForgotClockPayload,
   CreateLeavePayload,
   CreatePermissionPayload,
   CreateWfhPayload,
+  ForgotClockPunchType,
+  ForgotClockRequestEntity,
+  LeavePreviewEntity,
   LeaveRequestEntity,
   LeaveStatus,
   LeaveType,
@@ -73,9 +78,10 @@ export class MyLeavesRemoteDataSourceImpl extends MyLeavesRemoteDataSource {
       leaves: this.network.get<LeaveDto[]>(API.Leaves.List),
       permissions: this.network.get<PermissionDto[]>(API.Permissions.List),
       wfh: this.network.get<WfhDto[]>(API.WorkFromHome.List),
+      forgotClock: this.network.get<ForgotClockRequestResponse[]>(API.ForgotClock.List).pipe(catchError(() => of([]))),
       directory: this.users.list(),
     }).pipe(
-      map(({ balances, leaves, permissions, wfh, directory }) => {
+      map(({ balances, leaves, permissions, wfh, forgotClock, directory }) => {
         const me = directory.find((row) => row.id === userId) ?? { id: userId, name: 'Me', code: '' };
         const user = { id: me.id, name: me.name, code: me.code };
         return {
@@ -83,19 +89,50 @@ export class MyLeavesRemoteDataSourceImpl extends MyLeavesRemoteDataSource {
           leaves: leaves.map((row) => this.toLeave(row, user)),
           permissions: permissions.map((row) => this.toPermission(row, user)),
           wfh: wfh.map((row) => this.toWfh(row, user)),
+          forgotClock: forgotClock.map((row) => this.toForgotClock(row, user)),
         };
       }),
       catchError(mapHttpError),
     );
   }
 
+  previewLeave(payload: Pick<CreateLeavePayload, 'startDate' | 'endDate'>): Observable<LeavePreviewEntity> {
+    return this.network
+      .post<LeavePreviewResponse>(API.Leaves.Preview, {
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+      })
+      .pipe(catchError(mapHttpError));
+  }
+
   createLeave(_userId: number, payload: CreateLeavePayload): Observable<void> {
+    if (payload.type === 'Sick' && payload.medicalCertificate) {
+      const form = new FormData();
+      form.append('type', payload.type);
+      form.append('startDate', payload.startDate);
+      form.append('endDate', payload.endDate);
+      if (payload.reason) {
+        form.append('reason', payload.reason);
+      }
+      if (payload.noteForManager) {
+        form.append('noteForManager', payload.noteForManager);
+      }
+      form.append('confirmFromNextBalance', String(!!payload.confirmFromNextBalance));
+      form.append('medicalCertificate', payload.medicalCertificate, payload.medicalCertificate.name);
+      return this.network.postForm(API.Leaves.List, form).pipe(
+        map(() => undefined),
+        catchError(mapHttpError),
+      );
+    }
+
     return this.network
       .post(API.Leaves.List, {
         type: payload.type,
         startDate: payload.startDate,
         endDate: payload.endDate,
         reason: payload.reason,
+        noteForManager: payload.noteForManager,
+        confirmFromNextBalance: !!payload.confirmFromNextBalance,
       })
       .pipe(
         map(() => undefined),
@@ -127,13 +164,29 @@ export class MyLeavesRemoteDataSourceImpl extends MyLeavesRemoteDataSource {
       );
   }
 
+  createForgotClock(_userId: number, payload: CreateForgotClockPayload): Observable<void> {
+    return this.network
+      .post(API.ForgotClock.List, {
+        punchType: payload.punchType,
+        attendanceDate: payload.attendanceDate,
+        intendedTime: payload.intendedTime,
+        reason: payload.reason,
+      })
+      .pipe(
+        map(() => undefined),
+        catchError(mapHttpError),
+      );
+  }
+
   cancel(_userId: number, payload: CancelRequestPayload): Observable<void> {
     const url =
       payload.kind === 'leave'
         ? apiPath(API.Leaves.Cancel, { id: payload.id })
         : payload.kind === 'permission'
           ? apiPath(API.Permissions.Cancel, { id: payload.id })
-          : apiPath(API.WorkFromHome.Cancel, { id: payload.id });
+          : payload.kind === 'wfh'
+            ? apiPath(API.WorkFromHome.Cancel, { id: payload.id })
+            : apiPath(API.ForgotClock.Cancel, { id: payload.id });
     return this.network.put(url, {}).pipe(
       map(() => undefined),
       catchError(mapHttpError),
@@ -182,6 +235,24 @@ export class MyLeavesRemoteDataSourceImpl extends MyLeavesRemoteDataSource {
       note: row.noteForManager,
       status: row.status as LeaveStatus,
       dateCreated: String(row.dateCreated ?? row.date).slice(0, 10),
+      comment: lastComment(row.opinions),
+    };
+  }
+
+  private toForgotClock(
+    row: ForgotClockRequestResponse,
+    user: { id: number; name: string; code: string },
+  ): ForgotClockRequestEntity {
+    return {
+      id: row.id,
+      userId: row.userId,
+      user,
+      punchType: row.punchType as ForgotClockPunchType,
+      attendanceDate: String(row.attendanceDate).slice(0, 10),
+      intendedTime: row.intendedTime,
+      reason: row.reason ?? undefined,
+      status: row.status as LeaveStatus,
+      dateCreated: String(row.createdAt).slice(0, 10),
       comment: lastComment(row.opinions),
     };
   }

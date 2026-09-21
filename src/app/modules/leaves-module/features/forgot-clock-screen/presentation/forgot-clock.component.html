@@ -1,0 +1,74 @@
+<app-page-header title="Forgot clock" subtitle="Correct a missed clock-in or clock-out">
+  <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">New request</app-button>
+</app-page-header>
+
+<div class="border-muted/20 bg-background overflow-x-auto rounded-xl border">
+  <table class="text-muted-foreground w-full table-auto text-left text-sm">
+    <thead class="border-muted/20 border-b text-xs">
+      <tr>
+        <th class="px-4 py-3">Punch</th>
+        <th class="px-4 py-3">When</th>
+        <th class="px-4 py-3">Reason</th>
+        <th class="px-4 py-3">Status</th>
+        <th class="px-4 py-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.id) {
+        <tr class="border-muted/10 border-t">
+          <td class="text-foreground px-4 py-3 font-semibold">{{ row.punchType === 'In' ? 'Clock in' : 'Clock out' }}</td>
+          <td class="px-4 py-3">{{ row.attendanceDate }} · {{ row.intendedTime }}</td>
+          <td class="px-4 py-3">{{ row.reason || '—' }}</td>
+          <td class="px-4 py-3">{{ row.status }}</td>
+          <td class="px-4 py-3 text-right">
+            @if (row.status === 'Pending') {
+              <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askCancel(row)">Cancel</button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr><td class="px-4 py-10 text-center" colspan="5">No forgot-clock requests</td></tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (showForm()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border w-full max-w-lg rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-4 text-lg font-semibold">Forgot clock request</h3>
+      <div class="space-y-3">
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Punch</span>
+          <select [(ngModel)]="punchType" name="punchType">
+            <option ngValue="In">Clock in</option>
+            <option ngValue="Out">Clock out</option>
+          </select>
+        </label>
+        <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Date</span><input type="date" [(ngModel)]="attendanceDate" name="attendanceDate" /></label>
+        <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Intended time</span><input type="time" [(ngModel)]="intendedTime" name="intendedTime" /></label>
+        <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Reason (optional)</span><textarea rows="2" [(ngModel)]="reason" name="reason"></textarea></label>
+        @if (formError) {
+          <p class="text-destructive text-xs">{{ formError }}</p>
+        }
+      </div>
+      <div class="mt-5 flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="showForm.set(false)">Cancel</app-button>
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="save()">Submit</app-button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (confirm(); as item) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border w-full max-w-sm rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-2 text-lg font-semibold">Cancel this request?</h3>
+      <p class="text-muted-foreground mb-5 text-sm">{{ item.label }} · {{ item.dates }}</p>
+      <div class="flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="confirm.set(null)">Keep this request</app-button>
+        <app-button impact="bold" tone="danger" size="small" type="button" (buttonClick)="confirmCancel()">Yes, cancel it</app-button>
+      </div>
+    </div>
+  </div>
+}

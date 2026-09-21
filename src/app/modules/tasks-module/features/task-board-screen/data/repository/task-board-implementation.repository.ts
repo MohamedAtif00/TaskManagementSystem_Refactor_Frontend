@@ -11,6 +11,8 @@ import {
   TaskBoardEntity,
   TaskBoardParams,
   TaskCardEntity,
+  TaskColumnPageEntity,
+  TaskColumnPageParams,
   TaskComment,
   TaskDetailsEntity,
   TaskWorkTime,
@@ -31,6 +33,11 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
   getBoard(params: TaskBoardParams): Observable<TaskBoardEntity> {
     const source = environment.useMock ? this.local.getBoard(params) : this.remote.getBoard(params);
     return source.pipe(map((row) => TaskBoardMapper.toBoard(row)));
+  }
+
+  getColumnPage(params: TaskColumnPageParams): Observable<TaskColumnPageEntity> {
+    const source = environment.useMock ? this.local.getColumnPage(params) : this.remote.getColumnPage(params);
+    return source.pipe(map((row) => TaskBoardMapper.toColumnPage(row)));
   }
 
   getTask(id: number): Observable<TaskDetailsEntity> {
@@ -62,6 +69,11 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
 
   flag(id: number): Observable<TaskCardEntity> {
     const source = environment.useMock ? this.local.flag(id) : this.remote.flag(id);
+    return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
+  }
+
+  rollback(id: number): Observable<TaskCardEntity> {
+    const source = environment.useMock ? this.local.rollback(id) : this.remote.rollback(id);
     return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
   }
 

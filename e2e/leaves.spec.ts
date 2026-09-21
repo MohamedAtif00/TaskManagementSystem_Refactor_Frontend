@@ -4,7 +4,7 @@ test.describe('Leaves', () => {
   test('member sees balances and can open new request modal', async ({ page }) => {
     await loginAsMember(page);
     await page.goto('/leaves/mine');
-    await expect(page.getByRole('heading', { name: 'My time off' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My leaves' })).toBeVisible();
     await expect(page.getByText('Annual', { exact: true })).toBeVisible();
     await expect(page.getByText('Pending', { exact: true })).toBeVisible();
     await clickAppButton(page, 'New request');

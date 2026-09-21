@@ -8,6 +8,7 @@ import { LeaveCalendarLocalDataSourceImpl } from './data/data_source/local/leave
 import { GetLeaveQueueUseCase } from './domain/usecase/get-leave-queue.usecase';
 import { GetLeaveDetailsUseCase } from './domain/usecase/get-leave-details.usecase';
 import { DecideLeaveUseCase } from './domain/usecase/decide-leave.usecase';
+import { BulkDecideLeaveUseCase } from './domain/usecase/bulk-decide-leave.usecase';
 
 export const LEAVE_CALENDAR_DI_CONTAINER: Provider[] = [
   { provide: LeaveCalendarRepository, useClass: LeaveCalendarImplementationRepository },
@@ -16,4 +17,5 @@ export const LEAVE_CALENDAR_DI_CONTAINER: Provider[] = [
   GetLeaveQueueUseCase,
   GetLeaveDetailsUseCase,
   DecideLeaveUseCase,
+  BulkDecideLeaveUseCase,
 ];

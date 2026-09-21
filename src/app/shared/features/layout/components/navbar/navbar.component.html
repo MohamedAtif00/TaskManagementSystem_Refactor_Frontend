@@ -23,7 +23,17 @@
         <app-navbar-menu></app-navbar-menu>
       </div>
 
-      <div class="items-center justify-end sm:order-4 md:flex md:flex-1 lg:w-0">
+      <div class="items-center justify-end gap-3 sm:order-4 md:flex md:flex-1 lg:w-0">
+        @if (canSeeNotifications) {
+          <a [routerLink]="notificationsPath" class="text-muted-foreground hover:text-foreground relative inline-flex items-center p-2">
+            <svg-icon src="assets/icons/heroicons/outline/bell.svg" [svgClass]="'h-5 w-5'"></svg-icon>
+            @if (auth.unreadNotifications() > 0) {
+              <span class="bg-destructive text-destructive-foreground absolute -top-0.5 -right-0.5 min-w-4 rounded-full px-1 text-[10px] font-bold leading-4">
+                {{ auth.unreadNotifications() }}
+              </span>
+            }
+          </a>
+        }
         <app-profile-menu></app-profile-menu>
       </div>
     </div>

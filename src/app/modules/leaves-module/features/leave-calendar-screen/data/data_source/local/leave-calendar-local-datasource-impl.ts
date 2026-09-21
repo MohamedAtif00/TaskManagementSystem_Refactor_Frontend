@@ -2,7 +2,13 @@ import { Injectable } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
 import { LeaveListFilters, TmsMockStore } from '@core/mock/tms-mock.store';
-import { DecidePayload, LeaveKind, LeaveQueueFilters, LeaveQueueItem } from '../../../domain/entity/leave-calendar.entity';
+import {
+  BulkDecidePayload,
+  DecidePayload,
+  LeaveKind,
+  LeaveQueueFilters,
+  LeaveQueueItem,
+} from '../../../domain/entity/leave-calendar.entity';
 import { LeaveQueueModel } from '../../model/leave-calendar.model';
 import { LeaveCalendarLocalDataSource } from './leave-calendar-local-datasource';
 
@@ -27,7 +33,7 @@ export class LeaveCalendarLocalDataSourceImpl extends LeaveCalendarLocalDataSour
         this.store.decideLeave(payload.id, payload.approved, payload.comment);
       } else if (payload.kind === 'permission') {
         this.store.decidePermission(payload.id, payload.approved, payload.comment);
-      } else {
+      } else if (payload.kind === 'wfh') {
         this.store.decideWfh(payload.id, payload.approved, payload.comment);
       }
       return of(undefined).pipe(delay(80));
@@ -36,7 +42,20 @@ export class LeaveCalendarLocalDataSourceImpl extends LeaveCalendarLocalDataSour
     }
   }
 
-  private mapKind(kind: LeaveKind, filters: LeaveQueueFilters = { status: '', type: '', dateFrom: '', dateTo: '' }): LeaveQueueItem[] {
+  bulkDecide(payload: BulkDecidePayload): Observable<void> {
+    for (const id of payload.ids) {
+      this.decide({ kind: payload.kind, id, approved: payload.approved, comment: payload.comment });
+    }
+    return of(undefined).pipe(delay(80));
+  }
+
+  private mapKind(
+    kind: LeaveKind,
+    filters: LeaveQueueFilters = { status: '', type: '', dateFrom: '', dateTo: '' },
+  ): LeaveQueueItem[] {
+    if (kind === 'forgotClock') {
+      return [];
+    }
     const query: LeaveListFilters = {
       status: filters.status || undefined,
       type: filters.type || undefined,

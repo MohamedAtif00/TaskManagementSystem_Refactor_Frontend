@@ -10,6 +10,8 @@ export class SignInMapper {
       role: model.role,
       group: model.group,
       token: model.token,
+      permissions: model.permissions ?? [],
+      notifications: model.notifications ?? 0,
     };
   }
 }

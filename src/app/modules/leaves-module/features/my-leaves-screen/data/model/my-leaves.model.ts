@@ -9,6 +9,7 @@ export class MyLeavesMapper {
       leaves: model.leaves.map((row) => ({ ...row, user: { ...row.user } })),
       permissions: model.permissions.map((row) => ({ ...row, user: { ...row.user } })),
       wfh: model.wfh.map((row) => ({ ...row, user: { ...row.user } })),
+      forgotClock: (model.forgotClock ?? []).map((row) => ({ ...row, user: { ...row.user } })),
     };
   }
 }

@@ -8,6 +8,7 @@ import {
   ApexPlotOptions,
   ApexXAxis,
 } from 'ng-apexcharts';
+import { environment } from '@environments/environment';
 import { AuthService } from '@core/services/auth.service';
 import { UserRole } from '@core/models/user-role';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
@@ -23,6 +24,7 @@ import { DashboardUseCase } from '../domain/usecase/dashboard.usecase';
 })
 export class DashboardComponent implements OnInit {
   readonly UserRole = UserRole;
+  readonly showOverdue = environment.useMock;
   readonly data = signal<DashboardEntity | null>(null);
 
   pieSeries: ApexNonAxisChartSeries = [];

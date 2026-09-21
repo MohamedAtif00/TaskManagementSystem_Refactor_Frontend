@@ -1,7 +1,8 @@
 export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
-export type LeaveType = 'Annual' | 'Sick' | 'Emergency' | 'UnpaidLeave';
+export type LeaveType = 'Annual' | 'Sick' | 'Emergency' | 'UnpaidLeave' | 'FromNextBalance';
 export type PermissionType = 'EarlyDeparture' | 'LateArrival' | 'WorkAssignment' | 'Departure';
-export type LeaveKind = 'leave' | 'permission' | 'wfh';
+export type LeaveKind = 'leave' | 'permission' | 'wfh' | 'forgotClock';
+export type ForgotClockPunchType = 'In' | 'Out';
 
 export interface LeaveBalanceEntity {
   annualUsed: number;
@@ -13,6 +14,19 @@ export interface LeaveBalanceEntity {
   permissionMax: number;
   wfhUsed: number;
   wfhMax: number;
+  fromNextUsed: number;
+  fromNextMax: number;
+}
+
+export interface LeavePreviewEntity {
+  requestedDays: number;
+  availableAnnual: number;
+  neededFromNext: number;
+  fromNextBalanceMaxDays: number;
+  alreadyUsedFromNext: number;
+  pendingFromNext: number;
+  requiresConfirmation: boolean;
+  errorMessage?: string | null;
 }
 
 export interface LeaveUserRef {
@@ -61,11 +75,25 @@ export interface WfhRequestEntity {
   comment?: string;
 }
 
+export interface ForgotClockRequestEntity {
+  id: number;
+  userId: number;
+  user: LeaveUserRef;
+  punchType: ForgotClockPunchType;
+  attendanceDate: string;
+  intendedTime: string;
+  reason?: string;
+  status: LeaveStatus;
+  dateCreated: string;
+  comment?: string;
+}
+
 export interface MyLeavesEntity {
   balances: LeaveBalanceEntity;
   leaves: LeaveRequestEntity[];
   permissions: PermissionRequestEntity[];
   wfh: WfhRequestEntity[];
+  forgotClock: ForgotClockRequestEntity[];
 }
 
 export interface CreateLeavePayload {
@@ -73,6 +101,9 @@ export interface CreateLeavePayload {
   startDate: string;
   endDate: string;
   reason?: string;
+  noteForManager?: string;
+  confirmFromNextBalance?: boolean;
+  medicalCertificate?: File | null;
 }
 
 export interface CreatePermissionPayload {
@@ -86,6 +117,13 @@ export interface CreatePermissionPayload {
 export interface CreateWfhPayload {
   date: string;
   note?: string;
+}
+
+export interface CreateForgotClockPayload {
+  punchType: ForgotClockPunchType;
+  attendanceDate: string;
+  intendedTime: string;
+  reason?: string;
 }
 
 export interface CancelRequestPayload {

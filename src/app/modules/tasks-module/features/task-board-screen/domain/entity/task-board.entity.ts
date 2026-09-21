@@ -45,6 +45,23 @@ export interface TaskBoardParams {
   id: number;
 }
 
+export interface TaskColumnPageParams {
+  source: BoardSource;
+  id: number;
+  statuses: TaskStatus[];
+  page: number;
+  pageSize: number;
+  learningObjectiveId?: number;
+  name?: string;
+}
+
+export interface TaskColumnPageEntity {
+  items: TaskCardEntity[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
 export interface CreateTaskPayload {
   subjectId: number;
   name: string;

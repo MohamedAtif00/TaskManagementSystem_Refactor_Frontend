@@ -5,6 +5,8 @@ import {
   TaskBoardEntity,
   TaskBoardParams,
   TaskCardEntity,
+  TaskColumnPageEntity,
+  TaskColumnPageParams,
   TaskComment,
   TaskDetailsEntity,
   TaskWorkTime,
@@ -12,11 +14,13 @@ import {
 
 export abstract class TaskBoardRepository {
   abstract getBoard(params: TaskBoardParams): Observable<TaskBoardEntity>;
+  abstract getColumnPage(params: TaskColumnPageParams): Observable<TaskColumnPageEntity>;
   abstract getTask(id: number): Observable<TaskDetailsEntity>;
   abstract proceed(id: number): Observable<TaskCardEntity>;
   abstract complete(id: number): Observable<TaskCardEntity>;
   abstract assign(payload: AssignTaskPayload): Observable<TaskCardEntity>;
   abstract flag(id: number): Observable<TaskCardEntity>;
+  abstract rollback(id: number): Observable<TaskCardEntity>;
   abstract createTask(payload: CreateTaskPayload): Observable<TaskCardEntity>;
   abstract listTaskBank(): Observable<{ id: number; name: string }[]>;
   abstract listComments(ticketId: number): Observable<TaskComment[]>;
