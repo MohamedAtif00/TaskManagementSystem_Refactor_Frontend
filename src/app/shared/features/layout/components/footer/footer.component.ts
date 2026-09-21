@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { APP_VERSION } from '@core/constants/app-version';
 
 @Component({
   selector: 'app-footer',
@@ -8,5 +9,6 @@ import { RouterLink } from '@angular/router';
   imports: [RouterLink],
 })
 export class FooterComponent {
-  public year: number = new Date().getFullYear();
+  readonly year = new Date().getFullYear();
+  readonly version = APP_VERSION;
 }
