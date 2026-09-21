@@ -10,7 +10,14 @@ export interface TeamEntity {
   members: TeamMember[];
 }
 
+export interface TeamMemberOption {
+  id: number;
+  name: string;
+  teamId?: number | null;
+}
+
 export interface TeamFormPayload {
   id?: number;
   name: string;
+  memberIds: number[];
 }

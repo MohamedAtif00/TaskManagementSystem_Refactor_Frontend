@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
 import { TmsMockStore } from '@core/mock/tms-mock.store';
-import { TeamFormPayload } from '../../../domain/entity/team-list.entity';
+import { TeamFormPayload, TeamMemberOption } from '../../../domain/entity/team-list.entity';
 import { TeamModel } from '../../model/team-list.model';
 import { TeamListLocalDataSource } from './team-list-local-datasource';
 
@@ -31,12 +31,26 @@ export class TeamListLocalDataSourceImpl extends TeamListLocalDataSource {
     return of({ id: team.id, name: team.name, memberCount: team.members.length, members: team.members }).pipe(delay(80));
   }
 
+  getMemberOptions(): Observable<TeamMemberOption[]> {
+    return of(
+      this.store
+        .listAdminUsers()
+        .map((user) => ({
+          id: user.id,
+          name: user.name,
+          teamId: user.teamId ?? null,
+        })),
+    ).pipe(delay(80));
+  }
+
   saveTeam(payload: TeamFormPayload): Observable<TeamModel> {
     const saved = this.store.saveTeam(payload);
     if (!saved) {
       return throwError(() => new Error('Team not found'));
     }
-    return of({ id: saved.id, name: saved.name, memberCount: saved.members.length, members: saved.members }).pipe(delay(80));
+    return of({ id: saved.id, name: saved.name, memberCount: saved.members.length, members: saved.members }).pipe(
+      delay(80),
+    );
   }
 
   archiveTeam(id: number): Observable<void> {

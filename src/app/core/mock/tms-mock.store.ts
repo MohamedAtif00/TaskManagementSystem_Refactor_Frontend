@@ -1212,23 +1212,39 @@ export class TmsMockStore {
     };
   }
 
-  saveTeam(payload: { id?: number; name: string }) {
+  saveTeam(payload: { id?: number; name: string; memberIds?: number[] }) {
+    let teamId: number;
     if (payload.id != null) {
       const team = this.teams.find((row) => row.id === payload.id);
       if (!team) {
         return undefined;
       }
       team.name = payload.name;
+      teamId = team.id;
       for (const user of this.users) {
         if (user.teamId === team.id) {
           user.teamName = team.name;
         }
       }
-      return this.getTeam(team.id);
+    } else {
+      teamId = Math.max(0, ...this.teams.map((row) => row.id)) + 1;
+      this.teams.push({ id: teamId, name: payload.name });
     }
-    const id = Math.max(0, ...this.teams.map((row) => row.id)) + 1;
-    this.teams.push({ id, name: payload.name });
-    return this.getTeam(id);
+
+    if (payload.memberIds) {
+      const selected = new Set(payload.memberIds);
+      for (const user of this.users) {
+        if (selected.has(user.id)) {
+          user.teamId = teamId;
+          user.teamName = this.teams.find((row) => row.id === teamId)?.name ?? null;
+        } else if (user.teamId === teamId) {
+          user.teamId = null;
+          user.teamName = null;
+        }
+      }
+    }
+
+    return this.getTeam(teamId);
   }
 
   archiveTeam(id: number) {

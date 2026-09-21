@@ -3,11 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
-import { TeamEntity, TeamFormPayload, TeamMember } from '../domain/entity/team-list.entity';
+import { TeamEntity, TeamFormPayload, TeamMemberOption } from '../domain/entity/team-list.entity';
 import { ArchiveTeamUseCase } from '../domain/usecase/archive-team.usecase';
 import { GetTeamUseCase } from '../domain/usecase/get-team.usecase';
 import { SaveTeamUseCase } from '../domain/usecase/save-team.usecase';
 import { TeamListUseCase } from '../domain/usecase/team-list.usecase';
+import { TeamMemberOptionsUseCase } from '../domain/usecase/team-member-options.usecase';
 
 @Component({
   selector: 'app-team-list',
@@ -17,7 +18,7 @@ import { TeamListUseCase } from '../domain/usecase/team-list.usecase';
 export class TeamListComponent implements OnInit {
   formError = '';
   readonly rows = signal<TeamEntity[]>([]);
-  readonly members = signal<TeamMember[]>([]);
+  readonly memberOptions = signal<TeamMemberOption[]>([]);
   readonly showForm = signal(false);
   readonly confirmTeam = signal<TeamEntity | null>(null);
   form: TeamFormPayload = this.emptyForm();
@@ -25,11 +26,16 @@ export class TeamListComponent implements OnInit {
   constructor(
     private listUseCase: TeamListUseCase,
     private getUseCase: GetTeamUseCase,
+    private memberOptionsUseCase: TeamMemberOptionsUseCase,
     private saveUseCase: SaveTeamUseCase,
     private archiveUseCase: ArchiveTeamUseCase,
   ) {}
 
   ngOnInit(): void {
+    this.memberOptionsUseCase.execute().subscribe({
+      next: (options) => this.memberOptions.set(options),
+      error: (err: Error) => toast.error(err.message),
+    });
     this.load();
   }
 
@@ -39,7 +45,6 @@ export class TeamListComponent implements OnInit {
 
   openCreate(): void {
     this.form = this.emptyForm();
-    this.members.set([]);
     this.formError = '';
     this.showForm.set(true);
   }
@@ -49,8 +54,7 @@ export class TeamListComponent implements OnInit {
     this.formError = '';
     this.getUseCase.execute(row.id).subscribe({
       next: (team) => {
-        this.form = { id: team.id, name: team.name };
-        this.members.set(team.members);
+        this.form = { id: team.id, name: team.name, memberIds: team.members.map((member) => member.id) };
         this.showForm.set(true);
       },
       error: (err: Error) => toast.error(err.message),
@@ -59,6 +63,20 @@ export class TeamListComponent implements OnInit {
 
   closeForm(): void {
     this.showForm.set(false);
+  }
+
+  isMemberSelected(userId: number): boolean {
+    return this.form.memberIds.includes(userId);
+  }
+
+  toggleMember(userId: number, checked: boolean): void {
+    if (checked) {
+      if (!this.form.memberIds.includes(userId)) {
+        this.form.memberIds = [...this.form.memberIds, userId];
+      }
+      return;
+    }
+    this.form.memberIds = this.form.memberIds.filter((id) => id !== userId);
   }
 
   save(): void {
@@ -104,6 +122,6 @@ export class TeamListComponent implements OnInit {
   }
 
   private emptyForm(): TeamFormPayload {
-    return { name: '' };
+    return { name: '', memberIds: [] };
   }
 }

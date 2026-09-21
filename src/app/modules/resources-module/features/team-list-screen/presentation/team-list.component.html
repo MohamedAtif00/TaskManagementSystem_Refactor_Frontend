@@ -51,16 +51,22 @@
           <span class="text-muted-foreground mb-1 block text-xs font-medium">Name</span>
           <input type="text" [(ngModel)]="form.name" name="teamName" />
         </label>
-        @if (form.id && members().length) {
-          <div>
-            <p class="text-muted-foreground mb-1 text-xs font-medium">Members</p>
-            <ul class="text-foreground space-y-1 text-sm">
-              @for (member of members(); track member.id) {
-                <li>{{ member.name }}</li>
-              }
-            </ul>
+        <div>
+          <p class="text-muted-foreground mb-1 text-xs font-medium">Members</p>
+          <div class="border-muted/20 max-h-48 space-y-2 overflow-y-auto rounded-lg border p-3">
+            @for (option of memberOptions(); track option.id) {
+              <label class="text-foreground flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  [checked]="isMemberSelected(option.id)"
+                  (change)="toggleMember(option.id, $any($event.target).checked)" />
+                <span>{{ option.name }}</span>
+              </label>
+            } @empty {
+              <p class="text-muted-foreground text-xs">No users available</p>
+            }
           </div>
-        }
+        </div>
         @if (formError) {
           <p class="text-destructive text-xs">{{ formError }}</p>
         }

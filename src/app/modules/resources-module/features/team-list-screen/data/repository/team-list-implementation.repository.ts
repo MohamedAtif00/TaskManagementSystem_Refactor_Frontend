@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '@environments/environment';
-import { TeamEntity, TeamFormPayload } from '../../domain/entity/team-list.entity';
+import { TeamEntity, TeamFormPayload, TeamMemberOption } from '../../domain/entity/team-list.entity';
 import { TeamListRepository } from '../../domain/repository/team-list.repository';
 import { TeamListLocalDataSource } from '../data_source/local/team-list-local-datasource';
 import { TeamListRemoteDataSource } from '../data_source/remote/team-list-remote-datasource';
@@ -23,6 +23,10 @@ export class TeamListImplementationRepository implements TeamListRepository {
   getTeam(id: number): Observable<TeamEntity> {
     const source = environment.useMock ? this.local.getTeam(id) : this.remote.getTeam(id);
     return source.pipe(map((row) => TeamListMapper.toEntity(row)));
+  }
+
+  getMemberOptions(): Observable<TeamMemberOption[]> {
+    return environment.useMock ? this.local.getMemberOptions() : this.remote.getMemberOptions();
   }
 
   saveTeam(payload: TeamFormPayload): Observable<TeamEntity> {
