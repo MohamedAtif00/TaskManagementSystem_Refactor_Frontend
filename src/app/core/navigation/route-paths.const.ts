@@ -9,6 +9,7 @@ export const ROUTE_PATHS = {
   taskBoard: (projectId: number | string) => `/tasks/${projectId}/board`,
   taskSheet: (projectId: number | string) => `/tasks/${projectId}/sheet`,
   sprints: '/sprints',
+  sprintManage: '/sprints/manage',
   sprintBoard: (sprintId: number | string) => `/sprints/${sprintId}/board`,
   myLeaves: '/leaves/mine',
   leaveCalendar: '/leaves/calendar',

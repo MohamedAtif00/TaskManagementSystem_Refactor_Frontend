@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
 import { environment } from '@environments/environment';
 import { PermissionCodes } from '@core/models/permission-codes';
@@ -40,6 +40,7 @@ export class SprintListComponent implements OnInit {
   readonly showForm = signal(false);
   readonly confirmSprint = signal<SprintEntity | null>(null);
   readonly isAdmin: boolean;
+  readonly isManage: boolean;
   readonly canRestore = environment.useMock;
 
   formError = '';
@@ -50,6 +51,7 @@ export class SprintListComponent implements OnInit {
 
   constructor(
     private auth: AuthService,
+    private route: ActivatedRoute,
     private router: Router,
     private listUseCase: SprintListUseCase,
     private saveUseCase: SaveSprintUseCase,
@@ -58,6 +60,7 @@ export class SprintListComponent implements OnInit {
     private losUseCase: SprintLosUseCase,
   ) {
     this.isAdmin = this.auth.hasRole(ADMIN_ROLES) || this.auth.hasPermission(PermissionCodes.Sprints.Manage);
+    this.isManage = !!this.route.snapshot.data['manage'] && this.isAdmin;
   }
 
   ngOnInit(): void {

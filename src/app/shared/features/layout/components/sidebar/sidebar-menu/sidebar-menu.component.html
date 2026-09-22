@@ -29,8 +29,8 @@
                 routerLink="{{ item.route }}"
                 class="text-muted-foreground hover:text-primary flex h-[36px] cursor-pointer items-center justify-start rounded-sm">
                 <a
-                  [ngClass]="{ hidden: !menuService.showSideBar }"
-                  routerLinkActive="text-primary"
+                  [ngClass]="{ hidden: !menuService.showSideBar, 'text-primary': item.active }"
+                  [attr.aria-current]="item.active ? 'page' : null"
                   class="truncate text-xs font-semibold tracking-wide focus:outline-hidden">
                   {{ item.label }}
                   @if (item.route === notificationsPath && auth.unreadNotifications() > 0) {

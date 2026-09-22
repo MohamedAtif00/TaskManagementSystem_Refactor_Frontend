@@ -43,6 +43,7 @@ export class Menu {
           icon: 'assets/icons/heroicons/outline/bookmark.svg',
           label: 'Sprints',
           route: ROUTE_PATHS.sprints,
+          permissions: [PermissionCodes.Sprints.Read],
         },
         {
           icon: 'assets/icons/heroicons/outline/shield-check.svg',
@@ -103,6 +104,13 @@ export class Menu {
           route: ROUTE_PATHS.curriculum,
           roles: [UserRole.ProjectManager, UserRole.Owner],
           permissions: [PermissionCodes.Curriculum.Read],
+        },
+        {
+          icon: 'assets/icons/heroicons/outline/bookmark.svg',
+          label: 'Sprint management',
+          route: ROUTE_PATHS.sprintManage,
+          roles: [UserRole.ProjectManager, UserRole.Owner],
+          permissions: [PermissionCodes.Sprints.Manage],
         },
         {
           icon: 'assets/icons/heroicons/outline/bookmark.svg',

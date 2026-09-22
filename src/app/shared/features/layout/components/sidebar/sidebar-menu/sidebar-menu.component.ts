@@ -1,6 +1,6 @@
 import { NgClass, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AngularSvgIconModule } from 'angular-svg-icon';
 import { SubMenuItem } from '@core/models/menu.model';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
@@ -12,7 +12,7 @@ import { SidebarSubmenuComponent } from '../sidebar-submenu/sidebar-submenu.comp
   selector: 'app-sidebar-menu',
   templateUrl: './sidebar-menu.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, AngularSvgIconModule, NgTemplateOutlet, RouterLink, RouterLinkActive, SidebarSubmenuComponent],
+  imports: [NgClass, AngularSvgIconModule, NgTemplateOutlet, RouterLink, SidebarSubmenuComponent],
 })
 export class SidebarMenuComponent {
   readonly notificationsPath = ROUTE_PATHS.notifications;

@@ -153,6 +153,8 @@ export class MenuService implements OnDestroy {
       });
       menu.active = activeGroup;
     });
+    this._pagesMenu.set(this._pagesMenu().map((menu) => ({ ...menu, items: menu.items.map((item) => ({ ...item })) })));
+    this._navbarMenu.set(this._navbarMenu().map((menu) => ({ ...menu, items: menu.items.map((item) => ({ ...item })) })));
   }
 
   private expand(items: Array<SubMenuItem>) {

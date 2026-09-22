@@ -1,13 +1,15 @@
-<app-page-header title="Sprints" subtitle="Time-boxed boards scoped to learning objectives">
+<app-page-header
+  [title]="isManage ? 'Sprint management' : 'Sprints'"
+  [subtitle]="isManage ? 'Create, edit, and archive sprints' : 'Time-boxed boards scoped to learning objectives'">
   <app-lo-code-display-toggle />
-  @if (isAdmin) {
+  @if (isManage) {
     <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">
       Add Sprint
     </app-button>
   }
 </app-page-header>
 
-@if (isAdmin) {
+@if (isManage) {
   <div class="mb-4 flex gap-2">
     <button
       type="button"
@@ -65,12 +67,12 @@
                     Board
                   </button>
                 }
-                @if (isAdmin && !row.isArchived) {
+                @if (isManage && !row.isArchived) {
                   <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEdit(row, $event)">
                     Edit
                   </button>
                 }
-                @if (isAdmin && (!row.isArchived || canRestore)) {
+                @if (isManage && (!row.isArchived || canRestore)) {
                   <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askArchive(row, $event)">
                     {{ row.isArchived ? 'Restore' : 'Archive' }}
                   </button>
