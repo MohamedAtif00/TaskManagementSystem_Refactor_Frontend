@@ -23,16 +23,24 @@ export class NotificationInboxRemoteDataSourceImpl extends NotificationInboxRemo
     }
     return this.network.get<NotificationListPageResponse>(API.Notifications.List, httpParams).pipe(
       map((page) => ({
-        items: (page.items ?? []).map((item) => ({
-          id: item.id,
-          title: item.title,
-          message: item.message,
-          category: item.category,
-          type: item.type,
-          isRead: item.isRead,
-          createdAt: item.createdAt,
-          relatedEntityId: item.relatedEntityId,
-        })),
+        items: (page.items ?? []).map((item) => {
+          const extended = item as NotificationListPageResponse['items'][number] & {
+            hasActions?: boolean;
+            status?: string | null;
+          };
+          return {
+            id: extended.id,
+            title: extended.title,
+            message: extended.message,
+            category: extended.category,
+            type: extended.type,
+            isRead: extended.isRead,
+            hasActions: extended.hasActions,
+            status: extended.status,
+            createdAt: extended.createdAt,
+            relatedEntityId: extended.relatedEntityId,
+          };
+        }),
         page: page.page,
         pageSize: page.pageSize,
         totalCount: page.totalCount,

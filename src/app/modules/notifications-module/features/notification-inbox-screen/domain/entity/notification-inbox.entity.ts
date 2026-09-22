@@ -5,6 +5,8 @@ export interface NotificationEntity {
   category: string;
   type: string;
   isRead: boolean;
+  hasActions?: boolean;
+  status?: string | null;
   createdAt: string;
   relatedEntityId?: number | null;
 }
