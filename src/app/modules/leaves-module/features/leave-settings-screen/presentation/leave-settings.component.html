@@ -1,0 +1,36 @@
+<app-page-header title="Leave settings" subtitle="Policy windows and balance rules from HR configuration">
+  @if (!canManage) {
+    <span class="text-muted-foreground text-xs">Read-only view</span>
+  }
+</app-page-header>
+
+@if (loading()) {
+  <app-table-skeleton [rows]="6" [columns]="2" />
+} @else if (settings(); as current) {
+  <div class="border-border/60 bg-card shadow-sm grid max-w-3xl gap-4 rounded-xl border p-6 text-sm">
+    <div class="grid grid-cols-1 gap-1 sm:grid-cols-[14rem_1fr] sm:gap-4">
+      <span class="text-muted-foreground font-medium">From-next max days</span>
+      <span class="text-foreground">{{ current.fromNextBalanceMaxDays }}</span>
+    </div>
+    <div class="grid grid-cols-1 gap-1 sm:grid-cols-[14rem_1fr] sm:gap-4">
+      <span class="text-muted-foreground font-medium">From-next window</span>
+      <span class="text-foreground">{{ formatDate(current.fromNextBalanceStartDate) }} – {{ formatDate(current.fromNextBalanceEndDate) }}</span>
+    </div>
+    <div class="grid grid-cols-1 gap-1 sm:grid-cols-[14rem_1fr] sm:gap-4">
+      <span class="text-muted-foreground font-medium">From-next active today</span>
+      <span class="text-foreground">{{ current.fromNextWindowActiveToday ? 'Yes' : 'No' }}</span>
+    </div>
+    <div class="grid grid-cols-1 gap-1 sm:grid-cols-[14rem_1fr] sm:gap-4">
+      <span class="text-muted-foreground font-medium">Emergency blackout cutoff</span>
+      <span class="text-foreground">{{ formatDate(current.emergencyBlackoutCutoffDate) }}</span>
+    </div>
+    <div class="grid grid-cols-1 gap-1 sm:grid-cols-[14rem_1fr] sm:gap-4">
+      <span class="text-muted-foreground font-medium">Emergency allowed today</span>
+      <span class="text-foreground">{{ current.emergencyAllowedToday ? 'Yes' : 'No' }}</span>
+    </div>
+    <div class="grid grid-cols-1 gap-1 sm:grid-cols-[14rem_1fr] sm:gap-4">
+      <span class="text-muted-foreground font-medium">Balance reset date</span>
+      <span class="text-foreground">{{ formatDate(current.resetDate) }}</span>
+    </div>
+  </div>
+}

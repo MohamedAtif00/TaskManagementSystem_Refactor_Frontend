@@ -53,6 +53,18 @@ export const LEAVES_ROUTES: Routes = [
       ),
   },
   {
+    path: 'settings',
+    canActivate: [roleGuard],
+    data: {
+      roles: LEAVE_APPROVER_ROLES,
+      permissions: [PermissionCodes.HrLeave.Read, PermissionCodes.HrLeave.Manage],
+    },
+    loadComponent: () =>
+      import('./features/leave-settings-screen/presentation/leave-settings.component').then(
+        (m) => m.LeaveSettingsComponent,
+      ),
+  },
+  {
     path: 'holidays',
     canActivate: [roleGuard],
     data: { permissions: [PermissionCodes.HrHolidays.Read] },
