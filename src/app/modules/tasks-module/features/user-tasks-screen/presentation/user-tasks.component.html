@@ -1,0 +1,66 @@
+<app-page-header title="User tasks" subtitle="Active workload by assignee (To Do and Doing)">
+  <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="exportSummary()">Export CSV</app-button>
+</app-page-header>
+
+@if (loading()) {
+  <app-table-skeleton [rows]="10" [columns]="5" />
+} @else {
+  <div class="border-border/60 bg-card shadow-sm overflow-hidden rounded-xl border">
+    <table class="text-muted-foreground table w-full table-auto border-collapse text-left text-sm">
+      <thead class="border-border border-b text-xs">
+        <tr>
+          <th class="px-4 py-3">User</th>
+          <th class="px-4 py-3">Team</th>
+          <th class="px-4 py-3">To Do</th>
+          <th class="px-4 py-3">Doing</th>
+          <th class="px-4 py-3">Active total</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr class="hover:bg-muted/40 cursor-pointer border-border/60 border-b last:border-b-0" (click)="openUser(row)">
+            <td class="text-foreground px-4 py-3 font-semibold">{{ row.name }}</td>
+            <td class="px-4 py-3">{{ row.teamName }}</td>
+            <td class="px-4 py-3">{{ row.todoCount }}</td>
+            <td class="px-4 py-3">{{ row.doingCount }}</td>
+            <td class="px-4 py-3">{{ row.totalActive }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td class="text-muted-foreground px-4 py-10 text-center" colspan="5">No active assignments</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (selectedUser(); as user) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" (click)="closeDrillDown()">
+    <section class="bg-card border-border max-h-[80vh] w-full max-w-3xl overflow-hidden rounded-xl border shadow-2xl" (click)="$event.stopPropagation()">
+      <header class="border-border flex items-center justify-between border-b px-5 py-4">
+        <div>
+          <h2 class="text-foreground text-lg font-bold">{{ user.name }}</h2>
+          <p class="text-muted-foreground text-sm">{{ user.todoCount }} To Do · {{ user.doingCount }} Doing</p>
+        </div>
+        <div class="flex gap-2">
+          <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="exportDrillDown()">Export</app-button>
+          <button type="button" class="text-muted-foreground hover:text-foreground text-2xl leading-none" (click)="closeDrillDown()">×</button>
+        </div>
+      </header>
+      <div class="max-h-[60vh] overflow-y-auto p-5">
+        @for (ticket of userTickets(); track ticket.id) {
+          <button
+            type="button"
+            class="border-border hover:bg-muted/30 mb-2 flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left"
+            (click)="openSubject(ticket.subjectId)">
+            <span class="text-foreground text-sm font-semibold">Task #{{ ticket.id }}</span>
+            <span class="text-muted-foreground text-xs">{{ statusLabel(ticket.status) }} · Subject {{ ticket.subjectId }}</span>
+          </button>
+        } @empty {
+          <p class="text-muted-foreground text-sm">No active tasks for this user.</p>
+        }
+      </div>
+    </section>
+  </div>
+}

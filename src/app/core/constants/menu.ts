@@ -15,6 +15,17 @@ export class Menu {
           route: ROUTE_PATHS.dashboard,
         },
         {
+          icon: 'assets/icons/heroicons/outline/document-report.svg',
+          label: 'Reports',
+          route: ROUTE_PATHS.reports,
+          roles: [UserRole.ProjectManager, UserRole.Owner],
+          permissions: [PermissionCodes.Tickets.Read],
+          children: [
+            { label: 'Project overview', route: `${ROUTE_PATHS.reports}/project-overview` },
+            { label: 'Summaries', route: `${ROUTE_PATHS.reports}/summaries` },
+          ],
+        },
+        {
           icon: 'assets/icons/heroicons/outline/inbox.svg',
           label: 'Inbox',
           route: ROUTE_PATHS.notifications,
@@ -38,6 +49,12 @@ export class Menu {
           icon: 'assets/icons/heroicons/outline/view-grid.svg',
           label: 'Kanban',
           route: ROUTE_PATHS.tasks,
+        },
+        {
+          icon: 'assets/icons/heroicons/outline/users.svg',
+          label: 'User tasks',
+          route: ROUTE_PATHS.userTasks,
+          permissions: [PermissionCodes.Tickets.Read],
         },
         {
           icon: 'assets/icons/heroicons/outline/bookmark.svg',
@@ -69,6 +86,12 @@ export class Menu {
               label: 'Holidays',
               route: ROUTE_PATHS.holidays,
               permissions: [PermissionCodes.HrHolidays.Read],
+            },
+            {
+              label: 'Leave settings',
+              route: ROUTE_PATHS.leaveSettings,
+              roles: [UserRole.Owner],
+              permissions: [PermissionCodes.HrLeave.Manage],
             },
           ],
         },

@@ -7,6 +7,13 @@ import { TASK_SHEET_DI_CONTAINER } from './features/task-sheet-screen/di_contain
 
 export const TASKS_ROUTES: Routes = [
   {
+    path: 'user-tasks',
+    canActivate: [roleGuard],
+    data: { permissions: [PermissionCodes.Tickets.Read] },
+    loadComponent: () =>
+      import('./features/user-tasks-screen/presentation/user-tasks.component').then((m) => m.UserTasksComponent),
+  },
+  {
     path: '',
     canActivate: [roleGuard],
     data: { permissions: [PermissionCodes.Tickets.Read] },
