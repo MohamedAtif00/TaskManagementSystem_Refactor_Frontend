@@ -1,5 +1,6 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AngularSvgIconModule } from 'angular-svg-icon';
 import { toast } from 'ngx-sonner';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import {
@@ -13,7 +14,11 @@ import {
   TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
 } from '../domain/entity/task-board.entity';
+import { AuthService } from '@core/services/auth.service';
 import { AddCommentUseCase } from '../domain/usecase/add-comment.usecase';
+import { DeleteCommentUseCase } from '../domain/usecase/delete-comment.usecase';
+import { PauseTaskUseCase } from '../domain/usecase/pause-task.usecase';
+import { UpdateCommentUseCase } from '../domain/usecase/update-comment.usecase';
 import { AssignTaskUseCase } from '../domain/usecase/assign-task.usecase';
 import { ChangePriorityUseCase } from '../domain/usecase/change-priority.usecase';
 import { CompleteTaskUseCase } from '../domain/usecase/complete-task.usecase';
@@ -30,8 +35,37 @@ import { StopWorkUseCase } from '../domain/usecase/stop-work.usecase';
 
 @Component({
   selector: 'app-task-drawer',
-  imports: [FormsModule, ButtonComponent],
+  imports: [FormsModule, AngularSvgIconModule, ButtonComponent],
   templateUrl: './task-drawer.component.html',
+  styles: [
+    `
+      .task-actions-toolbar ::ng-deep button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 2rem;
+        min-height: 2rem;
+        padding-block: 0;
+        padding-inline: 0.625rem;
+        font-size: 0.75rem;
+        line-height: 1rem;
+        font-weight: 600;
+      }
+
+      .task-actions-toolbar ::ng-deep button span {
+        font-size: inherit;
+        line-height: inherit;
+        font-weight: inherit;
+      }
+
+      .task-actions-toolbar ::ng-deep svg-icon svg,
+      .task-actions-toolbar ::ng-deep button svg {
+        width: 0.875rem;
+        height: 0.875rem;
+        flex-shrink: 0;
+      }
+    `,
+  ],
 })
 export class TaskDrawerComponent implements OnChanges {
   @Input({ required: true }) task!: TaskDetailsEntity;
@@ -47,6 +81,8 @@ export class TaskDrawerComponent implements OnChanges {
     { value: 2 as TaskPriority, label: 'Medium' },
     { value: 3 as TaskPriority, label: 'High' },
   ];
+  readonly actionLabelClass = 'inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold leading-4';
+  readonly actionIconClass = 'size-3.5 shrink-0';
 
   assignUserId = '';
   priorityChoice: TaskPriority = 0;
@@ -59,6 +95,8 @@ export class TaskDrawerComponent implements OnChanges {
   activities: TaskActivity[] = [];
   jumpPoints: JumpPoint[] = [];
   draft = '';
+  editingCommentId: number | null = null;
+  editingDraft = '';
   commentsBusy = false;
   activityBusy = false;
   jumpPointsBusy = false;
@@ -80,6 +118,10 @@ export class TaskDrawerComponent implements OnChanges {
     private listActivityUseCase: ListActivityUseCase,
     private listCommentsUseCase: ListCommentsUseCase,
     private addCommentUseCase: AddCommentUseCase,
+    private updateCommentUseCase: UpdateCommentUseCase,
+    private deleteCommentUseCase: DeleteCommentUseCase,
+    private pauseUseCase: PauseTaskUseCase,
+    private auth: AuthService,
     private startWorkUseCase: StartWorkUseCase,
     private stopWorkUseCase: StopWorkUseCase,
   ) {}
@@ -227,6 +269,16 @@ export class TaskDrawerComponent implements OnChanges {
     });
   }
 
+  pause(): void {
+    this.pauseUseCase.execute(this.task.id).subscribe({
+      next: () => {
+        toast.success(this.task.paused ? 'Resumed' : 'Paused');
+        this.changed.emit();
+      },
+      error: (err: Error) => toast.error(err.message),
+    });
+  }
+
   rollback(): void {
     this.rollbackUseCase.execute(this.task.id).subscribe({
       next: () => {
@@ -308,9 +360,11 @@ export class TaskDrawerComponent implements OnChanges {
       next: (rows) => {
         this.comments = rows;
         this.commentsBusy = false;
+        this.cdr.markForCheck();
       },
       error: (err: Error) => {
         this.commentsBusy = false;
+        this.cdr.markForCheck();
         toast.error(err.message);
       },
     });
@@ -322,9 +376,11 @@ export class TaskDrawerComponent implements OnChanges {
       next: (rows) => {
         this.activities = rows;
         this.activityBusy = false;
+        this.cdr.markForCheck();
       },
       error: (err: Error) => {
         this.activityBusy = false;
+        this.cdr.markForCheck();
         toast.error(err.message);
       },
     });
@@ -347,6 +403,46 @@ export class TaskDrawerComponent implements OnChanges {
     });
   }
 
+  canEditComment(comment: TaskComment): boolean {
+    return comment.userId === this.auth.user()?.id;
+  }
+
+  startEditComment(comment: TaskComment): void {
+    this.editingCommentId = comment.id;
+    this.editingDraft = comment.content;
+  }
+
+  cancelEditComment(): void {
+    this.editingCommentId = null;
+    this.editingDraft = '';
+  }
+
+  saveComment(comment: TaskComment): void {
+    const content = this.editingDraft.trim();
+    if (!content) {
+      toast.error('Write a comment');
+      return;
+    }
+    this.updateCommentUseCase.execute({ ticketId: this.task.id, commentId: comment.id, content }).subscribe({
+      next: () => {
+        this.cancelEditComment();
+        toast.success('Comment updated');
+        this.loadComments();
+      },
+      error: (err: Error) => toast.error(err.message),
+    });
+  }
+
+  removeComment(comment: TaskComment): void {
+    this.deleteCommentUseCase.execute({ ticketId: this.task.id, commentId: comment.id }).subscribe({
+      next: () => {
+        toast.success('Comment deleted');
+        this.loadComments();
+      },
+      error: (err: Error) => toast.error(err.message),
+    });
+  }
+
   startTimer(): void {
     this.timerBusy = true;
     this.startWorkUseCase.execute(this.task.id).subscribe({
@@ -354,15 +450,18 @@ export class TaskDrawerComponent implements OnChanges {
         this.timerBusy = false;
         this.timerRunning = true;
         this.lastWork = work;
+        this.cdr.markForCheck();
         toast.success('Timer started');
       },
       error: (err: Error) => {
         this.timerBusy = false;
         if (/already (exists|open)/i.test(err.message) || /work_time_already_open/i.test(err.message)) {
           this.timerRunning = true;
+          this.cdr.markForCheck();
           toast.info('Timer already running');
           return;
         }
+        this.cdr.markForCheck();
         toast.error(err.message);
       },
     });
@@ -375,6 +474,7 @@ export class TaskDrawerComponent implements OnChanges {
         this.timerBusy = false;
         this.timerRunning = false;
         this.lastWork = work;
+        this.cdr.markForCheck();
         toast.success(`Stopped · ${this.formatDuration(work.duration)}`);
       },
       error: (err: Error) => {
@@ -382,6 +482,7 @@ export class TaskDrawerComponent implements OnChanges {
         if (/not found/i.test(err.message)) {
           this.timerRunning = false;
         }
+        this.cdr.markForCheck();
         toast.error(err.message);
       },
     });
@@ -389,6 +490,8 @@ export class TaskDrawerComponent implements OnChanges {
 
   private resetPanels(): void {
     this.draft = '';
+    this.editingCommentId = null;
+    this.editingDraft = '';
     this.assignUserId = '';
     this.jumpStepId = 0;
     this.showAssignPanel = false;
@@ -397,5 +500,9 @@ export class TaskDrawerComponent implements OnChanges {
     this.timerRunning = false;
     this.lastWork = null;
     this.jumpPoints = [];
+    this.comments = [];
+    this.activities = [];
+    this.commentsBusy = false;
+    this.activityBusy = false;
   }
 }

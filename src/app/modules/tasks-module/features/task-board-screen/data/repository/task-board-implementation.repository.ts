@@ -83,6 +83,11 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
     return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
   }
 
+  pause(id: number): Observable<TaskCardEntity> {
+    const source = environment.useMock ? this.local.pause(id) : this.remote.pause(id);
+    return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
+  }
+
   rollback(id: number): Observable<TaskCardEntity> {
     const source = environment.useMock ? this.local.rollback(id) : this.remote.rollback(id);
     return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
@@ -126,6 +131,14 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
 
   addComment(ticketId: number, content: string): Observable<TaskComment> {
     return environment.useMock ? this.local.addComment(ticketId, content) : this.remote.addComment(ticketId, content);
+  }
+
+  updateComment(payload: { ticketId: number; commentId: number; content: string }): Observable<TaskComment> {
+    return environment.useMock ? this.local.updateComment(payload) : this.remote.updateComment(payload);
+  }
+
+  deleteComment(payload: { ticketId: number; commentId: number }): Observable<void> {
+    return environment.useMock ? this.local.deleteComment(payload) : this.remote.deleteComment(payload);
   }
 
   startWork(ticketId: number): Observable<TaskWorkTime> {

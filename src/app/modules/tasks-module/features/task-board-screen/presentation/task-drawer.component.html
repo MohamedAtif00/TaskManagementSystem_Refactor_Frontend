@@ -88,32 +88,97 @@
               </svg>
               Actions
             </h3>
-            <div class="flex flex-wrap gap-2">
+            <div class="task-actions-toolbar border-border bg-muted/20 flex flex-wrap items-center gap-1.5 rounded-lg border p-2">
               @if (canStart) {
-                <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="proceed()">+ {{ startLabel() }}</app-button>
+                <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="proceed()">
+                  <span [class]="actionLabelClass">
+                    @if (task.status === 0) {
+                      <svg-icon src="assets/icons/heroicons/outline/plus.svg" [svgClass]="actionIconClass"></svg-icon>
+                    } @else {
+                      <svg-icon src="assets/icons/heroicons/outline/cursor-click.svg" [svgClass]="actionIconClass"></svg-icon>
+                    }
+                    {{ startLabel() }}
+                  </span>
+                </app-button>
               }
               @if (canComplete) {
-                <app-button impact="bold" tone="success" size="small" type="button" (buttonClick)="askComplete()">Complete</app-button>
+                <app-button impact="bold" tone="success" size="small" type="button" (buttonClick)="askComplete()">
+                  <span [class]="actionLabelClass">
+                    <svg-icon src="assets/icons/heroicons/outline/shield-check.svg" [svgClass]="actionIconClass"></svg-icon>
+                    Complete
+                  </span>
+                </app-button>
               }
               @if (canManage || canWork) {
-                <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="showAssignPanel = !showAssignPanel">Assign</app-button>
+                <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="showAssignPanel = !showAssignPanel">
+                  <span [class]="actionLabelClass">
+                    <svg-icon src="assets/icons/heroicons/outline/user-circle.svg" [svgClass]="actionIconClass"></svg-icon>
+                    Assign
+                  </span>
+                </app-button>
               }
               @if (canManage) {
-                <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="showPriorityPanel = !showPriorityPanel">Change Priority</app-button>
-                <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="skip()">Skip</app-button>
+                <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="showPriorityPanel = !showPriorityPanel">
+                  <span [class]="actionLabelClass">
+                    <svg-icon src="assets/icons/heroicons/outline/arrow-sm-up.svg" [svgClass]="actionIconClass"></svg-icon>
+                    Change Priority
+                  </span>
+                </app-button>
+                <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="skip()">
+                  <span [class]="actionLabelClass">
+                    <svg-icon src="assets/icons/heroicons/outline/arrow-sm-right.svg" [svgClass]="actionIconClass"></svg-icon>
+                    Skip
+                  </span>
+                </app-button>
                 <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="openJumpPanel()">
-                  Jump{{ showJumpPanel ? ' ▾' : '' }}
+                  <span [class]="actionLabelClass">
+                    <svg-icon src="assets/icons/heroicons/outline/arrow-long-right.svg" [svgClass]="actionIconClass"></svg-icon>
+                    Jump
+                  </span>
                 </app-button>
                 <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="flag()">
-                  {{ task.flagged ? 'Clear flag' : 'Flag' }}
+                  <span [class]="actionLabelClass">
+                    <svg [class]="actionIconClass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                      <line x1="4" x2="4" y1="22" y2="15" />
+                    </svg>
+                    {{ task.flagged ? 'Clear flag' : 'Flag' }}
+                  </span>
                 </app-button>
-                <app-button impact="light" tone="danger" size="small" type="button" (buttonClick)="rollback()">Rollback</app-button>
+                <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="pause()">
+                  <span [class]="actionLabelClass">
+                    <svg [class]="actionIconClass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <rect x="6" y="4" width="4" height="16" />
+                      <rect x="14" y="4" width="4" height="16" />
+                    </svg>
+                    {{ task.paused ? 'Resume' : 'Pause' }}
+                  </span>
+                </app-button>
+                <app-button impact="light" tone="danger" size="small" type="button" (buttonClick)="rollback()">
+                  <span [class]="actionLabelClass">
+                    <svg-icon src="assets/icons/heroicons/outline/refresh.svg" [svgClass]="actionIconClass"></svg-icon>
+                    Rollback
+                  </span>
+                </app-button>
               }
               @if (canTime && !timerRunning) {
-                <app-button impact="light" tone="primary" size="small" type="button" [disabled]="timerBusy" (buttonClick)="startTimer()">Start timer</app-button>
+                <app-button impact="light" tone="primary" size="small" type="button" [disabled]="timerBusy" (buttonClick)="startTimer()">
+                  <span [class]="actionLabelClass">
+                    <svg [class]="actionIconClass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 7v5l3 2" />
+                    </svg>
+                    Start timer
+                  </span>
+                </app-button>
               }
               @if (canTime && timerRunning) {
-                <app-button impact="bold" tone="warning" size="small" type="button" [disabled]="timerBusy" (buttonClick)="stopTimer()">Stop timer</app-button>
+                <app-button impact="bold" tone="warning" size="small" type="button" [disabled]="timerBusy" (buttonClick)="stopTimer()">
+                  <span [class]="actionLabelClass">
+                    <svg-icon src="assets/icons/heroicons/outline/x.svg" [svgClass]="actionIconClass"></svg-icon>
+                    Stop timer
+                  </span>
+                </app-button>
               }
             </div>
 
@@ -129,7 +194,10 @@
                   </select>
                 </label>
                 <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="assign()">
-                  {{ task.user ? 'Re-assign' : 'Assign' }}
+                  <span [class]="actionLabelClass">
+                    <svg-icon src="assets/icons/heroicons/outline/user-circle.svg" [svgClass]="actionIconClass"></svg-icon>
+                    {{ task.user ? 'Re-assign' : 'Assign' }}
+                  </span>
                 </app-button>
               </div>
             }
@@ -144,7 +212,12 @@
                     }
                   </select>
                 </label>
-                <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="changePriority()">Update</app-button>
+                <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="changePriority()">
+                  <span [class]="actionLabelClass">
+                    <svg-icon src="assets/icons/heroicons/outline/arrow-sm-up.svg" [svgClass]="actionIconClass"></svg-icon>
+                    Update
+                  </span>
+                </app-button>
               </div>
             }
 
@@ -165,7 +238,12 @@
                     </select>
                   </label>
                   <div class="mt-2">
-                    <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="jump()">Jump</app-button>
+                    <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="jump()">
+                      <span [class]="actionLabelClass">
+                        <svg-icon src="assets/icons/heroicons/outline/arrow-long-right.svg" [svgClass]="actionIconClass"></svg-icon>
+                        Jump
+                      </span>
+                    </app-button>
                   </div>
                 }
               </div>
@@ -202,9 +280,28 @@
                   <li class="border-border rounded-lg border px-3 py-2">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                       <span class="text-foreground text-sm font-semibold">{{ comment.userName }}</span>
-                      <span class="text-muted-foreground text-xs">{{ formatStamp(comment.createdAt) }}</span>
+                      <div class="flex items-center gap-2">
+                        <span class="text-muted-foreground text-xs">{{ formatStamp(comment.createdAt) }}</span>
+                        @if (canEditComment(comment)) {
+                          @if (editingCommentId === comment.id) {
+                            <button type="button" class="text-primary text-xs font-semibold" (click)="saveComment(comment)">Save</button>
+                            <button type="button" class="text-muted-foreground text-xs font-semibold" (click)="cancelEditComment()">Cancel</button>
+                          } @else {
+                            <button type="button" class="text-primary text-xs font-semibold" (click)="startEditComment(comment)">Edit</button>
+                            <button type="button" class="text-destructive text-xs font-semibold" (click)="removeComment(comment)">Delete</button>
+                          }
+                        }
+                      </div>
                     </div>
-                    <p class="text-foreground mt-1 whitespace-pre-wrap text-sm">{{ comment.content }}</p>
+                    @if (editingCommentId === comment.id) {
+                      <textarea
+                        [(ngModel)]="editingDraft"
+                        name="editComment{{ comment.id }}"
+                        rows="3"
+                        class="mt-2 w-full resize-none rounded-md border px-3 py-2 text-sm"></textarea>
+                    } @else {
+                      <p class="text-foreground mt-1 whitespace-pre-wrap text-sm">{{ comment.content }}</p>
+                    }
                   </li>
                 }
               </ul>

@@ -237,6 +237,13 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
     );
   }
 
+  pause(id: number): Observable<TaskCardModel> {
+    return this.network.patch<TicketDto>(apiPath(API.Tickets.Pause, { id })).pipe(
+      switchMap((ticket) => this.cardFromTicket(ticket)),
+      catchError(mapHttpError),
+    );
+  }
+
   rollback(id: number): Observable<TaskCardModel> {
     return this.network.patch<TicketDto>(apiPath(API.Tickets.Rollback, { id })).pipe(
       switchMap((ticket) => this.cardFromTicket(ticket)),
@@ -334,6 +341,23 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
       ),
       catchError(mapHttpError),
     );
+  }
+
+  updateComment(payload: { ticketId: number; commentId: number; content: string }): Observable<TaskComment> {
+    return this.network
+      .patch<CommentDto>(apiPath(API.Tickets.CommentById, { id: payload.ticketId, commentId: payload.commentId }), {
+        content: payload.content,
+      })
+      .pipe(
+        switchMap((row) => this.users.list().pipe(map((directory) => this.toComment(row, directory)))),
+        catchError(mapHttpError),
+      );
+  }
+
+  deleteComment(payload: { ticketId: number; commentId: number }): Observable<void> {
+    return this.network
+      .delete(apiPath(API.Tickets.CommentById, { id: payload.ticketId, commentId: payload.commentId }))
+      .pipe(map(() => undefined), catchError(mapHttpError));
   }
 
   startWork(ticketId: number): Observable<TaskWorkTime> {

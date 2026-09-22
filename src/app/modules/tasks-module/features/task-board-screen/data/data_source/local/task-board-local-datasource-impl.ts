@@ -148,6 +148,11 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
     return task ? of(this.toCard(task)).pipe(delay(80)) : throwError(() => new Error('Task not found'));
   }
 
+  pause(id: number): Observable<TaskCardModel> {
+    const task = this.store.togglePause(id);
+    return task ? of(this.toCard(task)).pipe(delay(80)) : throwError(() => new Error('Task not found'));
+  }
+
   rollback(id: number): Observable<TaskCardModel> {
     const task = this.store.rollback(id);
     if (!task) {
@@ -226,6 +231,41 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
     this.comments.set(ticketId, list);
     this.pushActivity(ticketId, 8, `${user?.name ?? 'Someone'} added a comment.`, user?.id);
     return of(comment).pipe(delay(40));
+  }
+
+  updateComment(payload: { ticketId: number; commentId: number; content: string }): Observable<TaskComment> {
+    const trimmed = payload.content.trim();
+    if (!trimmed) {
+      return throwError(() => new Error('Comment content is required'));
+    }
+    const list = this.comments.get(payload.ticketId) ?? [];
+    const index = list.findIndex((row) => row.id === payload.commentId);
+    if (index < 0) {
+      return throwError(() => new Error('Comment not found'));
+    }
+    const user = this.auth.user();
+    if (list[index].userId !== user?.id) {
+      return throwError(() => new Error('You can only edit your own comments'));
+    }
+    const updated = { ...list[index], content: trimmed };
+    list[index] = updated;
+    this.comments.set(payload.ticketId, list);
+    return of(updated).pipe(delay(40));
+  }
+
+  deleteComment(payload: { ticketId: number; commentId: number }): Observable<void> {
+    const list = this.comments.get(payload.ticketId) ?? [];
+    const index = list.findIndex((row) => row.id === payload.commentId);
+    if (index < 0) {
+      return throwError(() => new Error('Comment not found'));
+    }
+    const user = this.auth.user();
+    if (list[index].userId !== user?.id) {
+      return throwError(() => new Error('You can only delete your own comments'));
+    }
+    list.splice(index, 1);
+    this.comments.set(payload.ticketId, list);
+    return of(undefined).pipe(delay(40));
   }
 
   startWork(ticketId: number): Observable<TaskWorkTime> {

@@ -27,6 +27,7 @@ export abstract class TaskBoardRepository {
   abstract complete(id: number): Observable<TaskCardEntity>;
   abstract assign(payload: AssignTaskPayload): Observable<TaskCardEntity>;
   abstract flag(id: number): Observable<TaskCardEntity>;
+  abstract pause(id: number): Observable<TaskCardEntity>;
   abstract rollback(id: number): Observable<TaskCardEntity>;
   abstract skip(id: number): Observable<TaskCardEntity>;
   abstract jump(payload: JumpTaskPayload): Observable<TaskCardEntity>;
@@ -37,6 +38,8 @@ export abstract class TaskBoardRepository {
   abstract listTaskBank(): Observable<{ id: number; name: string }[]>;
   abstract listComments(ticketId: number): Observable<TaskComment[]>;
   abstract addComment(ticketId: number, content: string): Observable<TaskComment>;
+  abstract updateComment(payload: { ticketId: number; commentId: number; content: string }): Observable<TaskComment>;
+  abstract deleteComment(payload: { ticketId: number; commentId: number }): Observable<void>;
   abstract startWork(ticketId: number): Observable<TaskWorkTime>;
   abstract stopWork(ticketId: number): Observable<TaskWorkTime>;
 }

@@ -29,6 +29,7 @@ export abstract class TaskBoardRemoteDataSource {
   abstract complete(id: number): Observable<TaskCardModel>;
   abstract assign(payload: AssignTaskPayload): Observable<TaskCardModel>;
   abstract flag(id: number): Observable<TaskCardModel>;
+  abstract pause(id: number): Observable<TaskCardModel>;
   abstract rollback(id: number): Observable<TaskCardModel>;
   abstract skip(id: number): Observable<TaskCardModel>;
   abstract jump(payload: JumpTaskPayload): Observable<TaskCardModel>;
@@ -39,6 +40,8 @@ export abstract class TaskBoardRemoteDataSource {
   abstract listTaskBank(): Observable<{ id: number; name: string }[]>;
   abstract listComments(ticketId: number): Observable<TaskComment[]>;
   abstract addComment(ticketId: number, content: string): Observable<TaskComment>;
+  abstract updateComment(payload: { ticketId: number; commentId: number; content: string }): Observable<TaskComment>;
+  abstract deleteComment(payload: { ticketId: number; commentId: number }): Observable<void>;
   abstract startWork(ticketId: number): Observable<TaskWorkTime>;
   abstract stopWork(ticketId: number): Observable<TaskWorkTime>;
 }
