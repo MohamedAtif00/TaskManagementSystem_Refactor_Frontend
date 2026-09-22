@@ -1,0 +1,30 @@
+<app-page-header [title]="sprintName()" subtitle="Sprint task distribution">
+  <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="sprintsPath">Back to sprints</a>
+</app-page-header>
+
+@if (loading()) {
+  <app-chart-skeleton />
+} @else {
+  <div class="grid gap-6 lg:grid-cols-2">
+    <section class="border-border/60 bg-card rounded-xl border p-4">
+      <h3 class="text-foreground mb-3 text-base font-semibold">Tasks by status</h3>
+      <apx-chart
+        [series]="pieSeries"
+        [labels]="pieLabels"
+        [chart]="pieChart"
+        [colors]="pieColors"
+        [legend]="pieLegend"
+        [dataLabels]="pieDataLabels"></apx-chart>
+    </section>
+    <section class="border-border/60 bg-card rounded-xl border p-4">
+      <h3 class="text-foreground mb-3 text-base font-semibold">Tasks per learning objective</h3>
+      <apx-chart
+        [series]="barSeries"
+        [chart]="barChart"
+        [xaxis]="barXaxis"
+        [colors]="barColors"
+        [plotOptions]="barPlot"
+        [dataLabels]="barDataLabels"></apx-chart>
+    </section>
+  </div>
+}

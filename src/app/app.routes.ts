@@ -49,6 +49,11 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./modules/workflows-module/workflows.routes').then((m) => m.WORKFLOWS_ROUTES),
       },
+      {
+        path: 'reports',
+        loadChildren: () =>
+          import('./modules/reports-module/reports.routes').then((m) => m.REPORTS_ROUTES),
+      },
     ],
   },
   {

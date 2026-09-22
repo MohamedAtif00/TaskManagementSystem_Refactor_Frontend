@@ -1,0 +1,44 @@
+<app-page-header title="Subject summaries" subtitle="Matrix of LO status counts per subject">
+  <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="reportsPath + '/project-overview'">Project overview</a>
+</app-page-header>
+
+@if (loading()) {
+  <app-table-skeleton [rows]="10" [columns]="7" />
+} @else {
+  <div class="border-border/60 bg-card shadow-sm overflow-hidden rounded-xl border">
+    <table class="text-muted-foreground table w-full table-auto border-collapse text-left text-sm">
+      <thead class="border-border border-b text-xs">
+        <tr>
+          <th class="px-4 py-3">Subject</th>
+          <th class="px-4 py-3">Project</th>
+          <th class="px-4 py-3">Idle</th>
+          <th class="px-4 py-3">Running</th>
+          <th class="px-4 py-3">Done</th>
+          <th class="px-4 py-3">Total</th>
+          <th class="px-4 py-3">Analytics</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr class="border-border/60 hover:bg-muted/30 border-b last:border-b-0">
+            <td class="text-foreground px-4 py-3 font-semibold">{{ row.name }}</td>
+            <td class="px-4 py-3">{{ row.projectName }}</td>
+            <td class="px-4 py-3">{{ row.idle }}</td>
+            <td class="px-4 py-3">{{ row.running }}</td>
+            <td class="px-4 py-3">{{ row.done }}</td>
+            <td class="px-4 py-3">{{ row.total }}</td>
+            <td class="px-4 py-3">
+              <a class="text-primary text-sm font-semibold hover:underline" [routerLink]="analyticsPath(row.id)">
+                Charts ({{ row.progressPercent }}%)
+              </a>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td class="text-muted-foreground px-4 py-10 text-center" colspan="7">No subjects found</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
