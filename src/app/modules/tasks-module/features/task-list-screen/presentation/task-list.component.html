@@ -1,4 +1,6 @@
-<app-page-header title="Kanban" subtitle="Subjects with year and term path filters"></app-page-header>
+<app-page-header title="Kanban" subtitle="Subjects with year and term path filters">
+  <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="exportCsv()">Export CSV</app-button>
+</app-page-header>
 
 <div class="mb-4 flex flex-wrap gap-3">
   <input type="search" class="max-w-sm" placeholder="Search subjects" [(ngModel)]="search" (ngModelChange)="load()" />

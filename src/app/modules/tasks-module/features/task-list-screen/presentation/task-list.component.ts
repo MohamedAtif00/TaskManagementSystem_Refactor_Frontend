@@ -2,6 +2,8 @@ import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
+import { downloadCsv } from '@core/utils/csv-export';
+import { ButtonComponent } from '@shared/component/button/button.component';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
@@ -11,7 +13,7 @@ import { TaskListUseCase } from '../domain/usecase/task-list.usecase';
 
 @Component({
   selector: 'app-task-list',
-  imports: [FormsModule, PageHeaderComponent, TableSkeletonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './task-list.component.html',
 })
 export class TaskListComponent implements OnInit {
@@ -60,5 +62,22 @@ export class TaskListComponent implements OnInit {
     const preferred = localStorage.getItem('tasks:view');
     const path = preferred === 'sheet' ? ROUTE_PATHS.taskSheet(row.id) : ROUTE_PATHS.taskBoard(row.id);
     void this.router.navigateByUrl(path);
+  }
+
+  exportCsv(): void {
+    const rows = this.rows();
+    if (!rows.length) {
+      toast.error('Nothing to export');
+      return;
+    }
+    downloadCsv('subjects.csv', rows, [
+      { header: 'Name', value: (row) => row.name },
+      { header: 'Path', value: (row) => row.folderPath },
+      { header: 'Year', value: (row) => row.year },
+      { header: 'Term', value: (row) => row.term },
+      { header: 'Status', value: (row) => row.status },
+      { header: 'Progress %', value: (row) => row.progressPercent },
+    ]);
+    toast.success('Subjects exported');
   }
 }
