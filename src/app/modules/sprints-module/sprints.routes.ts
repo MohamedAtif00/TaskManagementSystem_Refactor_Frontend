@@ -3,6 +3,7 @@ import { roleGuard } from '@core/guards/role.guard';
 import { PermissionCodes } from '@core/models/permission-codes';
 import { ADMIN_ROLES } from '@core/models/user-role';
 import { TASK_BOARD_DI_CONTAINER } from '@modules/tasks-module/features/task-board-screen/di_container';
+import { TASK_SHEET_DI_CONTAINER } from '@modules/tasks-module/features/task-sheet-screen/di_container';
 import { SPRINT_LIST_DI_CONTAINER } from './features/sprint-list-screen/di_container';
 
 export const SPRINTS_ROUTES: Routes = [
@@ -34,6 +35,16 @@ export const SPRINTS_ROUTES: Routes = [
     loadComponent: () =>
       import('@modules/tasks-module/features/task-board-screen/presentation/task-board.component').then(
         (m) => m.TaskBoardComponent,
+      ),
+  },
+  {
+    path: ':sprintId/sheet',
+    canActivate: [roleGuard],
+    data: { permissions: [PermissionCodes.Tickets.Read] },
+    providers: TASK_SHEET_DI_CONTAINER,
+    loadComponent: () =>
+      import('@modules/tasks-module/features/task-sheet-screen/presentation/task-sheet.component').then(
+        (m) => m.TaskSheetComponent,
       ),
   },
 ];

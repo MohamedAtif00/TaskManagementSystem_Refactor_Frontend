@@ -1,9 +1,10 @@
 @if (loading()) {
   <app-table-skeleton [rows]="8" [columns]="4" />
 } @else if (sheet(); as current) {
-  <app-page-header [title]="current.name" subtitle="Curriculum sheet">
+  <app-page-header [title]="current.name" [subtitle]="sheetSubtitle()">
     <app-lo-code-display-toggle />
-    <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="tasksPath">Back to list</a>
+    <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="backLink()">Back to list</a>
+    <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="exportSheet()">Export CSV</app-button>
     <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="goBoard()">Board View</app-button>
   </app-page-header>
 

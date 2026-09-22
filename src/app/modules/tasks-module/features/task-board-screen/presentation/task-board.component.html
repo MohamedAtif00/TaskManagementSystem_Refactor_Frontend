@@ -4,9 +4,7 @@
   <app-page-header [title]="current.name" [subtitle]="source === 'project' ? 'Project board' : 'Sprint board'">
     <app-lo-code-display-toggle />
     <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="backLink()">Back to list</a>
-    @if (source === 'project') {
-      <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="goSheet()">Sheet View</app-button>
-    }
+    <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="goSheet()">Sheet View</app-button>
     @if (canCreate()) {
       <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">New Task</app-button>
     }

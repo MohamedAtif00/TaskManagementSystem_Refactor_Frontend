@@ -274,11 +274,12 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   }
 
   goSheet(): void {
-    if (this.source !== 'project') {
+    if (this.source === 'project') {
+      localStorage.setItem('tasks:view', 'sheet');
+      void this.router.navigateByUrl(ROUTE_PATHS.taskSheet(this.entityId));
       return;
     }
-    localStorage.setItem('tasks:view', 'sheet');
-    void this.router.navigateByUrl(ROUTE_PATHS.taskSheet(this.entityId));
+    void this.router.navigateByUrl(ROUTE_PATHS.sprintSheet(this.entityId));
   }
 
   private loadBoardPage(): void {

@@ -1,15 +1,16 @@
 import { NgClass } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toast } from 'ngx-sonner';
 import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
+import { downloadCsv } from '@core/utils/csv-export';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { LoCodeDisplayToggleComponent } from '@shared/component/lo-code-display-toggle/lo-code-display-toggle.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import { LoCodeLabelPipe } from '@shared/pipes/lo-code-label.pipe';
-import { TaskDetailsEntity, TaskStatus } from '../../task-board-screen/domain/entity/task-board.entity';
+import { BoardSource, TaskDetailsEntity, TaskStatus, TASK_STATUS_LABELS } from '../../task-board-screen/domain/entity/task-board.entity';
 import { GetTaskDetailsUseCase } from '../../task-board-screen/domain/usecase/get-task-details.usecase';
 import { TaskDrawerComponent } from '../../task-board-screen/presentation/task-drawer.component';
 import { TaskSheetEntity } from '../domain/entity/task-sheet.entity';
@@ -22,11 +23,18 @@ import { GetTaskSheetUseCase } from '../domain/usecase/get-task-sheet.usecase';
 })
 export class TaskSheetComponent implements OnInit {
   readonly loDisplay = inject(LoCodeDisplayService);
-  projectId = 0;
-  readonly tasksPath = ROUTE_PATHS.tasks;
   readonly loading = signal(true);
   readonly sheet = signal<TaskSheetEntity | null>(null);
   readonly selected = signal<TaskDetailsEntity | null>(null);
+
+  source: BoardSource = 'project';
+  entityId = 0;
+
+  readonly backLink = computed(() => (this.source === 'project' ? ROUTE_PATHS.tasks : ROUTE_PATHS.sprints));
+  readonly sheetSubtitle = computed(() => (this.source === 'project' ? 'Curriculum sheet' : 'Sprint sheet'));
+  readonly boardPath = computed(() =>
+    this.source === 'project' ? ROUTE_PATHS.taskBoard(this.entityId) : ROUTE_PATHS.sprintBoard(this.entityId),
+  );
 
   constructor(
     private route: ActivatedRoute,
@@ -36,14 +44,19 @@ export class TaskSheetComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.projectId = Number(this.route.snapshot.paramMap.get('projectId'));
-    localStorage.setItem('tasks:view', 'sheet');
+    const projectId = this.route.snapshot.paramMap.get('projectId');
+    const sprintId = this.route.snapshot.paramMap.get('sprintId');
+    this.source = projectId ? 'project' : 'sprint';
+    this.entityId = Number(projectId ?? sprintId);
+    if (this.source === 'project') {
+      localStorage.setItem('tasks:view', 'sheet');
+    }
     this.load();
   }
 
   load(): void {
     this.loading.set(true);
-    this.sheetUseCase.execute(this.projectId).subscribe({
+    this.sheetUseCase.execute({ source: this.source, id: this.entityId }).subscribe({
       next: (sheet) => {
         this.sheet.set(sheet);
         this.loading.set(false);
@@ -85,8 +98,43 @@ export class TaskSheetComponent implements OnInit {
     }
   }
 
+  exportSheet(): void {
+    const current = this.sheet();
+    if (!current) {
+      toast.error('Nothing to export');
+      return;
+    }
+    const rows = current.units.flatMap((unit) =>
+      unit.lessons.flatMap((lesson) =>
+        lesson.learningObjectives.flatMap((lo) =>
+          lo.tasks.map((task) => ({
+            unit: unit.name,
+            lesson: lesson.name,
+            lo: lo.name,
+            task: task.name,
+            status: TASK_STATUS_LABELS[task.status],
+            assignee: task.user?.name ?? '',
+          })),
+        ),
+      ),
+    );
+    if (!rows.length) {
+      toast.error('No tasks to export');
+      return;
+    }
+    downloadCsv(`${current.name}-sheet.csv`, rows, [
+      { header: 'Unit', value: (row) => row.unit },
+      { header: 'Lesson', value: (row) => row.lesson },
+      { header: 'Learning objective', value: (row) => row.lo },
+      { header: 'Task', value: (row) => row.task },
+      { header: 'Status', value: (row) => row.status },
+      { header: 'Assignee', value: (row) => row.assignee },
+    ]);
+    toast.success('Sheet exported');
+  }
+
   private refreshSheet(): void {
-    this.sheetUseCase.execute(this.projectId).subscribe({
+    this.sheetUseCase.execute({ source: this.source, id: this.entityId }).subscribe({
       next: (sheet) => this.sheet.set(sheet),
       error: (err: Error) => toast.error(err.message),
     });
@@ -97,7 +145,9 @@ export class TaskSheetComponent implements OnInit {
   }
 
   goBoard(): void {
-    localStorage.setItem('tasks:view', 'board');
-    void this.router.navigateByUrl(ROUTE_PATHS.taskBoard(this.projectId));
+    if (this.source === 'project') {
+      localStorage.setItem('tasks:view', 'board');
+    }
+    void this.router.navigateByUrl(this.boardPath());
   }
 }

@@ -11,8 +11,9 @@ export class TaskSheetLocalDataSourceImpl extends TaskSheetLocalDataSource {
     super();
   }
 
-  getSheet(projectId: number): Observable<TaskSheetModel> {
-    const sheet = this.store.sheetFor(projectId);
+  getSheet(params: { source: 'project' | 'sprint'; id: number }): Observable<TaskSheetModel> {
+    const sheet =
+      params.source === 'project' ? this.store.sheetFor(params.id) : this.store.sprintSheetFor(params.id);
     return sheet ? of(sheet).pipe(delay(120)) : throwError(() => new Error('Sheet not found'));
   }
 }
