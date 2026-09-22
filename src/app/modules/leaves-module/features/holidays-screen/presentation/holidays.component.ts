@@ -5,15 +5,17 @@ import { PermissionCodes } from '@core/models/permission-codes';
 import { AuthService } from '@core/services/auth.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import { HolidayEntity, HolidayFormPayload } from '../domain/entity/holidays.entity';
 import { DeleteHolidayUseCase, ListHolidaysUseCase, SaveHolidayUseCase } from '../domain/usecase/holidays.usecase';
 
 @Component({
   selector: 'app-holidays',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './holidays.component.html',
 })
 export class HolidaysComponent implements OnInit {
+  readonly loading = signal(true);
   readonly rows = signal<HolidayEntity[]>([]);
   readonly showForm = signal(false);
   readonly confirm = signal<{ id: number; name: string; dates: string } | null>(null);
@@ -35,9 +37,16 @@ export class HolidaysComponent implements OnInit {
   }
 
   load(): void {
+    this.loading.set(true);
     this.listUseCase.execute().subscribe({
-      next: (rows) => this.rows.set(rows),
-      error: (err: Error) => toast.error(err.message),
+      next: (rows) => {
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
     });
   }
 

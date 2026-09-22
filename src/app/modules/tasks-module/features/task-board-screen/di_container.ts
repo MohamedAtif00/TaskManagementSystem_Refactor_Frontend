@@ -6,6 +6,7 @@ import { TaskBoardRemoteDataSourceImpl } from './data/data_source/remote/task-bo
 import { TaskBoardLocalDataSource } from './data/data_source/local/task-board-local-datasource';
 import { TaskBoardLocalDataSourceImpl } from './data/data_source/local/task-board-local-datasource-impl';
 import { GetTaskBoardUseCase } from './domain/usecase/get-task-board.usecase';
+import { GetTaskBoardPageUseCase } from './domain/usecase/get-task-board-page.usecase';
 import { GetTaskColumnPageUseCase } from './domain/usecase/get-task-column-page.usecase';
 import { GetTaskDetailsUseCase } from './domain/usecase/get-task-details.usecase';
 import { ProceedTaskUseCase } from './domain/usecase/proceed-task.usecase';
@@ -19,12 +20,18 @@ import { ListCommentsUseCase } from './domain/usecase/list-comments.usecase';
 import { AddCommentUseCase } from './domain/usecase/add-comment.usecase';
 import { StartWorkUseCase } from './domain/usecase/start-work.usecase';
 import { StopWorkUseCase } from './domain/usecase/stop-work.usecase';
+import { SkipTaskUseCase } from './domain/usecase/skip-task.usecase';
+import { JumpTaskUseCase } from './domain/usecase/jump-task.usecase';
+import { ChangePriorityUseCase } from './domain/usecase/change-priority.usecase';
+import { ListJumpPointsUseCase } from './domain/usecase/list-jump-points.usecase';
+import { ListActivityUseCase } from './domain/usecase/list-activity.usecase';
 
 export const TASK_BOARD_DI_CONTAINER: Provider[] = [
   { provide: TaskBoardRepository, useClass: TaskBoardImplementationRepository },
   { provide: TaskBoardRemoteDataSource, useClass: TaskBoardRemoteDataSourceImpl },
   { provide: TaskBoardLocalDataSource, useClass: TaskBoardLocalDataSourceImpl },
   GetTaskBoardUseCase,
+  GetTaskBoardPageUseCase,
   GetTaskColumnPageUseCase,
   GetTaskDetailsUseCase,
   ProceedTaskUseCase,
@@ -38,4 +45,9 @@ export const TASK_BOARD_DI_CONTAINER: Provider[] = [
   AddCommentUseCase,
   StartWorkUseCase,
   StopWorkUseCase,
+  SkipTaskUseCase,
+  JumpTaskUseCase,
+  ChangePriorityUseCase,
+  ListJumpPointsUseCase,
+  ListActivityUseCase,
 ];

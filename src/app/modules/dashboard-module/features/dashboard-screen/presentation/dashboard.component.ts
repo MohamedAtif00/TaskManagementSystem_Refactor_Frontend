@@ -14,17 +14,27 @@ import { UserRole } from '@core/models/user-role';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { StatCardComponent } from '@shared/component/stat-card/stat-card.component';
 import { ChartCardComponent } from '@shared/component/chart-card/chart-card.component';
+import { ChartSkeletonComponent } from '@shared/component/skeleton/chart-skeleton.component';
+import { StatCardsSkeletonComponent } from '@shared/component/skeleton/stat-cards-skeleton.component';
 import { DashboardEntity } from '../domain/entity/dashboard.entity';
 import { DashboardUseCase } from '../domain/usecase/dashboard.usecase';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [NgApexchartsModule, PageHeaderComponent, StatCardComponent, ChartCardComponent],
+  imports: [
+    NgApexchartsModule,
+    PageHeaderComponent,
+    StatCardComponent,
+    ChartCardComponent,
+    StatCardsSkeletonComponent,
+    ChartSkeletonComponent,
+  ],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit {
   readonly UserRole = UserRole;
   readonly showOverdue = environment.useMock;
+  readonly loading = signal(true);
   readonly data = signal<DashboardEntity | null>(null);
 
   pieSeries: ApexNonAxisChartSeries = [];
@@ -48,15 +58,27 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.load();
+  }
+
+  load(): void {
     const user = this.authService.user();
     if (!user || user.role === undefined) {
+      this.loading.set(false);
       return;
     }
 
-    this.dashboardUseCase.execute({ role: user.role, userId: user.id }).subscribe((result) => {
-      this.data.set(result);
-      this.buildCharts(result);
-      this.cdr.markForCheck();
+    this.loading.set(true);
+    this.dashboardUseCase.execute({ role: user.role, userId: user.id }).subscribe({
+      next: (result) => {
+        this.data.set(result);
+        this.buildCharts(result);
+        this.loading.set(false);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loading.set(false);
+      },
     });
   }
 

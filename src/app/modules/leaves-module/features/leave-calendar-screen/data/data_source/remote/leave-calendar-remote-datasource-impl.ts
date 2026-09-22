@@ -2,7 +2,7 @@ import { HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import { ForgotClockRequestResponse } from '@core/api/tms-contracts';
+import { BulkOpinionResponse, ForgotClockRequestResponse } from '@core/api/tms-contracts';
 import { API, apiPath } from '@core/network/api/api.const';
 import { hoursBetween, lastComment } from '@core/network/hr-map';
 import { mapHttpError } from '@core/network/http-error';
@@ -10,6 +10,7 @@ import { NetworkService } from '@core/network/network.service';
 import { DirectoryUser, UserDirectoryService } from '@core/network/user-directory.service';
 import {
   BulkDecidePayload,
+  BulkOpinionResult,
   DecidePayload,
   LeaveKind,
   LeaveQueueFilters,
@@ -97,9 +98,9 @@ export class LeaveCalendarRemoteDataSourceImpl extends LeaveCalendarRemoteDataSo
     );
   }
 
-  bulkDecide(payload: BulkDecidePayload): Observable<void> {
-    return this.network.post(this.bulkUrl(payload.kind), this.bulkBody(payload)).pipe(
-      map(() => undefined),
+  bulkDecide(payload: BulkDecidePayload): Observable<BulkOpinionResult> {
+    return this.network.post<BulkOpinionResponse>(this.bulkUrl(payload.kind), this.bulkBody(payload)).pipe(
+      map((result) => this.toBulkResult(payload.kind, result)),
       catchError(mapHttpError),
     );
   }
@@ -250,5 +251,21 @@ export class LeaveCalendarRemoteDataSourceImpl extends LeaveCalendarRemoteDataSo
     if (payload.kind === 'permission') return { permissionIds: payload.ids, isApproved, comment };
     if (payload.kind === 'forgotClock') return { forgotClockRequestIds: payload.ids, isApproved, comment };
     return { workFromHomeRequestIds: payload.ids, isApproved, comment };
+  }
+
+  private toBulkResult(kind: LeaveKind, result: BulkOpinionResponse): BulkOpinionResult {
+    const failedIds =
+      kind === 'leave'
+        ? result.failedLeaveRequestIds
+        : kind === 'permission'
+          ? result.failedPermissionIds
+          : kind === 'wfh'
+            ? result.failedWorkFromHomeRequestIds
+            : result.failedForgotClockRequestIds;
+    return {
+      succeeded: result.succeeded,
+      failed: result.failed,
+      failedIds,
+    };
   }
 }

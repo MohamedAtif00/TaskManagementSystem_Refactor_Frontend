@@ -4,19 +4,21 @@ import { Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import { TaskSubjectEntity } from '../domain/entity/task-list.entity';
 import { TaskFilterOptionsUseCase } from '../domain/usecase/task-filter-options.usecase';
 import { TaskListUseCase } from '../domain/usecase/task-list.usecase';
 
 @Component({
   selector: 'app-task-list',
-  imports: [FormsModule, PageHeaderComponent],
+  imports: [FormsModule, PageHeaderComponent, TableSkeletonComponent],
   templateUrl: './task-list.component.html',
 })
 export class TaskListComponent implements OnInit {
   search = '';
   year = '';
   term = '';
+  readonly loading = signal(true);
   readonly years = signal<string[]>([]);
   readonly terms = signal<string[]>([]);
   readonly rows = signal<TaskSubjectEntity[]>([]);
@@ -39,9 +41,19 @@ export class TaskListComponent implements OnInit {
   }
 
   load(): void {
+    this.loading.set(true);
     this.taskListUseCase
       .execute({ search: this.search, year: this.year, term: this.term })
-      .subscribe((rows) => this.rows.set(rows));
+      .subscribe({
+        next: (rows) => {
+          this.rows.set(rows);
+          this.loading.set(false);
+        },
+        error: (err: Error) => {
+          this.loading.set(false);
+          toast.error(err.message);
+        },
+      });
   }
 
   openBoard(row: TaskSubjectEntity): void {

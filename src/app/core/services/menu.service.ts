@@ -13,6 +13,7 @@ export class MenuService implements OnDestroy {
   private _showSidebar = signal(true);
   private _showMobileMenu = signal(false);
   private _pagesMenu = signal<MenuItem[]>([]);
+  private _navbarMenu = signal<MenuItem[]>([]);
   private _subscription = new Subscription();
   private currentRole: UserRole | null = null;
   private currentPermissions: string[] = [];
@@ -35,6 +36,9 @@ export class MenuService implements OnDestroy {
   get pagesMenu() {
     return this._pagesMenu();
   }
+  get navbarMenu() {
+    return this._navbarMenu();
+  }
 
   set showSideBar(value: boolean) {
     this._showSidebar.set(value);
@@ -50,7 +54,9 @@ export class MenuService implements OnDestroy {
   public applyAccess(role: UserRole | null, permissions: string[] = []): void {
     this.currentRole = role;
     this.currentPermissions = permissions;
-    this._pagesMenu.set(this.filterByAccess(Menu.pages, role, permissions));
+    const accessible = this.filterByAccess(Menu.pages, role, permissions);
+    this._pagesMenu.set(this.filterBySurface(accessible, 'sidebar'));
+    this._navbarMenu.set(this.filterBySurface(accessible, 'navbar'));
     this.markActive();
   }
 
@@ -78,6 +84,23 @@ export class MenuService implements OnDestroy {
 
   public toggleSubMenu(submenu: SubMenuItem) {
     submenu.expanded = !submenu.expanded;
+  }
+
+  private filterBySurface(pages: MenuItem[], surface: 'sidebar' | 'navbar'): MenuItem[] {
+    const visible = (item: SubMenuItem): boolean =>
+      surface === 'sidebar' ? item.showInSidebar !== false : item.showInNavbar !== false;
+
+    return pages
+      .map((group) => ({
+        ...group,
+        items: group.items
+          .filter(visible)
+          .map((item) => ({
+            ...item,
+            children: item.children?.filter(visible),
+          })),
+      }))
+      .filter((group) => group.items.length > 0);
   }
 
   private filterByAccess(pages: MenuItem[], role: UserRole | null, permissions: string[]): MenuItem[] {

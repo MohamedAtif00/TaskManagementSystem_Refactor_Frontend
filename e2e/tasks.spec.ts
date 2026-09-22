@@ -18,9 +18,9 @@ test.describe('Tasks / Kanban', () => {
 
     await expect(page.getByRole('heading', { name: 'Kanban', exact: true })).toBeVisible();
 
-    await expect(page.getByText('Algebra')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Algebra' }).first()).toBeVisible();
 
-    await page.getByRole('row', { name: /Algebra/ }).click();
+    await page.getByRole('row', { name: /Algebra/ }).first().click();
 
     await expect(page).toHaveURL(/\/tasks\/11\/board/);
 
@@ -42,7 +42,7 @@ test.describe('Tasks / Kanban', () => {
 
     await page.locator('select').nth(1).selectOption('Term 1');
 
-    await expect(page.getByText('Algebra')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Algebra' }).first()).toBeVisible();
 
   });
 
@@ -88,32 +88,69 @@ test.describe('Tasks / Kanban', () => {
 
 
 
-  test('opens task drawer from a card', async ({ page }) => {
+  test('loads board with a single ticket page request', async ({ page }) => {
+    const ticketRequests: string[] = [];
+    page.on('request', (request) => {
+      const url = request.url();
+      if (url.includes('/subjects/11/tickets')) {
+        ticketRequests.push(url);
+      }
+    });
 
+    await page.goto('/tasks/11/board');
+
+    await expect(page.getByText('Draft linear worksheet')).toBeVisible();
+    expect(ticketRequests.length).toBe(1);
+    expect(ticketRequests[0]).toMatch(/page=1/);
+    expect(ticketRequests[0]).not.toMatch(/status=/);
+  });
+
+  test('opens centered task modal from a card', async ({ page }) => {
     await page.goto('/tasks/11/board');
 
     await page.getByRole('button', { name: 'Draft linear worksheet' }).click();
 
-    await expect(page.getByRole('dialog')).toBeVisible();
-
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
     await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
 
+    const box = await dialog.boundingBox();
+    const viewport = page.viewportSize();
+    if (box && viewport) {
+      const dialogCenterX = box.x + box.width / 2;
+      const viewportCenterX = viewport.width / 2;
+      expect(Math.abs(dialogCenterX - viewportCenterX)).toBeLessThan(viewport.width * 0.15);
+    }
   });
 
 
 
-  test('drawer shows task details', async ({ page }) => {
-
+  test('task modal shows task details', async ({ page }) => {
     await page.goto('/tasks/11/board');
 
     await page.getByRole('button', { name: 'Draft linear worksheet' }).click();
 
-    await expect(page.getByRole('dialog')).toBeVisible();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
 
-    await expect(page.getByText('Solve linear equations')).toBeVisible();
+    await expect(dialog.getByText('Solve linear equations').first()).toBeVisible();
+    await expect(dialog.getByText('Backlog').first()).toBeVisible();
+    await expect(dialog.getByText('Recent Activity')).toBeVisible();
+    await expect(dialog.getByText('Draft linear worksheet was created.')).toBeVisible();
+    await expect(dialog.getByText('45')).toBeVisible();
+  });
 
-    await expect(page.getByText('Backlog')).toBeVisible();
+  test('task modal is wider than compact dialog', async ({ page }) => {
+    await page.goto('/tasks/11/board');
+    await page.getByRole('button', { name: 'Draft linear worksheet' }).click();
 
+    const dialog = page.getByRole('dialog');
+    const box = await dialog.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box && viewport).toBeTruthy();
+    if (box && viewport) {
+      expect(box.width).toBeGreaterThan(viewport.width * 0.55);
+    }
   });
 
 });

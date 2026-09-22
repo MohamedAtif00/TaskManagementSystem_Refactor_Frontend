@@ -2,7 +2,14 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '@environments/environment';
-import { BulkDecidePayload, DecidePayload, LeaveKind, LeaveQueueFilters, LeaveQueueItem } from '../../domain/entity/leave-calendar.entity';
+import {
+  BulkDecidePayload,
+  BulkOpinionResult,
+  DecidePayload,
+  LeaveKind,
+  LeaveQueueFilters,
+  LeaveQueueItem,
+} from '../../domain/entity/leave-calendar.entity';
 import { LeaveCalendarRepository } from '../../domain/repository/leave-calendar.repository';
 import { LeaveCalendarLocalDataSource } from '../data_source/local/leave-calendar-local-datasource';
 import { LeaveCalendarRemoteDataSource } from '../data_source/remote/leave-calendar-remote-datasource';
@@ -33,7 +40,7 @@ export class LeaveCalendarImplementationRepository implements LeaveCalendarRepos
     return environment.useMock ? this.local.decide(payload) : this.remote.decide(payload);
   }
 
-  bulkDecide(payload: BulkDecidePayload): Observable<void> {
+  bulkDecide(payload: BulkDecidePayload): Observable<BulkOpinionResult> {
     return environment.useMock ? this.local.bulkDecide(payload) : this.remote.bulkDecide(payload);
   }
 }

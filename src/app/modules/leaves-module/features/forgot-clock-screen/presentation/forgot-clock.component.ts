@@ -1,8 +1,11 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
+import { formatWorkDayTime, isWithinWorkDay } from '@core/hr/work-day-hours';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
+import { WorkDayTimePickerComponent } from '@shared/component/work-day-time-picker/work-day-time-picker.component';
 import { CreateForgotClockForm, ForgotClockEntity, ForgotClockPunchType } from '../domain/entity/forgot-clock.entity';
 import {
   CancelForgotClockUseCase,
@@ -12,14 +15,16 @@ import {
 
 @Component({
   selector: 'app-forgot-clock',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, WorkDayTimePickerComponent, TableSkeletonComponent],
   templateUrl: './forgot-clock.component.html',
 })
 export class ForgotClockComponent implements OnInit {
+  readonly loading = signal(true);
   readonly rows = signal<ForgotClockEntity[]>([]);
   readonly showForm = signal(false);
   readonly confirm = signal<{ id: number; label: string; dates: string } | null>(null);
   formError = '';
+  readonly formatTime = formatWorkDayTime;
   punchType: ForgotClockPunchType = 'In';
   attendanceDate = '';
   intendedTime = '09:00';
@@ -36,9 +41,16 @@ export class ForgotClockComponent implements OnInit {
   }
 
   load(): void {
+    this.loading.set(true);
     this.listUseCase.execute().subscribe({
-      next: (rows) => this.rows.set(rows),
-      error: (err: Error) => toast.error(err.message),
+      next: (rows) => {
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
     });
   }
 
@@ -54,6 +66,10 @@ export class ForgotClockComponent implements OnInit {
   save(): void {
     if (!this.attendanceDate) {
       this.formError = 'Date is required';
+      return;
+    }
+    if (!isWithinWorkDay(this.intendedTime)) {
+      this.formError = 'Intended time must be between 9:00 AM and 5:00 PM';
       return;
     }
     const payload: CreateForgotClockForm = {
@@ -79,7 +95,7 @@ export class ForgotClockComponent implements OnInit {
     this.confirm.set({
       id: row.id,
       label: row.punchType === 'In' ? 'Clock in' : 'Clock out',
-      dates: `${row.attendanceDate} · ${row.intendedTime}`,
+      dates: `${row.attendanceDate} · ${formatWorkDayTime(row.intendedTime)}`,
     });
   }
 

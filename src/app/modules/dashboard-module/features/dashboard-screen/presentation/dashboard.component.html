@@ -1,5 +1,14 @@
 <app-page-header title="Dashboard" [subtitle]="'Welcome back, ' + (authService.user()?.name ?? '')"></app-page-header>
 
+@if (loading()) {
+  <div class="mb-4">
+    <app-stat-cards-skeleton [count]="4" />
+  </div>
+  <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+    <app-chart-skeleton />
+    <app-chart-skeleton />
+  </div>
+} @else {
 @if (data()?.projectManager; as pm) {
   <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
     <app-stat-card label="Users" [value]="pm.numberOfUsers" icon="assets/icons/heroicons/outline/users.svg" hint="Active people"></app-stat-card>
@@ -120,4 +129,5 @@
       <app-stat-card label="Overdue" [value]="mine.overdueTasks" icon="assets/icons/heroicons/outline/exclamation-triangle.svg"></app-stat-card>
     }
   </div>
+}
 }

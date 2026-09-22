@@ -1,22 +1,30 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import {
+  JumpPoint,
+  TaskActivity,
   TaskComment,
   TaskDetailsEntity,
   TaskIdName,
+  TaskPriority,
   TaskWorkTime,
   TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
 } from '../domain/entity/task-board.entity';
 import { AddCommentUseCase } from '../domain/usecase/add-comment.usecase';
 import { AssignTaskUseCase } from '../domain/usecase/assign-task.usecase';
+import { ChangePriorityUseCase } from '../domain/usecase/change-priority.usecase';
 import { CompleteTaskUseCase } from '../domain/usecase/complete-task.usecase';
 import { FlagTaskUseCase } from '../domain/usecase/flag-task.usecase';
+import { JumpTaskUseCase } from '../domain/usecase/jump-task.usecase';
+import { ListActivityUseCase } from '../domain/usecase/list-activity.usecase';
+import { ListJumpPointsUseCase } from '../domain/usecase/list-jump-points.usecase';
 import { RollbackTaskUseCase } from '../domain/usecase/rollback-task.usecase';
 import { ListCommentsUseCase } from '../domain/usecase/list-comments.usecase';
 import { ProceedTaskUseCase } from '../domain/usecase/proceed-task.usecase';
+import { SkipTaskUseCase } from '../domain/usecase/skip-task.usecase';
 import { StartWorkUseCase } from '../domain/usecase/start-work.usecase';
 import { StopWorkUseCase } from '../domain/usecase/stop-work.usecase';
 
@@ -33,21 +41,43 @@ export class TaskDrawerComponent implements OnChanges {
 
   readonly statusLabels = TASK_STATUS_LABELS;
   readonly priorityLabels = TASK_PRIORITY_LABELS;
+  readonly priorityOptions = [
+    { value: 0 as TaskPriority, label: 'None' },
+    { value: 1 as TaskPriority, label: 'Low' },
+    { value: 2 as TaskPriority, label: 'Medium' },
+    { value: 3 as TaskPriority, label: 'High' },
+  ];
+
   assignUserId = '';
+  priorityChoice: TaskPriority = 0;
+  jumpStepId = 0;
   confirmComplete = false;
+  showAssignPanel = false;
+  showPriorityPanel = false;
+  showJumpPanel = false;
   comments: TaskComment[] = [];
+  activities: TaskActivity[] = [];
+  jumpPoints: JumpPoint[] = [];
   draft = '';
   commentsBusy = false;
+  activityBusy = false;
+  jumpPointsBusy = false;
   timerBusy = false;
   timerRunning = false;
   lastWork: TaskWorkTime | null = null;
 
   constructor(
+    private cdr: ChangeDetectorRef,
     private proceedUseCase: ProceedTaskUseCase,
     private completeUseCase: CompleteTaskUseCase,
     private assignUseCase: AssignTaskUseCase,
     private flagUseCase: FlagTaskUseCase,
     private rollbackUseCase: RollbackTaskUseCase,
+    private skipUseCase: SkipTaskUseCase,
+    private jumpUseCase: JumpTaskUseCase,
+    private changePriorityUseCase: ChangePriorityUseCase,
+    private listJumpPointsUseCase: ListJumpPointsUseCase,
+    private listActivityUseCase: ListActivityUseCase,
     private listCommentsUseCase: ListCommentsUseCase,
     private addCommentUseCase: AddCommentUseCase,
     private startWorkUseCase: StartWorkUseCase,
@@ -58,10 +88,13 @@ export class TaskDrawerComponent implements OnChanges {
     if (changes['task'] && this.task) {
       const previous = changes['task'].previousValue as TaskDetailsEntity | undefined;
       if (previous?.id !== this.task.id) {
-        this.draft = '';
-        this.timerRunning = false;
-        this.lastWork = null;
+        this.resetPanels();
+        this.priorityChoice = this.task.priority;
         this.loadComments();
+        this.loadActivity();
+      } else {
+        this.priorityChoice = this.task.priority;
+        this.loadActivity();
       }
     }
   }
@@ -91,7 +124,7 @@ export class TaskDrawerComponent implements OnChanges {
   }
 
   statusBadgeClass(): string {
-    const base = 'rounded-full border-2 px-4 py-1 text-sm font-semibold shadow-sm';
+    const base = 'inline-flex rounded-full border-2 px-4 py-1 text-sm font-semibold shadow-sm';
     switch (this.task.status) {
       case 1:
         return `${base} border-blue-300 bg-blue-500 text-white`;
@@ -177,6 +210,7 @@ export class TaskDrawerComponent implements OnChanges {
     this.assignUseCase.execute({ taskId: this.task.id, userId }).subscribe({
       next: () => {
         toast.success('Assigned');
+        this.showAssignPanel = false;
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),
@@ -203,6 +237,71 @@ export class TaskDrawerComponent implements OnChanges {
     });
   }
 
+  skip(): void {
+    this.skipUseCase.execute(this.task.id).subscribe({
+      next: () => {
+        toast.success('Skipped');
+        this.changed.emit();
+      },
+      error: (err: Error) => toast.error(err.message),
+    });
+  }
+
+  openJumpPanel(): void {
+    const opening = !this.showJumpPanel;
+    this.showJumpPanel = opening;
+    if (!opening) {
+      return;
+    }
+    this.loadJumpPoints();
+  }
+
+  private loadJumpPoints(force = false): void {
+    if (this.jumpPointsBusy || (!force && this.jumpPoints.length)) {
+      return;
+    }
+    this.jumpPointsBusy = true;
+    this.listJumpPointsUseCase.execute(this.task.id).subscribe({
+      next: (points) => {
+        this.jumpPoints = points;
+        this.jumpStepId = points[0]?.stepId ?? 0;
+        this.jumpPointsBusy = false;
+        this.cdr.markForCheck();
+      },
+      error: (err: Error) => {
+        this.jumpPointsBusy = false;
+        this.cdr.markForCheck();
+        toast.error(err.message);
+      },
+    });
+  }
+
+  jump(): void {
+    if (!this.jumpStepId) {
+      toast.error('Pick a step');
+      return;
+    }
+    this.jumpUseCase.execute({ taskId: this.task.id, stepId: this.jumpStepId }).subscribe({
+      next: () => {
+        toast.success('Jumped');
+        this.showJumpPanel = false;
+        this.changed.emit();
+      },
+      error: (err: Error) => toast.error(err.message),
+    });
+  }
+
+  changePriority(): void {
+    this.changePriorityUseCase.execute({ taskId: this.task.id, priority: this.priorityChoice }).subscribe({
+      next: () => {
+        toast.success('Priority updated');
+        this.showPriorityPanel = false;
+        this.changed.emit();
+      },
+      error: (err: Error) => toast.error(err.message),
+    });
+  }
+
   loadComments(): void {
     this.commentsBusy = true;
     this.listCommentsUseCase.execute(this.task.id).subscribe({
@@ -212,6 +311,20 @@ export class TaskDrawerComponent implements OnChanges {
       },
       error: (err: Error) => {
         this.commentsBusy = false;
+        toast.error(err.message);
+      },
+    });
+  }
+
+  loadActivity(): void {
+    this.activityBusy = true;
+    this.listActivityUseCase.execute(this.task.id).subscribe({
+      next: (rows) => {
+        this.activities = rows;
+        this.activityBusy = false;
+      },
+      error: (err: Error) => {
+        this.activityBusy = false;
         toast.error(err.message);
       },
     });
@@ -228,6 +341,7 @@ export class TaskDrawerComponent implements OnChanges {
         this.draft = '';
         toast.success('Comment added');
         this.loadComments();
+        this.loadActivity();
       },
       error: (err: Error) => toast.error(err.message),
     });
@@ -271,5 +385,17 @@ export class TaskDrawerComponent implements OnChanges {
         toast.error(err.message);
       },
     });
+  }
+
+  private resetPanels(): void {
+    this.draft = '';
+    this.assignUserId = '';
+    this.jumpStepId = 0;
+    this.showAssignPanel = false;
+    this.showPriorityPanel = false;
+    this.showJumpPanel = false;
+    this.timerRunning = false;
+    this.lastWork = null;
+    this.jumpPoints = [];
   }
 }

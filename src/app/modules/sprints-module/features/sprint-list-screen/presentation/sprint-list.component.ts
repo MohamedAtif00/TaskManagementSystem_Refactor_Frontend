@@ -9,6 +9,7 @@ import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { AuthService } from '@core/services/auth.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import {
   SprintEntity,
   SprintFormPayload,
@@ -23,11 +24,12 @@ import { SprintSubjectsUseCase } from '../domain/usecase/sprint-subjects.usecase
 
 @Component({
   selector: 'app-sprint-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './sprint-list.component.html',
 })
 export class SprintListComponent implements OnInit {
   archived = false;
+  readonly loading = signal(true);
   readonly rows = signal<SprintEntity[]>([]);
   readonly subjects = signal<SprintSubjectOption[]>([]);
   readonly availableLos = signal<SprintLoOption[]>([]);
@@ -60,7 +62,17 @@ export class SprintListComponent implements OnInit {
   }
 
   load(): void {
-    this.listUseCase.execute({ archived: this.archived }).subscribe((rows) => this.rows.set(rows));
+    this.loading.set(true);
+    this.listUseCase.execute({ archived: this.archived }).subscribe({
+      next: (rows) => {
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
+    });
   }
 
   setTab(archived: boolean): void {

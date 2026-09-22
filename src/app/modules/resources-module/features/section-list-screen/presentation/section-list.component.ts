@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import { SectionEntity, SectionFormOptions, SectionFormPayload } from '../domain/entity/section-list.entity';
 import { ArchiveSectionUseCase } from '../domain/usecase/archive-section.usecase';
 import { SaveSectionUseCase } from '../domain/usecase/save-section.usecase';
@@ -11,11 +12,12 @@ import { SectionListUseCase } from '../domain/usecase/section-list.usecase';
 
 @Component({
   selector: 'app-section-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './section-list.component.html',
 })
 export class SectionListComponent implements OnInit {
   formError = '';
+  readonly loading = signal(true);
   readonly rows = signal<SectionEntity[]>([]);
   readonly options = signal<SectionFormOptions>({ heads: [], teams: [] });
   readonly showForm = signal(false);
@@ -35,7 +37,17 @@ export class SectionListComponent implements OnInit {
   }
 
   load(): void {
-    this.listUseCase.execute().subscribe((rows) => this.rows.set(rows));
+    this.loading.set(true);
+    this.listUseCase.execute().subscribe({
+      next: (rows) => {
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
+    });
   }
 
   openCreate(): void {

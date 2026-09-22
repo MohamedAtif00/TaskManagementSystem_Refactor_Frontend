@@ -3,6 +3,7 @@ import { toast } from 'ngx-sonner';
 import { AuthService } from '@core/services/auth.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { FormSkeletonComponent } from '@shared/component/skeleton/form-skeleton.component';
 import { NotificationEntity, NotificationPage } from '../domain/entity/notification-inbox.entity';
 import { ListNotificationsUseCase } from '../domain/usecase/list-notifications.usecase';
 import { MarkAllNotificationsReadUseCase } from '../domain/usecase/mark-all-notifications-read.usecase';
@@ -10,10 +11,11 @@ import { MarkNotificationReadUseCase } from '../domain/usecase/mark-notification
 
 @Component({
   selector: 'app-notification-inbox',
-  imports: [PageHeaderComponent, ButtonComponent],
+  imports: [PageHeaderComponent, ButtonComponent, FormSkeletonComponent],
   templateUrl: './notification-inbox.component.html',
 })
 export class NotificationInboxComponent implements OnInit {
+  readonly loading = signal(true);
   readonly page = signal<NotificationPage | null>(null);
   unreadOnly = false;
 
@@ -29,14 +31,19 @@ export class NotificationInboxComponent implements OnInit {
   }
 
   load(): void {
+    this.loading.set(true);
     this.listUseCase
       .execute({ page: 1, pageSize: 50, isRead: this.unreadOnly ? false : undefined })
       .subscribe({
         next: (page) => {
           this.page.set(page);
           this.auth.setUnreadNotifications(page.items.filter((item) => !item.isRead).length);
+          this.loading.set(false);
         },
-        error: (err: Error) => toast.error(err.message),
+        error: (err: Error) => {
+          this.loading.set(false);
+          toast.error(err.message);
+        },
       });
   }
 

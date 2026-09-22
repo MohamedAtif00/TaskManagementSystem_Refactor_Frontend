@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import { TeamEntity, TeamFormPayload, TeamLeaderOption, TeamMemberOption } from '../domain/entity/team-list.entity';
 import { ArchiveTeamUseCase } from '../domain/usecase/archive-team.usecase';
 import { GetTeamUseCase } from '../domain/usecase/get-team.usecase';
@@ -13,11 +14,12 @@ import { TeamMemberOptionsUseCase } from '../domain/usecase/team-member-options.
 
 @Component({
   selector: 'app-team-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './team-list.component.html',
 })
 export class TeamListComponent implements OnInit {
   formError = '';
+  readonly loading = signal(true);
   readonly rows = signal<TeamEntity[]>([]);
   readonly memberOptions = signal<TeamMemberOption[]>([]);
   readonly leaderOptions = signal<TeamLeaderOption[]>([]);
@@ -47,7 +49,17 @@ export class TeamListComponent implements OnInit {
   }
 
   load(): void {
-    this.listUseCase.execute().subscribe((rows) => this.rows.set(rows));
+    this.loading.set(true);
+    this.listUseCase.execute().subscribe({
+      next: (rows) => {
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
+    });
   }
 
   openCreate(): void {

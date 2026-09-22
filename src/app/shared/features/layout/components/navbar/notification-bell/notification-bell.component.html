@@ -1,0 +1,72 @@
+@if (canSeeNotifications) {
+  <div class="relative" clickOutside (clickOutside)="closePopover()">
+    <button
+      type="button"
+      (click)="togglePopover()"
+      class="text-muted-foreground hover:text-foreground relative inline-flex items-center p-2"
+      [attr.aria-expanded]="isOpen()"
+      aria-label="Notifications">
+      <svg-icon src="assets/icons/heroicons/outline/bell.svg" [svgClass]="'h-5 w-5'"></svg-icon>
+      @if (auth.unreadNotifications() > 0) {
+        <span class="bg-destructive text-destructive-foreground absolute -top-0.5 -right-0.5 min-w-4 rounded-full px-1 text-[10px] font-bold leading-4">
+          {{ auth.unreadNotifications() }}
+        </span>
+      }
+    </button>
+
+    @if (isOpen()) {
+      <div
+        class="bg-card shadow-custom border-border absolute z-30 mt-2 w-80 origin-top-right rounded-md border py-2 ring-1 ring-transparent ltr:right-0 rtl:left-0 sm:w-96">
+        <div class="flex items-center justify-between border-border border-b px-4 py-2">
+          <p class="text-foreground text-sm font-semibold">Notifications</p>
+          @if (items().length > 0) {
+            <button
+              type="button"
+              (click)="markAllRead($event)"
+              class="text-primary hover:text-primary/80 text-xs font-semibold">
+              Mark all read
+            </button>
+          }
+        </div>
+
+        <div class="max-h-80 overflow-y-auto">
+          @if (loading()) {
+            <p class="text-muted-foreground px-4 py-6 text-center text-sm">Loading…</p>
+          } @else {
+            @for (row of items(); track row.id) {
+              <div
+                class="border-border hover:bg-muted/40 flex cursor-pointer items-start justify-between gap-3 border-b px-4 py-3 last:border-b-0"
+                (click)="openNotification(row, $event)">
+                <div class="min-w-0 flex-1">
+                  <p class="text-foreground truncate text-sm font-semibold">{{ row.title }}</p>
+                  <p class="text-muted-foreground mt-0.5 line-clamp-2 text-xs">{{ row.message }}</p>
+                  <p class="text-muted-foreground mt-1 text-[10px]">
+                    <span class="bg-muted/60 rounded px-1.5 py-0.5 uppercase">{{ row.category }}</span>
+                    · {{ row.createdAt | date: 'short' }}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  (click)="markRead(row, $event)"
+                  class="text-primary shrink-0 text-xs font-semibold">
+                  Mark read
+                </button>
+              </div>
+            } @empty {
+              <p class="text-muted-foreground px-4 py-8 text-center text-sm">No unread notifications</p>
+            }
+          }
+        </div>
+
+        <div class="border-border border-t px-4 py-2">
+          <button
+            type="button"
+            (click)="viewAll()"
+            class="text-primary hover:text-primary/80 w-full text-center text-xs font-semibold">
+            View all notifications
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+}

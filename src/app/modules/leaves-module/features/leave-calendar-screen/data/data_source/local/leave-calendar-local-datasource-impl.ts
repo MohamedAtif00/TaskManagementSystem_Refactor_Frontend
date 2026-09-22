@@ -4,6 +4,7 @@ import { delay } from 'rxjs/operators';
 import { LeaveListFilters, TmsMockStore } from '@core/mock/tms-mock.store';
 import {
   BulkDecidePayload,
+  BulkOpinionResult,
   DecidePayload,
   LeaveKind,
   LeaveQueueFilters,
@@ -42,11 +43,26 @@ export class LeaveCalendarLocalDataSourceImpl extends LeaveCalendarLocalDataSour
     }
   }
 
-  bulkDecide(payload: BulkDecidePayload): Observable<void> {
+  bulkDecide(payload: BulkDecidePayload): Observable<BulkOpinionResult> {
+    let succeeded = 0;
+    let failed = 0;
+    const failedIds: number[] = [];
     for (const id of payload.ids) {
-      this.decide({ kind: payload.kind, id, approved: payload.approved, comment: payload.comment });
+      try {
+        if (payload.kind === 'leave') {
+          this.store.decideLeave(id, payload.approved, payload.comment);
+        } else if (payload.kind === 'permission') {
+          this.store.decidePermission(id, payload.approved, payload.comment);
+        } else if (payload.kind === 'wfh') {
+          this.store.decideWfh(id, payload.approved, payload.comment);
+        }
+        succeeded++;
+      } catch {
+        failed++;
+        failedIds.push(id);
+      }
     }
-    return of(undefined).pipe(delay(80));
+    return of({ succeeded, failed, failedIds }).pipe(delay(80));
   }
 
   private mapKind(

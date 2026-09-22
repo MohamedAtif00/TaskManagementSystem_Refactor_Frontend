@@ -1,5 +1,8 @@
 <app-page-header title="Members Leaves" subtitle="Organization leave balances"></app-page-header>
 
+@if (loading()) {
+  <app-table-skeleton [rows]="8" [columns]="6" />
+} @else {
 <div class="border-border/60 bg-card shadow-sm flex min-w-full flex-col rounded-xl border p-2">
   <div class="grow overflow-x-auto px-5">
     <table class="text-muted-foreground table w-full table-auto border-collapse text-left text-sm">
@@ -30,3 +33,4 @@
     </table>
   </div>
 </div>
+}

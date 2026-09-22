@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import { ProjectFormPayload, ProjectRootEntity } from '../domain/entity/project-list.entity';
 import { ArchiveProjectUseCase } from '../domain/usecase/archive-project.usecase';
 import { GetProjectUseCase } from '../domain/usecase/get-project.usecase';
@@ -12,12 +13,13 @@ import { SaveProjectUseCase } from '../domain/usecase/save-project.usecase';
 
 @Component({
   selector: 'app-project-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './project-list.component.html',
 })
 export class ProjectListComponent implements OnInit {
   search = '';
   formError = '';
+  readonly loading = signal(true);
   readonly rows = signal<ProjectRootEntity[]>([]);
   readonly years = signal<{ id: number; name: string }[]>([]);
   readonly showForm = signal(false);
@@ -41,7 +43,17 @@ export class ProjectListComponent implements OnInit {
   }
 
   load(): void {
-    this.projectListUseCase.execute({ search: this.search }).subscribe((rows) => this.rows.set(rows));
+    this.loading.set(true);
+    this.projectListUseCase.execute({ search: this.search }).subscribe({
+      next: (rows) => {
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
+    });
   }
 
   openCreate(): void {

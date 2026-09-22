@@ -41,3 +41,9 @@ export interface BulkDecidePayload {
   approved: boolean;
   comment?: string;
 }
+
+export interface BulkOpinionResult {
+  succeeded: number;
+  failed: number;
+  failedIds?: number[];
+}

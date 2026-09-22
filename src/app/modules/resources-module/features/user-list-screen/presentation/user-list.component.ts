@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import {
   UserFormOptions,
   UserFormPayload,
@@ -16,12 +17,13 @@ import { UserListUseCase } from '../domain/usecase/user-list.usecase';
 
 @Component({
   selector: 'app-user-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './user-list.component.html',
 })
 export class UserListComponent implements OnInit {
   search = '';
   formError = '';
+  readonly loading = signal(true);
   readonly rows = signal<UserListItemEntity[]>([]);
   readonly options = signal<UserFormOptions>({ roles: [], teams: [] });
   readonly showForm = signal(false);
@@ -42,7 +44,17 @@ export class UserListComponent implements OnInit {
   }
 
   load(): void {
-    this.userListUseCase.execute({ search: this.search }).subscribe((rows) => this.rows.set(rows));
+    this.loading.set(true);
+    this.userListUseCase.execute({ search: this.search }).subscribe({
+      next: (rows) => {
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
+    });
   }
 
   openCreate(): void {

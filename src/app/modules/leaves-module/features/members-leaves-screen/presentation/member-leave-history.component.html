@@ -1,4 +1,9 @@
-@if (history(); as current) {
+@if (loading()) {
+  <div class="mb-4">
+    <app-stat-cards-skeleton [count]="4" />
+  </div>
+  <app-table-skeleton [rows]="6" [columns]="4" />
+} @else if (history(); as current) {
   <app-page-header [title]="current.user.name" [subtitle]="current.user.code + ' · leave history'">
     <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="membersPath">Back to members</a>
   </app-page-header>

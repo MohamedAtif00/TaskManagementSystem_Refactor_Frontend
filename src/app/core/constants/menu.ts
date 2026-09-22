@@ -15,10 +15,11 @@ export class Menu {
           route: ROUTE_PATHS.dashboard,
         },
         {
-          icon: 'assets/icons/heroicons/outline/bell.svg',
-          label: 'Notifications',
+          icon: 'assets/icons/heroicons/outline/inbox.svg',
+          label: 'Inbox',
           route: ROUTE_PATHS.notifications,
           permissions: [PermissionCodes.Notifications.Read],
+          showInNavbar: false,
         },
       ],
     },
@@ -55,7 +56,7 @@ export class Menu {
           ],
           permissions: [PermissionCodes.HrLeave.Update, PermissionCodes.HrLeave.Manage],
           children: [
-            { label: 'Calendar', route: ROUTE_PATHS.leaveCalendar },
+            { label: 'Approvals', route: ROUTE_PATHS.leaveCalendar },
             { label: 'My Leaves', route: ROUTE_PATHS.myLeaves },
             {
               label: 'Members Leaves',
@@ -76,12 +77,6 @@ export class Menu {
           route: ROUTE_PATHS.myLeaves,
           roles: [UserRole.Member],
           permissions: [PermissionCodes.HrLeave.Create],
-        },
-        {
-          icon: 'assets/icons/heroicons/outline/clock.svg',
-          label: 'Forgot clock',
-          route: ROUTE_PATHS.forgotClock,
-          permissions: [PermissionCodes.HrForgotClock.Read],
         },
       ],
     },

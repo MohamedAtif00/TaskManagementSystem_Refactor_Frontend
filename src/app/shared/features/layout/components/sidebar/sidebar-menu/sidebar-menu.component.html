@@ -33,6 +33,11 @@
                   routerLinkActive="text-primary"
                   class="truncate text-xs font-semibold tracking-wide focus:outline-hidden">
                   {{ item.label }}
+                  @if (item.route === notificationsPath && auth.unreadNotifications() > 0) {
+                    <span class="bg-destructive text-destructive-foreground ms-1.5 inline-flex min-w-4 rounded-full px-1 text-[10px] font-bold leading-4">
+                      {{ auth.unreadNotifications() }}
+                    </span>
+                  }
                 </a>
               </div>
             </ng-template>

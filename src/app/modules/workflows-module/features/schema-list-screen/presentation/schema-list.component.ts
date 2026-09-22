@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import {
   NodeFormPayload,
   SchemaEntity,
@@ -26,7 +27,7 @@ import { SchemaTypesUseCase } from '../domain/usecase/schema-types.usecase';
 
 @Component({
   selector: 'app-schema-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './schema-list.component.html',
 })
 export class SchemaListComponent implements OnInit {
@@ -36,6 +37,7 @@ export class SchemaListComponent implements OnInit {
     { id: 2, label: 'Medium' },
     { id: 3, label: 'Low' },
   ];
+  readonly loading = signal(true);
   readonly rows = signal<SchemaEntity[]>([]);
   readonly types = signal<SchemaTypeOption[]>([]);
   readonly bank = signal<SchemaTaskBankOption[]>([]);
@@ -70,9 +72,16 @@ export class SchemaListComponent implements OnInit {
   }
 
   load(): void {
+    this.loading.set(true);
     this.listUseCase.execute().subscribe({
-      next: (rows) => this.rows.set(rows),
-      error: (err: Error) => toast.error(err.message),
+      next: (rows) => {
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
     });
   }
 

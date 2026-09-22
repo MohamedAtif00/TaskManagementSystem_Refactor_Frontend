@@ -1,7 +1,7 @@
-<div class="bg-background relative">
+<div class="bg-background relative border-b border-border">
   <div class="mx-auto px-5">
-    <div class="flex items-center justify-between py-3.5 md:justify-start">
-      <div class="sm:order-1 md:hidden">
+    <div class="flex items-center justify-between py-3.5">
+      <div class="flex items-center gap-3 lg:hidden">
         <button
           (click)="toggleMobileMenu()"
           type="button"
@@ -10,30 +10,14 @@
           <span class="sr-only">Open menu</span>
           <svg-icon src="assets/icons/heroicons/outline/menu.svg" [svgClass]="'h-6 w-6'"></svg-icon>
         </button>
-      </div>
-
-      <div class="flex items-center justify-start gap-3 sm:order-2 ltr:md:mr-10 rtl:md:ml-10 lg:hidden">
         <a class="bg-primary flex items-center justify-center rounded-sm p-2 focus:outline-hidden focus:ring-1">
           <svg-icon src="assets/icons/logo.svg"></svg-icon>
         </a>
         <b class="text-foreground hidden text-sm font-bold sm:block">TMS</b>
       </div>
 
-      <div class="hidden space-x-10 sm:order-3 md:flex">
-        <app-navbar-menu></app-navbar-menu>
-      </div>
-
-      <div class="items-center justify-end gap-3 sm:order-4 md:flex md:flex-1 lg:w-0">
-        @if (canSeeNotifications) {
-          <a [routerLink]="notificationsPath" class="text-muted-foreground hover:text-foreground relative inline-flex items-center p-2">
-            <svg-icon src="assets/icons/heroicons/outline/bell.svg" [svgClass]="'h-5 w-5'"></svg-icon>
-            @if (auth.unreadNotifications() > 0) {
-              <span class="bg-destructive text-destructive-foreground absolute -top-0.5 -right-0.5 min-w-4 rounded-full px-1 text-[10px] font-bold leading-4">
-                {{ auth.unreadNotifications() }}
-              </span>
-            }
-          </a>
-        }
+      <div class="ms-auto flex items-center gap-3">
+        <app-notification-bell></app-notification-bell>
         <app-profile-menu></app-profile-menu>
       </div>
     </div>

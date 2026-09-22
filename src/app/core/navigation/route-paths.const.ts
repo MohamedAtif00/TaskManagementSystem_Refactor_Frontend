@@ -22,6 +22,6 @@ export const ROUTE_PATHS = {
   taskBank: '/workflows/task-bank',
   notifications: '/notifications',
   holidays: '/leaves/holidays',
-  forgotClock: '/leaves/forgot-clock',
+  forgotClock: '/leaves/mine',
   notFound: '/errors/404',
 } as const;

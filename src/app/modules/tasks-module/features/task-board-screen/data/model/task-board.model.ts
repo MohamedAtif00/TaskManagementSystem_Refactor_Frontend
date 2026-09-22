@@ -1,6 +1,14 @@
-import { TaskBoardEntity, TaskCardEntity, TaskColumnPageEntity, TaskDetailsEntity, TaskIdName } from '../../domain/entity/task-board.entity';
+import {
+  TaskBoardEntity,
+  TaskBoardPageEntity,
+  TaskCardEntity,
+  TaskColumnPageEntity,
+  TaskDetailsEntity,
+  TaskIdName,
+} from '../../domain/entity/task-board.entity';
 
 export type TaskBoardModel = TaskBoardEntity;
+export type TaskBoardPageModel = TaskBoardPageEntity;
 export type TaskCardModel = TaskCardEntity;
 export type TaskColumnPageModel = TaskColumnPageEntity;
 export type TaskDetailsModel = Omit<TaskDetailsEntity, 'access'> & { access?: TaskDetailsEntity['access'] };
@@ -25,6 +33,15 @@ export class TaskBoardMapper {
     };
   }
 
+  static toBoardPage(model: TaskBoardPageModel): TaskBoardPageEntity {
+    return {
+      items: model.items.map((card) => this.toCard(card)),
+      page: model.page,
+      pageSize: model.pageSize,
+      totalCount: model.totalCount,
+    };
+  }
+
   static toCard(model: TaskCardModel): TaskCardEntity {
     return {
       ...model,
@@ -39,6 +56,9 @@ export class TaskBoardMapper {
       subjectId: model.subjectId,
       subjectName: model.subjectName,
       attention: model.attention,
+      duration: model.duration ?? 0,
+      tl: model.tl,
+      isReview: model.isReview,
       createdAt: model.createdAt,
       startedAt: model.startedAt,
       doneAt: model.doneAt,

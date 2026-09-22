@@ -34,10 +34,38 @@ export interface TaskDetailsEntity extends TaskCardEntity {
   subjectId: number;
   subjectName: string;
   attention: boolean;
+  duration: number;
+  tl?: boolean;
+  isReview?: boolean;
   createdAt: string;
   startedAt: string | null;
   doneAt: string | null;
   access: TaskAccess;
+}
+
+export interface TaskActivity {
+  id: number;
+  type: number;
+  message: string;
+  createdAt: string;
+  userId?: number | null;
+  userName?: string;
+}
+
+export interface JumpPoint {
+  stepId: number;
+  nodeId: number;
+  label: string;
+}
+
+export interface ChangePriorityPayload {
+  taskId: number;
+  priority: TaskPriority;
+}
+
+export interface JumpTaskPayload {
+  taskId: number;
+  stepId: number;
 }
 
 export interface TaskBoardParams {
@@ -56,6 +84,23 @@ export interface TaskColumnPageParams {
 }
 
 export interface TaskColumnPageEntity {
+  items: TaskCardEntity[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface TaskBoardPageParams {
+  source: BoardSource;
+  id: number;
+  page: number;
+  pageSize: number;
+  learningObjectiveId?: number;
+  name?: string;
+  users?: TaskIdName[];
+}
+
+export interface TaskBoardPageEntity {
   items: TaskCardEntity[];
   page: number;
   pageSize: number;

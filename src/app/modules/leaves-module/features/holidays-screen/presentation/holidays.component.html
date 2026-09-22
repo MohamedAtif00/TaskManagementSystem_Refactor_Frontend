@@ -4,6 +4,9 @@
   }
 </app-page-header>
 
+@if (loading()) {
+  <app-table-skeleton [rows]="8" [columns]="4" />
+} @else {
 <div class="border-muted/20 bg-background overflow-x-auto rounded-xl border">
   <table class="text-muted-foreground w-full table-auto text-left text-sm">
     <thead class="border-muted/20 border-b text-xs">
@@ -33,6 +36,7 @@
     </tbody>
   </table>
 </div>
+}
 
 @if (showForm()) {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">

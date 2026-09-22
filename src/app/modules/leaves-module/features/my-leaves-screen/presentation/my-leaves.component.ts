@@ -3,10 +3,22 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { toast } from 'ngx-sonner';
 import { AuthService } from '@core/services/auth.service';
+import {
+  formatWorkDayTime,
+  isValidWorkDayRange,
+  isWithinEarlyDepartureSlot,
+  isWithinLateArrivalSlot,
+  isWithinWorkDay,
+  WORK_DAY_END,
+  WORK_DAY_START,
+} from '@core/hr/work-day-hours';
 import { countWorkingDays } from '@core/hr/working-days';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { StatCardComponent } from '@shared/component/stat-card/stat-card.component';
+import { StatCardsSkeletonComponent } from '@shared/component/skeleton/stat-cards-skeleton.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
+import { WorkDayTimePickerComponent } from '@shared/component/work-day-time-picker/work-day-time-picker.component';
 import {
   ForgotClockPunchType,
   ForgotClockRequestEntity,
@@ -52,12 +64,21 @@ const PUNCH_TYPE_LABELS: Record<ForgotClockPunchType, string> = {
 
 @Component({
   selector: 'app-my-leaves',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent, StatCardComponent],
+  imports: [
+    FormsModule,
+    PageHeaderComponent,
+    ButtonComponent,
+    StatCardComponent,
+    WorkDayTimePickerComponent,
+    StatCardsSkeletonComponent,
+    TableSkeletonComponent,
+  ],
   templateUrl: './my-leaves.component.html',
 })
 export class MyLeavesComponent implements OnInit, OnDestroy {
   tab: LeaveKind = 'leave';
   formKind: LeaveKind = 'leave';
+  readonly loading = signal(true);
   readonly data = signal<MyLeavesEntity | null>(null);
   readonly showForm = signal(false);
   readonly confirm = signal<{ kind: LeaveKind; id: number; label: string; dates: string } | null>(null);
@@ -89,6 +110,7 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
   readonly leaveTypeLabels = LEAVE_TYPE_LABELS;
   readonly permissionTypeLabels = PERMISSION_TYPE_LABELS;
   readonly punchTypeLabels = PUNCH_TYPE_LABELS;
+  readonly formatTime = formatWorkDayTime;
 
   readonly upcomingLeaves = computed(() => this.splitLeaves(true));
   readonly earlierLeaves = computed(() => this.splitLeaves(false));
@@ -117,9 +139,20 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
   load(): void {
     const userId = this.auth.user()?.id;
     if (!userId) {
+      this.loading.set(false);
       return;
     }
-    this.getMine.execute(userId).subscribe((data) => this.data.set(data));
+    this.loading.set(true);
+    this.getMine.execute(userId).subscribe({
+      next: (data) => {
+        this.data.set(data);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
+    });
   }
 
   ratio(used: number, max: number): string {
@@ -156,6 +189,10 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
     return `${day} ${MONTHS[month - 1]} ${year}`;
   }
 
+  formatTimeRange(fromTime: string, toTime: string): string {
+    return `${formatWorkDayTime(fromTime)}–${formatWorkDayTime(toTime)}`;
+  }
+
   formatRange(start: string, end: string): string {
     if (start === end) {
       return this.formatDate(start);
@@ -184,7 +221,9 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
       return `${hours} hour${hours === 1 ? '' : 's'}`;
     }
     if (this.formKind === 'forgotClock') {
-      return this.forgotDate ? `${this.punchTypeLabels[this.punchType]} · ${this.forgotTime}` : '';
+      return this.forgotDate
+        ? `${this.punchTypeLabels[this.punchType]} · ${formatWorkDayTime(this.forgotTime)}`
+        : '';
     }
     return this.wfhDate ? '1 day' : '';
   }
@@ -230,8 +269,7 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
     this.leaveReason = '';
     this.permissionType = 'EarlyDeparture';
     this.permissionDate = '';
-    this.fromTime = '09:00';
-    this.toTime = '11:00';
+    this.resetPermissionTimes();
     this.permissionReason = '';
     this.wfhDate = '';
     this.wfhNote = '';
@@ -245,6 +283,25 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
     this.lastPreviewKey = '';
     this.previewSub?.unsubscribe();
     this.showForm.set(true);
+  }
+
+  onPermissionTypeChange(): void {
+    this.resetPermissionTimes();
+  }
+
+  resetPermissionTimes(): void {
+    if (this.permissionType === 'EarlyDeparture') {
+      this.fromTime = '15:00';
+      this.toTime = WORK_DAY_END;
+      return;
+    }
+    if (this.permissionType === 'LateArrival') {
+      this.fromTime = WORK_DAY_START;
+      this.toTime = '10:00';
+      return;
+    }
+    this.fromTime = WORK_DAY_START;
+    this.toTime = '11:00';
   }
 
   onMedicalSelected(event: Event): void {
@@ -336,6 +393,11 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
         this.formError = 'Date is required';
         return;
       }
+      const permissionError = this.validatePermissionTimes();
+      if (permissionError) {
+        this.formError = permissionError;
+        return;
+      }
       this.createPermission
         .execute({
           userId,
@@ -366,6 +428,10 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
     }
     if (!this.forgotDate) {
       this.formError = 'Date is required';
+      return;
+    }
+    if (!isWithinWorkDay(this.forgotTime)) {
+      this.formError = 'Intended time must be between 9:00 AM and 5:00 PM';
       return;
     }
     this.createForgotClock
@@ -440,6 +506,24 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
 
   private today(): string {
     return new Date().toISOString().slice(0, 10);
+  }
+
+  private validatePermissionTimes(): string {
+    if (this.permissionType === 'EarlyDeparture') {
+      this.toTime = WORK_DAY_END;
+      if (!isWithinEarlyDepartureSlot(this.fromTime)) {
+        return 'Leaving time must be between 1:00 PM and 4:00 PM';
+      }
+    } else if (this.permissionType === 'LateArrival') {
+      this.fromTime = WORK_DAY_START;
+      if (!isWithinLateArrivalSlot(this.toTime)) {
+        return 'Arrival time must be between 10:00 AM and 1:00 PM';
+      }
+    }
+    if (!isValidWorkDayRange(this.fromTime, this.toTime)) {
+      return 'Choose a valid time range within work hours (9:00 AM – 5:00 PM)';
+    }
+    return '';
   }
 
   private hoursBetween(fromTime: string, toTime: string): number {

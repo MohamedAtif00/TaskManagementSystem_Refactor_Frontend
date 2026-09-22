@@ -4,6 +4,9 @@
   </app-button>
 </app-page-header>
 
+@if (loading()) {
+  <app-table-skeleton [rows]="8" [columns]="7" />
+} @else {
 <div class="border-border/60 bg-card shadow-sm flex min-w-full flex-col rounded-xl border p-2">
   <div class="scrollbar-thumb-rounded scrollbar-track-rounded scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted grow overflow-x-auto px-5">
     <table class="text-muted-foreground table w-full table-auto border-collapse border-0 text-left align-middle leading-5">
@@ -47,6 +50,7 @@
     </table>
   </div>
 </div>
+}
 
 @if (showForm()) {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">

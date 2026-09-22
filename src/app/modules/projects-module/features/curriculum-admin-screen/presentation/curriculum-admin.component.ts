@@ -5,6 +5,7 @@ import { toast } from 'ngx-sonner';
 import { SUBJECT_STATUS_LABELS } from '@core/models/role-map';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TreeSkeletonComponent } from '@shared/component/skeleton/tree-skeleton.component';
 import {
   CurriculumKind,
   CurriculumNode,
@@ -43,10 +44,11 @@ const KIND_LABEL: Record<CurriculumKind, string> = {
 
 @Component({
   selector: 'app-curriculum-admin',
-  imports: [FormsModule, NgTemplateOutlet, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, NgTemplateOutlet, PageHeaderComponent, ButtonComponent, TreeSkeletonComponent],
   templateUrl: './curriculum-admin.component.html',
 })
 export class CurriculumAdminComponent implements OnInit {
+  readonly loading = signal(true);
   readonly nodes = signal<CurriculumNode[]>([]);
   readonly openKeys = signal<Set<string>>(new Set());
   readonly schemas = signal<CurriculumSchemaOption[]>([]);
@@ -81,13 +83,18 @@ export class CurriculumAdminComponent implements OnInit {
   }
 
   load(): void {
+    this.loading.set(true);
     const open = this.openKeys();
     this.treeUseCase.execute().subscribe({
       next: (rows) => {
         this.nodes.set(rows);
         this.reopen(rows, open);
+        this.loading.set(false);
       },
-      error: (err: Error) => toast.error(err.message),
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
     });
   }
 

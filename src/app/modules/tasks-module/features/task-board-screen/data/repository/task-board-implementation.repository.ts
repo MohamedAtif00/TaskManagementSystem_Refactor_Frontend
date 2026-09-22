@@ -6,9 +6,15 @@ import { UserRole } from '@core/models/user-role';
 import { AuthService } from '@core/services/auth.service';
 import {
   AssignTaskPayload,
+  ChangePriorityPayload,
   CreateTaskPayload,
+  JumpPoint,
+  JumpTaskPayload,
   TaskAccess,
+  TaskActivity,
   TaskBoardEntity,
+  TaskBoardPageEntity,
+  TaskBoardPageParams,
   TaskBoardParams,
   TaskCardEntity,
   TaskColumnPageEntity,
@@ -33,6 +39,11 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
   getBoard(params: TaskBoardParams): Observable<TaskBoardEntity> {
     const source = environment.useMock ? this.local.getBoard(params) : this.remote.getBoard(params);
     return source.pipe(map((row) => TaskBoardMapper.toBoard(row)));
+  }
+
+  getBoardPage(params: TaskBoardPageParams): Observable<TaskBoardPageEntity> {
+    const source = environment.useMock ? this.local.getBoardPage(params) : this.remote.getBoardPage(params);
+    return source.pipe(map((row) => TaskBoardMapper.toBoardPage(row)));
   }
 
   getColumnPage(params: TaskColumnPageParams): Observable<TaskColumnPageEntity> {
@@ -75,6 +86,29 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
   rollback(id: number): Observable<TaskCardEntity> {
     const source = environment.useMock ? this.local.rollback(id) : this.remote.rollback(id);
     return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
+  }
+
+  skip(id: number): Observable<TaskCardEntity> {
+    const source = environment.useMock ? this.local.skip(id) : this.remote.skip(id);
+    return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
+  }
+
+  jump(payload: JumpTaskPayload): Observable<TaskCardEntity> {
+    const source = environment.useMock ? this.local.jump(payload) : this.remote.jump(payload);
+    return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
+  }
+
+  changePriority(payload: ChangePriorityPayload): Observable<TaskCardEntity> {
+    const source = environment.useMock ? this.local.changePriority(payload) : this.remote.changePriority(payload);
+    return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
+  }
+
+  listJumpPoints(ticketId: number): Observable<JumpPoint[]> {
+    return environment.useMock ? this.local.listJumpPoints(ticketId) : this.remote.listJumpPoints(ticketId);
+  }
+
+  listActivity(ticketId: number): Observable<TaskActivity[]> {
+    return environment.useMock ? this.local.listActivity(ticketId) : this.remote.listActivity(ticketId);
   }
 
   createTask(payload: CreateTaskPayload): Observable<TaskCardEntity> {

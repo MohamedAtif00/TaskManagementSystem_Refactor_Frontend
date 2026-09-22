@@ -5,20 +5,31 @@ import { catchError, map, switchMap } from 'rxjs/operators';
 import { mapApiPriority } from '@core/models/role-map';
 import { TicketListPageResponse } from '@core/api/tms-contracts';
 import { API, apiPath } from '@core/network/api/api.const';
-import { CurriculumCatalogService } from '@core/network/curriculum-catalog.service';
 import { mapHttpError } from '@core/network/http-error';
 import { NetworkService } from '@core/network/network.service';
 import { DirectoryUser, UserDirectoryService } from '@core/network/user-directory.service';
 import {
   AssignTaskPayload,
+  ChangePriorityPayload,
   CreateTaskPayload,
+  JumpPoint,
+  JumpTaskPayload,
+  TaskActivity,
+  TaskBoardPageParams,
   TaskBoardParams,
   TaskColumnPageParams,
+  TaskIdName,
   TaskComment,
   TaskStatus,
   TaskWorkTime,
 } from '../../../domain/entity/task-board.entity';
-import { TaskBoardModel, TaskCardModel, TaskColumnPageModel, TaskDetailsModel } from '../../model/task-board.model';
+import {
+  TaskBoardModel,
+  TaskBoardPageModel,
+  TaskCardModel,
+  TaskColumnPageModel,
+  TaskDetailsModel,
+} from '../../model/task-board.model';
 import { TaskBoardRemoteDataSource } from './task-board-remote-datasource';
 
 interface TicketDto {
@@ -27,6 +38,12 @@ interface TicketDto {
   status: number;
   priority: number;
   createdAt: string;
+  startedAt?: string | null;
+  doneAt?: string | null;
+  subjectId?: number;
+  duration?: number;
+  tl?: boolean;
+  isReview?: boolean;
   learningObjectiveId: number;
   userId?: number | null;
   pause?: boolean;
@@ -62,6 +79,14 @@ interface CommentDto {
   taskId?: number | null;
 }
 
+interface TaskActivityDto {
+  id: number;
+  type: number;
+  message: string;
+  createdAt: string;
+  userId?: number | null;
+}
+
 interface WorkTimeDto {
   id: number;
   startDate: string;
@@ -75,7 +100,6 @@ interface WorkTimeDto {
 export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   constructor(
     private network: NetworkService,
-    private catalog: CurriculumCatalogService,
     private users: UserDirectoryService,
   ) {
     super();
@@ -97,11 +121,10 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
         : forkJoin({
             subject: this.network.get<SubjectDto>(apiPath(API.Curriculum.Subject, { id: params.id })),
             users: this.network.get<{ id: number; name: string }[]>(apiPath(API.Curriculum.SubjectUsers, { id: params.id })),
-            los: this.catalog.getLosForSubject(params.id),
           }).pipe(
-            map(({ subject, users, los }) => ({
+            map(({ subject, users }) => ({
               name: subject.name,
-              learningObjectives: los.map((lo) => ({ id: lo.id, name: lo.name })),
+              learningObjectives: [],
               users,
             })),
           );
@@ -114,6 +137,31 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
         cards: [],
         learningObjectives: meta.learningObjectives,
         users: meta.users,
+      })),
+      catchError(mapHttpError),
+    );
+  }
+
+  getBoardPage(params: TaskBoardPageParams): Observable<TaskBoardPageModel> {
+    const path =
+      params.source === 'sprint'
+        ? apiPath(API.Tickets.ListBySprint, { id: params.id })
+        : apiPath(API.Tickets.ListBySubject, { id: params.id });
+    let httpParams = new HttpParams().set('page', String(params.page)).set('pageSize', String(params.pageSize));
+    if (params.learningObjectiveId) {
+      httpParams = httpParams.set('learningObjectiveId', String(params.learningObjectiveId));
+    }
+    if (params.name?.trim()) {
+      httpParams = httpParams.set('name', params.name.trim());
+    }
+
+    const users = params.users ?? [];
+    return this.network.get<TicketListPageResponse>(path, httpParams).pipe(
+      map((page) => ({
+        items: (page.items ?? []).map((ticket) => this.toCard(ticket, [], users)),
+        page: page.page,
+        pageSize: page.pageSize,
+        totalCount: page.totalCount,
       })),
       catchError(mapHttpError),
     );
@@ -135,12 +183,9 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
       httpParams = httpParams.set('name', params.name.trim());
     }
 
-    return forkJoin({
-      page: this.network.get<TicketListPageResponse>(path, httpParams),
-      directory: this.users.list(),
-    }).pipe(
-      map(({ page, directory }) => ({
-        items: (page.items ?? []).map((ticket) => this.toCard(ticket, [], directory)),
+    return this.network.get<TicketListPageResponse>(path, httpParams).pipe(
+      map((page) => ({
+        items: (page.items ?? []).map((ticket) => this.toCard(ticket, [], [])),
         page: page.page,
         pageSize: page.pageSize,
         totalCount: page.totalCount,
@@ -195,6 +240,56 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   rollback(id: number): Observable<TaskCardModel> {
     return this.network.patch<TicketDto>(apiPath(API.Tickets.Rollback, { id })).pipe(
       switchMap((ticket) => this.cardFromTicket(ticket)),
+      catchError(mapHttpError),
+    );
+  }
+
+  skip(id: number): Observable<TaskCardModel> {
+    return this.network.patch<TicketDto>(apiPath(API.Tickets.Skip, { id })).pipe(
+      switchMap((ticket) => this.cardFromTicket(ticket)),
+      catchError(mapHttpError),
+    );
+  }
+
+  jump(payload: JumpTaskPayload): Observable<TaskCardModel> {
+    return this.network.patch<TicketDto>(apiPath(API.Tickets.Jump, { id: payload.taskId }), { stepId: payload.stepId }).pipe(
+      switchMap((ticket) => this.cardFromTicket(ticket)),
+      catchError(mapHttpError),
+    );
+  }
+
+  changePriority(payload: ChangePriorityPayload): Observable<TaskCardModel> {
+    return this.network
+      .patch<TicketDto>(apiPath(API.Tickets.Priority, { id: payload.taskId }), { priority: payload.priority })
+      .pipe(
+        switchMap((ticket) => this.cardFromTicket(ticket)),
+        catchError(mapHttpError),
+      );
+  }
+
+  listJumpPoints(ticketId: number): Observable<JumpPoint[]> {
+    return this.network.get<unknown>(apiPath(API.Tickets.JumpPoints, { id: ticketId })).pipe(
+      map((response) => this.normalizeJumpPoints(response)),
+      catchError(mapHttpError),
+    );
+  }
+
+  listActivity(ticketId: number): Observable<TaskActivity[]> {
+    return this.network.get<TaskActivityDto[]>(apiPath(API.Tickets.Activity, { id: ticketId })).pipe(
+      switchMap((rows) =>
+        this.users.list().pipe(
+          map((directory) =>
+            rows.map((row) => ({
+              id: row.id,
+              type: row.type,
+              message: row.message,
+              createdAt: row.createdAt,
+              userId: row.userId,
+              userName: row.userId ? directory.find((user) => user.id === row.userId)?.name : undefined,
+            })),
+          ),
+        ),
+      ),
       catchError(mapHttpError),
     );
   }
@@ -266,9 +361,9 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   private toCard(
     ticket: TicketDto,
     los: { id: number; name: string }[],
-    directory: DirectoryUser[],
+    users: TaskIdName[] | DirectoryUser[],
   ): TaskCardModel {
-    const user = ticket.userId ? directory.find((row) => row.id === ticket.userId) : undefined;
+    const user = ticket.userId ? users.find((row) => row.id === ticket.userId) : undefined;
     const lo = los.find((row) => row.id === ticket.learningObjectiveId);
     return {
       id: ticket.id,
@@ -291,12 +386,15 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   ): TaskDetailsModel {
     return {
       ...this.toCard(ticket, [lo], directory),
-      subjectId: 0,
+      subjectId: ticket.subjectId ?? 0,
       subjectName: '',
       attention: !!ticket.attention,
+      duration: ticket.duration ?? 0,
+      tl: !!ticket.tl,
+      isReview: !!ticket.isReview,
       createdAt: ticket.createdAt,
-      startedAt: null,
-      doneAt: null,
+      startedAt: ticket.startedAt ?? null,
+      doneAt: ticket.doneAt ?? null,
     };
   }
 
@@ -318,6 +416,27 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
       endDate: row.endDate ?? null,
       duration: row.duration,
       running: row.endDate == null,
+    };
+  }
+
+  private normalizeJumpPoints(response: unknown): JumpPoint[] {
+    const rows = Array.isArray(response)
+      ? response
+      : response && typeof response === 'object' && Array.isArray((response as { items?: unknown[] }).items)
+        ? (response as { items: unknown[] }).items
+        : [];
+
+    return rows
+      .map((row) => this.toJumpPoint(row))
+      .filter((point) => point.stepId > 0);
+  }
+
+  private toJumpPoint(row: unknown): JumpPoint {
+    const record = row as Record<string, unknown>;
+    return {
+      stepId: Number(record['stepId'] ?? record['StepId'] ?? 0),
+      nodeId: Number(record['nodeId'] ?? record['NodeId'] ?? 0),
+      label: String(record['label'] ?? record['Label'] ?? '').trim(),
     };
   }
 }

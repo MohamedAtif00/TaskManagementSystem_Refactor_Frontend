@@ -1,4 +1,6 @@
-@if (board(); as current) {
+@if (loading()) {
+  <app-kanban-skeleton />
+} @else if (board(); as current) {
   <app-page-header [title]="current.name" [subtitle]="source === 'project' ? 'Project board' : 'Sprint board'">
     <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="backLink()">Back to list</a>
     @if (source === 'project') {
@@ -35,24 +37,42 @@
     }
   </div>
 
-  <div class="flex gap-4 overflow-x-auto pb-4" cdkDropListGroup>
+  <div class="flex gap-4 pb-4 max-lg:overflow-x-auto lg:overflow-x-visible" cdkDropListGroup>
     @for (column of columns; track column.key) {
       <app-task-column
         [label]="column.label"
         [columnKey]="column.key"
         [cards]="cardsFor(column)"
         [totalCount]="totalFor(column)"
-        [page]="pageFor(column)"
-        [pageSize]="pageSize"
         (openCard)="openCard($event)"
-        (dropped)="onCardDropped($event, column)"
-        (pageChange)="onColumnPage(column, $event)" />
+        (dropped)="onCardDropped($event, column)" />
     }
   </div>
 
-  @if (selected(); as task) {
-    <app-task-drawer [task]="task" [users]="current.users" (closed)="closeDrawer()" (changed)="onDrawerChanged()" />
+  @if (showBoardPager()) {
+    <div class="flex items-center justify-center gap-3 pb-4">
+      <app-button
+        impact="light"
+        tone="light"
+        size="small"
+        type="button"
+        [disabled]="boardPage() <= 1"
+        (buttonClick)="onBoardPage(boardPage() - 1)">
+        Prev
+      </app-button>
+      <span class="text-muted-foreground text-sm">Page {{ boardPage() }} / {{ boardTotalPages() }}</span>
+      <app-button
+        impact="light"
+        tone="light"
+        size="small"
+        type="button"
+        [disabled]="boardPage() >= boardTotalPages()"
+        (buttonClick)="onBoardPage(boardPage() + 1)">
+        Next
+      </app-button>
+    </div>
   }
+
   @if (showCreate()) {
     <app-new-task-modal
       [subjectId]="entityId"
@@ -61,4 +81,12 @@
       (closed)="showCreate.set(false)"
       (created)="onCreated()" />
   }
+}
+
+@if (selected(); as task) {
+  <app-task-drawer
+    [task]="task"
+    [users]="board()?.users ?? []"
+    (closed)="closeDrawer()"
+    (changed)="onDrawerChanged()" />
 }

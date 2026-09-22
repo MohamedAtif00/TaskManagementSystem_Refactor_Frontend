@@ -1,0 +1,77 @@
+<div class="space-y-3">
+  @if (mode() === 'single') {
+    <div>
+      <span class="text-muted-foreground mb-2 block text-xs font-medium">{{ label() }}</span>
+      <div class="flex flex-wrap gap-1.5">
+        @for (slot of slots(); track slot) {
+          <button
+            type="button"
+            class="rounded-md border px-2 py-1 text-xs font-semibold transition-colors"
+            [class.border-primary]="isSingleSelected(slot)"
+            [class.bg-primary/10]="isSingleSelected(slot)"
+            [class.text-primary]="isSingleSelected(slot)"
+            [class.border-border]="!isSingleSelected(slot)"
+            [class.text-muted-foreground]="!isSingleSelected(slot)"
+            [class.hover:border-primary/50]="!isSingleSelected(slot)"
+            (click)="selectSingle(slot)">
+            {{ formatSlot(slot) }}
+          </button>
+        }
+      </div>
+    </div>
+  } @else {
+    <div>
+      <span class="text-muted-foreground mb-2 block text-xs font-medium">{{ fromLabel() }}</span>
+      <div class="flex flex-wrap gap-1.5">
+        @for (slot of slots(); track slot) {
+          <button
+            type="button"
+            class="rounded-md border px-2 py-1 text-xs font-semibold transition-colors"
+            [class.border-primary]="isFromSelected(slot)"
+            [class.bg-primary/10]="isFromSelected(slot)"
+            [class.text-primary]="isFromSelected(slot)"
+            [class.border-border]="!isFromSelected(slot)"
+            [class.text-muted-foreground]="!isFromSelected(slot)"
+            [class.hover:border-primary/50]="!isFromSelected(slot)"
+            (click)="selectFrom(slot)">
+            {{ formatSlot(slot) }}
+          </button>
+        }
+      </div>
+    </div>
+    <div>
+      <span class="text-muted-foreground mb-2 block text-xs font-medium">{{ toLabel() }}</span>
+      <div class="flex flex-wrap gap-1.5">
+        @for (slot of toSlots(); track slot) {
+          <button
+            type="button"
+            class="rounded-md border px-2 py-1 text-xs font-semibold transition-colors"
+            [class.border-primary]="isToSelected(slot)"
+            [class.bg-primary/10]="isToSelected(slot)"
+            [class.text-primary]="isToSelected(slot)"
+            [class.border-border]="!isToSelected(slot)"
+            [class.text-muted-foreground]="!isToSelected(slot)"
+            [class.hover:border-primary/50]="!isToSelected(slot)"
+            (click)="selectTo(slot)">
+            {{ formatSlot(slot) }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <div>
+    <div class="bg-muted/40 relative h-2 overflow-hidden rounded-full">
+      <div
+        class="bg-primary absolute top-0 h-full rounded-full transition-all"
+        [style.left.%]="timeline().start"
+        [style.width.%]="timeline().width"></div>
+    </div>
+    <div class="text-muted-foreground mt-1 flex justify-between text-[10px]">
+      <span>{{ workDayStartLabel }}</span>
+      <span>{{ workDayEndLabel }}</span>
+    </div>
+  </div>
+
+  <p class="text-muted-foreground text-xs">Work hours: {{ workDayStartLabel }} – {{ workDayEndLabel }}</p>
+</div>

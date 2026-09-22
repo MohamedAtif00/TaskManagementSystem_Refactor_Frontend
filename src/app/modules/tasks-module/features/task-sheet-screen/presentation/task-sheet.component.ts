@@ -5,6 +5,7 @@ import { toast } from 'ngx-sonner';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import { TaskDetailsEntity, TaskStatus } from '../../task-board-screen/domain/entity/task-board.entity';
 import { GetTaskDetailsUseCase } from '../../task-board-screen/domain/usecase/get-task-details.usecase';
 import { TaskDrawerComponent } from '../../task-board-screen/presentation/task-drawer.component';
@@ -13,12 +14,13 @@ import { GetTaskSheetUseCase } from '../domain/usecase/get-task-sheet.usecase';
 
 @Component({
   selector: 'app-task-sheet',
-  imports: [NgClass, RouterLink, PageHeaderComponent, ButtonComponent, TaskDrawerComponent],
+  imports: [NgClass, RouterLink, PageHeaderComponent, ButtonComponent, TaskDrawerComponent, TableSkeletonComponent],
   templateUrl: './task-sheet.component.html',
 })
 export class TaskSheetComponent implements OnInit {
   projectId = 0;
   readonly tasksPath = ROUTE_PATHS.tasks;
+  readonly loading = signal(true);
   readonly sheet = signal<TaskSheetEntity | null>(null);
   readonly selected = signal<TaskDetailsEntity | null>(null);
 
@@ -36,9 +38,16 @@ export class TaskSheetComponent implements OnInit {
   }
 
   load(): void {
+    this.loading.set(true);
     this.sheetUseCase.execute(this.projectId).subscribe({
-      next: (sheet) => this.sheet.set(sheet),
-      error: (err: Error) => toast.error(err.message),
+      next: (sheet) => {
+        this.sheet.set(sheet);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
     });
   }
 
@@ -66,10 +75,17 @@ export class TaskSheetComponent implements OnInit {
 
   onDrawerChanged(): void {
     const id = this.selected()?.id;
-    this.load();
+    this.refreshSheet();
     if (id) {
       this.detailsUseCase.execute(id).subscribe((task) => this.selected.set(task));
     }
+  }
+
+  private refreshSheet(): void {
+    this.sheetUseCase.execute(this.projectId).subscribe({
+      next: (sheet) => this.sheet.set(sheet),
+      error: (err: Error) => toast.error(err.message),
+    });
   }
 
   closeDrawer(): void {

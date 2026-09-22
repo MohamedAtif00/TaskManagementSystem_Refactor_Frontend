@@ -100,11 +100,9 @@ function permissionsForRole(role: number): string[] {
   ];
 }
 
+function isApiPath(pathname: string): boolean {
   return API_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-
 }
-
-
 
 function json(route: Route, body: unknown, status = 200): Promise<void> {
 
@@ -194,9 +192,47 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
   const tickets = cloneTickets();
 
+  const ticketActivities = new Map<number, Array<{ id: number; type: number; message: string; createdAt: string; userId?: number | null }>>();
+  let nextActivityId = 1;
+
+  for (const ticket of tickets) {
+    ticketActivities.set(ticket.id, [{
+      id: nextActivityId++,
+      type: 1,
+      message: `${ticket.name} was created.`,
+      createdAt: ticket.createdAt,
+      userId: ticket.userId ?? null,
+    }]);
+  }
+
+  let notifications = data.notifications.map((row) => ({ ...row }));
+
   let nextProjectId = 10;
 
   let nextTeamId = 10;
+
+  function unreadNotificationCount(): number {
+    return notifications.filter((row) => !row.isRead).length;
+  }
+
+  function listNotifications(url: URL) {
+    const isReadParam = url.searchParams.get('isRead');
+    let filtered = [...notifications];
+    if (isReadParam === 'false') {
+      filtered = filtered.filter((row) => !row.isRead);
+    } else if (isReadParam === 'true') {
+      filtered = filtered.filter((row) => row.isRead);
+    }
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
+    const start = (page - 1) * pageSize;
+    return {
+      items: filtered.slice(start, start + pageSize),
+      page,
+      pageSize,
+      totalCount: filtered.length,
+    };
+  }
 
 
 
@@ -284,12 +320,36 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
         permissions: permissionsForRole(user.role),
 
-        notifications: user.role === 4 ? 2 : 0,
+        notifications: unreadNotificationCount(),
 
       });
 
       return;
 
+    }
+
+
+
+    if (method === 'GET' && pathname === '/notifications') {
+      await json(route, listNotifications(url));
+      return;
+    }
+
+
+
+    if (method === 'PATCH' && /^\/notifications\/\d+\/read$/.test(pathname)) {
+      const id = Number(pathname.split('/')[2]);
+      notifications = notifications.map((row) => (row.id === id ? { ...row, isRead: true } : row));
+      await json(route, {});
+      return;
+    }
+
+
+
+    if (method === 'PATCH' && pathname === '/notifications/read-all') {
+      notifications = notifications.map((row) => ({ ...row, isRead: true }));
+      await json(route, {});
+      return;
     }
 
 
@@ -770,7 +830,37 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
       const ticket = findTicket(id);
 
-      await json(route, ticket ?? data.subjectTickets[0]);
+      await json(route, {
+        ...(ticket ?? data.subjectTickets[0]),
+        duration: 45,
+        tl: false,
+        isReview: false,
+      });
+
+      return;
+
+    }
+
+
+
+    if (method === 'GET' && /^\/tickets\/\d+\/activity$/.test(pathname)) {
+
+      const id = Number(pathname.split('/')[2]);
+
+      await json(route, ticketActivities.get(id) ?? []);
+
+      return;
+
+    }
+
+
+
+    if (method === 'GET' && /^\/tickets\/\d+\/jump-points$/.test(pathname)) {
+
+      await json(route, [
+        { stepId: 2, nodeId: 1, label: 'Review step' },
+        { stepId: 3, nodeId: 2, label: 'Final step' },
+      ]);
 
       return;
 
@@ -855,6 +945,68 @@ export async function setupApiMocks(page: Page): Promise<void> {
           ticket.status -= 1;
 
         }
+
+      }
+
+      await json(route, ticket ?? data.subjectTickets[0]);
+
+      return;
+
+    }
+
+
+
+    if (method === 'PATCH' && /^\/tickets\/\d+\/skip$/.test(pathname)) {
+
+      const id = Number(pathname.split('/')[2]);
+
+      const ticket = findTicket(id);
+
+      if (ticket) {
+
+        ticket.status = 3;
+
+      }
+
+      await json(route, ticket ?? data.subjectTickets[0]);
+
+      return;
+
+    }
+
+
+
+    if (method === 'PATCH' && /^\/tickets\/\d+\/priority$/.test(pathname)) {
+
+      const id = Number(pathname.split('/')[2]);
+
+      const ticket = findTicket(id);
+
+      const body = route.request().postDataJSON() as { priority?: number };
+
+      if (ticket && body.priority !== undefined) {
+
+        ticket.priority = body.priority;
+
+      }
+
+      await json(route, ticket ?? data.subjectTickets[0]);
+
+      return;
+
+    }
+
+
+
+    if (method === 'PATCH' && /^\/tickets\/\d+\/jump$/.test(pathname)) {
+
+      const id = Number(pathname.split('/')[2]);
+
+      const ticket = findTicket(id);
+
+      if (ticket) {
+
+        ticket.status = 2;
 
       }
 
@@ -1031,6 +1183,60 @@ export async function setupApiMocks(page: Page): Promise<void> {
     }
 
 
+
+    if (method === 'POST' && pathname === '/hr/leave/leave-requests/opinions/bulk') {
+      const body = route.request().postDataJSON() as {
+        leaveRequestIds?: number[];
+        isApproved?: boolean;
+        comment?: string;
+      };
+      const ids = body.leaveRequestIds ?? [];
+      let succeeded = 0;
+      const failedLeaveRequestIds: number[] = [];
+      for (const id of ids) {
+        const row = data.leaveRequests.find((item) => item.id === id);
+        if (row && row.status === 'Pending') {
+          row.status = body.isApproved ? 'Approved' : 'Rejected';
+          row.opinions = [...(row.opinions ?? []), { comment: body.comment ?? '', isApproved: !!body.isApproved }];
+          succeeded++;
+        } else {
+          failedLeaveRequestIds.push(id);
+        }
+      }
+      await json(route, {
+        succeeded,
+        failed: ids.length - succeeded,
+        failedLeaveRequestIds,
+      });
+      return;
+    }
+
+    if (method === 'POST' && pathname === '/hr/permissions/opinions/bulk') {
+      const body = route.request().postDataJSON() as {
+        permissionIds?: number[];
+        isApproved?: boolean;
+        comment?: string;
+      };
+      const ids = body.permissionIds ?? [];
+      let succeeded = 0;
+      const failedPermissionIds: number[] = [];
+      for (const id of ids) {
+        const row = data.permissionRequests.find((item) => item.id === id);
+        if (row && row.status === 'Pending') {
+          row.status = body.isApproved ? 'Approved' : 'Rejected';
+          row.opinions = [...(row.opinions ?? []), { comment: body.comment ?? '', isApproved: !!body.isApproved }];
+          succeeded++;
+        } else {
+          failedPermissionIds.push(id);
+        }
+      }
+      await json(route, {
+        succeeded,
+        failed: ids.length - succeeded,
+        failedPermissionIds,
+      });
+      return;
+    }
 
     if (method === 'POST' && pathname.startsWith('/hr/')) {
 

@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import {
   TASK_BANK_TYPE_LABELS,
   TaskBankFormPayload,
@@ -16,7 +17,7 @@ import { TaskBankTeamsUseCase } from '../domain/usecase/task-bank-teams.usecase'
 
 @Component({
   selector: 'app-task-bank-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './task-bank-list.component.html',
 })
 export class TaskBankListComponent implements OnInit {
@@ -25,6 +26,7 @@ export class TaskBankListComponent implements OnInit {
     { id: 0, label: 'Creation' },
     { id: 1, label: 'Review' },
   ];
+  readonly loading = signal(true);
   readonly rows = signal<TaskBankItem[]>([]);
   readonly teams = signal<TaskBankTeamOption[]>([]);
   readonly showForm = signal(false);
@@ -45,9 +47,16 @@ export class TaskBankListComponent implements OnInit {
   }
 
   load(): void {
+    this.loading.set(true);
     this.listUseCase.execute().subscribe({
-      next: (rows) => this.rows.set(rows),
-      error: (err: Error) => toast.error(err.message),
+      next: (rows) => {
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
     });
   }
 

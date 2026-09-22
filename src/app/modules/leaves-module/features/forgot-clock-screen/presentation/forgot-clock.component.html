@@ -2,6 +2,9 @@
   <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">New request</app-button>
 </app-page-header>
 
+@if (loading()) {
+  <app-table-skeleton [rows]="8" [columns]="5" />
+} @else {
 <div class="border-muted/20 bg-background overflow-x-auto rounded-xl border">
   <table class="text-muted-foreground w-full table-auto text-left text-sm">
     <thead class="border-muted/20 border-b text-xs">
@@ -17,7 +20,7 @@
       @for (row of rows(); track row.id) {
         <tr class="border-muted/10 border-t">
           <td class="text-foreground px-4 py-3 font-semibold">{{ row.punchType === 'In' ? 'Clock in' : 'Clock out' }}</td>
-          <td class="px-4 py-3">{{ row.attendanceDate }} · {{ row.intendedTime }}</td>
+          <td class="px-4 py-3">{{ row.attendanceDate }} · {{ formatTime(row.intendedTime) }}</td>
           <td class="px-4 py-3">{{ row.reason || '—' }}</td>
           <td class="px-4 py-3">{{ row.status }}</td>
           <td class="px-4 py-3 text-right">
@@ -32,6 +35,7 @@
     </tbody>
   </table>
 </div>
+}
 
 @if (showForm()) {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -46,7 +50,12 @@
           </select>
         </label>
         <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Date</span><input type="date" [(ngModel)]="attendanceDate" name="attendanceDate" /></label>
-        <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Intended time</span><input type="time" [(ngModel)]="intendedTime" name="intendedTime" /></label>
+        <app-work-day-time-picker
+          mode="single"
+          singleField="from"
+          label="Intended time"
+          [(fromTime)]="intendedTime"
+          [toTime]="intendedTime" />
         <label class="block"><span class="text-muted-foreground mb-1 block text-xs font-medium">Reason (optional)</span><textarea rows="2" [(ngModel)]="reason" name="reason"></textarea></label>
         @if (formError) {
           <p class="text-destructive text-xs">{{ formError }}</p>

@@ -17,4 +17,8 @@ export interface SubMenuItem {
   children?: Array<SubMenuItem>;
   roles?: UserRole[];
   permissions?: string[];
+  /** When false, hidden from top navbar Overview/Work dropdowns. Default true. */
+  showInNavbar?: boolean;
+  /** When false, hidden from sidebar and mobile nav. Default true. */
+  showInSidebar?: boolean;
 }

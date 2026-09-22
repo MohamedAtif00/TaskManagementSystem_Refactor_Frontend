@@ -4,6 +4,7 @@ import { toast } from 'ngx-sonner';
 import { RoleCatalogService } from '@core/network/role-catalog.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import { RoleEntity, RoleFormPayload, RolePermissionOption } from '../domain/entity/role-list.entity';
 import { DeleteRoleUseCase } from '../domain/usecase/delete-role.usecase';
 import { RoleListUseCase } from '../domain/usecase/role-list.usecase';
@@ -12,11 +13,12 @@ import { SaveRoleUseCase } from '../domain/usecase/save-role.usecase';
 
 @Component({
   selector: 'app-role-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './role-list.component.html',
 })
 export class RoleListComponent implements OnInit {
   formError = '';
+  readonly loading = signal(true);
   readonly rows = signal<RoleEntity[]>([]);
   readonly permissions = signal<RolePermissionOption[]>([]);
   readonly showForm = signal(false);
@@ -37,7 +39,17 @@ export class RoleListComponent implements OnInit {
   }
 
   load(): void {
-    this.listUseCase.execute().subscribe((rows) => this.rows.set(rows));
+    this.loading.set(true);
+    this.listUseCase.execute().subscribe({
+      next: (rows) => {
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: (err: Error) => {
+        this.loading.set(false);
+        toast.error(err.message);
+      },
+    });
   }
 
   openCreate(): void {
