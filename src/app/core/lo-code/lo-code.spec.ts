@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { formatLoCode, tryParseLoCode } from './lo-code.catalog.ts';
+import { formatLoCode, gradeLabel, lessonLabel, subjectName, termLabel, tryParseLoCode, unitLabel } from './lo-code.catalog.ts';
+import { LO_CODE_SEED_SAMPLES, LO_CODE_SUBJECTS } from './lo-code.subjects.ts';
 
 describe('lo-code parser', () => {
   const samples: Array<{
@@ -20,6 +21,8 @@ describe('lo-code parser', () => {
     { raw: 'Soc_5R_1A_02_03_02', subject: 'soc', grade: 5, term: 1, track: 'A', unit: 2, lesson: 3, loIndex: 2 },
     { raw: 'Mul_2R_1E_01_03_01', subject: 'mul', grade: 2, term: 1, track: 'E', unit: 1, lesson: 3, loIndex: 1 },
     { raw: 'Rel_3R_1A_05_02_01', subject: 'rel', grade: 3, term: 1, track: 'A', unit: 5, lesson: 2, loIndex: 1 },
+    { raw: 'Ict_5R_1A_01_02_01', subject: 'ict', grade: 5, term: 1, track: 'A', unit: 1, lesson: 2, loIndex: 1 },
+    { raw: 'Tsk_1R_1A_01_01_01', subject: 'tsk', grade: 1, term: 1, track: 'A', unit: 1, lesson: 1, loIndex: 1 },
     { raw: '2026_eng_4r_1e_02_02_03', subject: 'eng', grade: 4, term: 1, track: 'E', unit: 2, lesson: 2, loIndex: 3 },
     { raw: '2026_ara_2r_1a_02_05_03', subject: 'ara', grade: 2, term: 1, track: 'A', unit: 2, lesson: 5, loIndex: 3 },
     { raw: 'QR_mth_1r_1a_02_02_06', subject: 'mth', grade: 1, term: 1, track: 'A', unit: 2, lesson: 2, loIndex: 6 },
@@ -94,5 +97,26 @@ describe('lo-code formatter', () => {
     assert.equal(formatLoCode('Solve linear equations'), 'Solve linear equations');
     assert.equal(formatLoCode('Solve linear equations', 'ar'), 'Solve linear equations');
     assert.equal(formatLoCode(null), '');
+  });
+});
+
+describe('lo-code seed', () => {
+  it('maps every catalog subject code to a full name', () => {
+    const seeded = new Set(
+      LO_CODE_SEED_SAMPLES.map((code) => tryParseLoCode(code)?.subjectCode).filter((code): code is string => !!code),
+    );
+    for (const code of Object.keys(LO_CODE_SUBJECTS)) {
+      assert.ok(seeded.has(code), `missing seed for ${code}`);
+    }
+  });
+
+  it('builds Math Grade 5 from Mth_5R_1A_01_04_02', () => {
+    const parsed = tryParseLoCode('Mth_5R_1A_01_04_02');
+    assert.ok(parsed);
+    assert.equal(subjectName(parsed.subjectCode, 'en'), 'Math');
+    assert.equal(`${subjectName(parsed.subjectCode, 'en')} ${gradeLabel(parsed.grade, 'en')}`, 'Math Grade 5');
+    assert.equal(termLabel(parsed.termNumber, parsed.track, 'en'), 'Term 1 (Arabic)');
+    assert.equal(unitLabel(parsed.unit, 'en'), 'Unit 1');
+    assert.equal(lessonLabel(parsed.lesson, 'en'), 'Lesson 4');
   });
 });

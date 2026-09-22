@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { MOCK_PUBLIC_HOLIDAYS } from '@core/hr/mock-holidays';
 import { countWorkingDays } from '@core/hr/working-days';
+import { loCodeSeedRows } from '@core/lo-code/lo-code.seed';
+import { tryParseLoCode } from '@core/lo-code/lo-code.parser';
 
 export type TaskStatus = 0 | 1 | 2 | 3 | 4;
 export type TaskPriority = 0 | 1 | 2 | 3;
@@ -249,6 +251,50 @@ export interface CreateWfhInput {
   note?: string;
 }
 
+const SEEDED_CURRICULUM = (() => {
+  const rows = loCodeSeedRows();
+  const subjects: MockSubject[] = [];
+  const learningObjectives: MockLo[] = [];
+  const subjectIds = new Map<string, number>();
+  let nextSubjectId = 16;
+  let nextLoId = 2000;
+
+  for (const row of rows) {
+    const key = `${row.subject}|${row.termName}`;
+    if (!subjectIds.has(key)) {
+      const parsed = tryParseLoCode(row.code);
+      const year = parsed?.year != null ? String(parsed.year) : '2026';
+      const id = nextSubjectId++;
+      subjectIds.set(key, id);
+      subjects.push({
+        id,
+        name: row.subject,
+        folderPath: `${year} / ${row.termName} / ${row.subjectGroup}`,
+        year,
+        term: row.termName,
+        status: 'Running',
+      });
+    }
+
+    const parsed = tryParseLoCode(row.code);
+    learningObjectives.push({
+      id: nextLoId++,
+      name: row.code,
+      subjectId: subjectIds.get(key)!,
+      unitId: 700 + (parsed?.unit ?? 1),
+      unitName: row.unitName,
+      lessonId: 800 + (parsed?.unit ?? 1) * 20 + (parsed?.lesson ?? 1),
+      lessonName: row.lessonName,
+      tag: row.subjectCode.toUpperCase(),
+      template: 'default',
+      environment: 'Web',
+      schemaName: row.subjectGroup,
+    });
+  }
+
+  return { subjects, learningObjectives };
+})();
+
 const DEFAULT_BALANCES = (): MockLeaveBalance => ({
   annualUsed: 0,
   annualMax: 21,
@@ -309,126 +355,128 @@ export class TmsMockStore {
     { id: 13, name: 'Physics', folderPath: '2026 / Term 1 / Science', year: '2026', term: 'Term 1', status: 'Running' },
     { id: 14, name: 'Chemistry', folderPath: '2026 / Term 2 / Science', year: '2026', term: 'Term 2', status: 'Done' },
     { id: 15, name: 'Arabic', folderPath: '2025 / Term 1 / Languages', year: '2025', term: 'Term 1', status: 'Closed' },
+    ...SEEDED_CURRICULUM.subjects,
   ];
 
   readonly learningObjectives: MockLo[] = [
     {
       id: 101,
-      name: 'Solve linear equations',
+      name: 'Mth_5R_1A_01_04_02',
       subjectId: 11,
       unitId: 1,
-      unitName: 'Equations',
+      unitName: 'Unit 1',
       lessonId: 11,
-      lessonName: 'Linear',
-      tag: 'ALG-01',
+      lessonName: 'Lesson 4',
+      tag: 'MTH',
       template: 'Interactive',
       environment: 'Web',
       schemaName: 'Math',
     },
     {
       id: 102,
-      name: 'Graph linear functions',
+      name: 'Mth_5R_1A_01_04_03',
       subjectId: 11,
       unitId: 1,
-      unitName: 'Equations',
+      unitName: 'Unit 1',
       lessonId: 11,
-      lessonName: 'Linear',
-      tag: 'ALG-02',
+      lessonName: 'Lesson 4',
+      tag: 'MTH',
       template: 'Worksheet',
       environment: 'Web',
       schemaName: 'Math',
     },
     {
       id: 103,
-      name: 'Factor quadratics',
+      name: 'Mth_5R_1A_01_05_01',
       subjectId: 11,
       unitId: 1,
-      unitName: 'Equations',
+      unitName: 'Unit 1',
       lessonId: 12,
-      lessonName: 'Quadratic',
-      tag: 'ALG-03',
+      lessonName: 'Lesson 5',
+      tag: 'MTH',
       template: 'Interactive',
       environment: 'Web',
       schemaName: 'Math',
     },
     {
       id: 104,
-      name: 'Identify polynomial degree',
+      name: 'Mth_5R_1A_02_01_01',
       subjectId: 11,
       unitId: 2,
-      unitName: 'Polynomials',
+      unitName: 'Unit 2',
       lessonId: 21,
-      lessonName: 'Intro',
-      tag: 'ALG-04',
+      lessonName: 'Lesson 1',
+      tag: 'MTH',
       template: 'Quiz',
       environment: 'Web',
       schemaName: 'Math',
     },
     {
       id: 201,
-      name: 'Define velocity',
+      name: 'Sci_5R_1A_04_03_05',
       subjectId: 13,
       unitId: 31,
-      unitName: 'Motion',
+      unitName: 'Unit 4',
       lessonId: 311,
-      lessonName: 'Kinematics',
-      tag: 'PHY-01',
+      lessonName: 'Lesson 3',
+      tag: 'SCI',
       template: 'Notes',
       environment: 'Lab',
       schemaName: 'Science',
     },
     {
       id: 202,
-      name: 'Draw motion graphs',
+      name: 'Sci_5R_1A_04_03_06',
       subjectId: 13,
       unitId: 31,
-      unitName: 'Motion',
+      unitName: 'Unit 4',
       lessonId: 311,
-      lessonName: 'Kinematics',
-      tag: 'PHY-02',
+      lessonName: 'Lesson 3',
+      tag: 'SCI',
       template: 'Interactive',
       environment: 'Lab',
       schemaName: 'Science',
     },
     {
       id: 301,
-      name: 'Prove triangle angles',
+      name: 'Mth_5R_1A_03_01_01',
       subjectId: 12,
       unitId: 41,
-      unitName: 'Triangles',
+      unitName: 'Unit 3',
       lessonId: 411,
-      lessonName: 'Angle sum',
-      tag: 'GEO-01',
+      lessonName: 'Lesson 1',
+      tag: 'MTH',
       template: 'Proof',
       environment: 'Web',
       schemaName: 'Math',
     },
     {
       id: 401,
-      name: 'Lab safety checklist',
+      name: 'Sci_5R_2A_01_01_01',
       subjectId: 14,
       unitId: 51,
-      unitName: 'Safety',
+      unitName: 'Unit 1',
       lessonId: 511,
-      lessonName: 'Intro',
-      tag: 'CHM-01',
+      lessonName: 'Lesson 1',
+      tag: 'SCI',
       template: 'Checklist',
       environment: 'Lab',
       schemaName: 'Science',
     },
     {
       id: 501,
-      name: 'Reading comprehension',
+      name: 'Ara_5R_1A_01_01_04',
       subjectId: 15,
       unitId: 61,
-      unitName: 'Reading',
+      unitName: 'Unit 1',
       lessonId: 611,
-      lessonName: 'Passage',
-      tag: 'ARB-01',
+      lessonName: 'Lesson 1',
+      tag: 'ARA',
       template: 'Passage',
       environment: 'Web',
-      schemaName: 'Language',
+      schemaName: 'Arabic',
     },
+    ...SEEDED_CURRICULUM.learningObjectives,
   ];
 
   sprints: MockSprint[] = [
@@ -768,6 +816,50 @@ export class TmsMockStore {
     };
   }
 
+  sprintSheetFor(sprintId: number): MockProjectSheet | undefined {
+    const sprint = this.getSprint(sprintId);
+    if (!sprint) {
+      return undefined;
+    }
+    const los = this.learningObjectives.filter((lo) => sprint.learningObjectIds.includes(lo.id));
+    return {
+      id: sprint.id,
+      name: sprint.name,
+      units: [
+        {
+          id: 0,
+          name: 'Sprint learning objectives',
+          lessons: [
+            {
+              id: 0,
+              name: sprint.name,
+              learningObjectives: los.map((lo) => ({
+                id: lo.id,
+                name: lo.name,
+                tag: lo.tag,
+                template: lo.template,
+                environment: lo.environment,
+                schemaName: lo.schemaName,
+                tasks: this.tasks
+                  .filter((task) => task.sprintIds.includes(sprintId) && task.learningObjective.id === lo.id)
+                  .map((task) => ({
+                    id: task.id,
+                    name: task.name,
+                    status: task.status,
+                    user: task.user ? { ...task.user } : undefined,
+                    flagged: task.flagged,
+                    paused: task.paused,
+                    isRollback: task.isRollback,
+                  })),
+              })),
+            },
+          ],
+        },
+      ],
+      users: this.users.map((user) => ({ id: user.id, name: user.name })),
+    };
+  }
+
   getTask(id: number): MockTask | undefined {
     const task = this.tasks.find((row) => row.id === id);
     return task ? this.cloneTask(task) : undefined;
@@ -813,6 +905,15 @@ export class TmsMockStore {
       return undefined;
     }
     task.flagged = !task.flagged;
+    return this.cloneTask(task);
+  }
+
+  togglePause(id: number): MockTask | undefined {
+    const task = this.tasks.find((row) => row.id === id);
+    if (!task) {
+      return undefined;
+    }
+    task.paused = !task.paused;
     return this.cloneTask(task);
   }
 

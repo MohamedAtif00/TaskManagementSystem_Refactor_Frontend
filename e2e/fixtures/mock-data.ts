@@ -294,31 +294,31 @@ export const unitLessons = [{ id: 11, name: 'Linear', unitId: 1 }];
 export const lessonLos = [
   {
     id: 101,
-    name: 'Solve linear equations',
-    tag: 'ALG-01',
+    name: 'Mth_5R_1A_01_04_02',
+    tag: 'MTH',
     template: 'Interactive',
     environment: 'Web',
     lessonId: 11,
   },
   {
     id: 102,
-    name: 'Graph linear functions',
-    tag: 'ALG-02',
+    name: 'Mth_5R_1A_01_04_03',
+    tag: 'MTH',
     template: 'Worksheet',
     environment: 'Web',
     lessonId: 11,
   },
   {
     id: 103,
-    name: 'Apply slope formula',
-    tag: 'ALG-03',
+    name: 'Mth_5R_1A_01_05_01',
+    tag: 'MTH',
     template: 'Worksheet',
     environment: 'Web',
     lessonId: 11,
   },
 ];
 
-export const learningObjective = { id: 101, name: 'Solve linear equations' };
+export const learningObjective = { id: 101, name: 'Mth_5R_1A_01_04_02' };
 
 export const leaveBalances = {
   annualLeave: 3,
