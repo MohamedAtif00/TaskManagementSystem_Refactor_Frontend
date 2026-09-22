@@ -1,11 +1,14 @@
 import { NgClass } from '@angular/common';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toast } from 'ngx-sonner';
+import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { ButtonComponent } from '@shared/component/button/button.component';
+import { LoCodeDisplayToggleComponent } from '@shared/component/lo-code-display-toggle/lo-code-display-toggle.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
+import { LoCodeLabelPipe } from '@shared/pipes/lo-code-label.pipe';
 import { TaskDetailsEntity, TaskStatus } from '../../task-board-screen/domain/entity/task-board.entity';
 import { GetTaskDetailsUseCase } from '../../task-board-screen/domain/usecase/get-task-details.usecase';
 import { TaskDrawerComponent } from '../../task-board-screen/presentation/task-drawer.component';
@@ -14,10 +17,11 @@ import { GetTaskSheetUseCase } from '../domain/usecase/get-task-sheet.usecase';
 
 @Component({
   selector: 'app-task-sheet',
-  imports: [NgClass, RouterLink, PageHeaderComponent, ButtonComponent, TaskDrawerComponent, TableSkeletonComponent],
+  imports: [NgClass, RouterLink, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, TaskDrawerComponent, TableSkeletonComponent, LoCodeLabelPipe],
   templateUrl: './task-sheet.component.html',
 })
 export class TaskSheetComponent implements OnInit {
+  readonly loDisplay = inject(LoCodeDisplayService);
   projectId = 0;
   readonly tasksPath = ROUTE_PATHS.tasks;
   readonly loading = signal(true);

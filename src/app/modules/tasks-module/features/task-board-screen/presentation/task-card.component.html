@@ -10,7 +10,9 @@
       </span>
     }
   </div>
-  <p class="text-muted-foreground mb-2 text-xs">{{ card.learningObjective.name }}</p>
+  <p class="text-muted-foreground mb-2 text-xs" [title]="card.learningObjective.name">
+    {{ card.learningObjective.name | loCodeLabel: loDisplay.view().showMapped : loDisplay.view().direction }}
+  </p>
   <p class="text-muted-foreground text-xs">{{ card.user?.name || 'Unassigned' }}</p>
   <div class="mt-2 flex flex-wrap gap-1">
     @if (card.flagged) {

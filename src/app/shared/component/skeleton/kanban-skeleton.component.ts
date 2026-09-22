@@ -9,9 +9,9 @@ import { SkeletonBlockComponent } from './skeleton-block.component';
       <app-skeleton-block className="h-10 w-40" />
       <app-skeleton-block className="h-10 w-64" />
     </div>
-    <div class="flex gap-4 pb-4">
+    <div class="flex w-full max-w-full min-w-0 gap-4 overflow-x-auto pb-4">
       @for (column of columnItems(); track column) {
-        <div class="bg-muted/40 flex min-h-[28rem] min-w-72 flex-1 basis-0 flex-col rounded-xl p-3">
+        <div class="bg-muted/40 flex min-h-[28rem] w-72 shrink-0 flex-col rounded-xl p-3">
           <div class="mb-3 flex items-center justify-between">
             <app-skeleton-block className="h-4 w-20" />
             <app-skeleton-block className="h-5 w-8 rounded-full" />
@@ -30,6 +30,9 @@ import { SkeletonBlockComponent } from './skeleton-block.component';
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    class: 'block min-w-0 w-full',
+  },
 })
 export class KanbanSkeletonComponent {
   columns = input(4);

@@ -58,7 +58,7 @@
 
 @if (showForm()) {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-    <div class="bg-card border-border max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-5 shadow-lg">
+    <div class="bg-card border-border max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border p-5 shadow-lg">
       <h3 class="text-foreground mb-4 text-lg font-semibold">{{ form.id != null ? 'Edit role' : 'Create role' }}</h3>
       <div class="space-y-3">
         <label class="block">
@@ -69,12 +69,55 @@
           <span class="text-muted-foreground mb-1 block text-xs font-medium">Description</span>
           <textarea rows="2" [(ngModel)]="form.description" name="roleDescription"></textarea>
         </label>
-        <div class="border-border max-h-56 space-y-2 overflow-y-auto rounded-md border p-2">
-          @for (permission of permissions(); track permission.id) {
-            <label class="flex items-center gap-2 text-sm">
-              <input type="checkbox" [checked]="isPermissionSelected(permission.id)" (change)="togglePermission(permission.id, $any($event.target).checked)" />
-              <span>{{ permission.name }} <span class="text-muted-foreground text-xs">{{ permission.code }}</span></span>
-            </label>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Copy from role</span>
+          <select [ngModel]="copyFromRoleId" (ngModelChange)="copyFromRole($event)" name="copyFromRole">
+            <option [ngValue]="null">Select a role…</option>
+            @for (role of rows(); track role.id) {
+              @if (role.id !== form.id) {
+                <option [ngValue]="role.id">{{ role.name }}</option>
+              }
+            }
+          </select>
+          <span class="text-muted-foreground mt-1 block text-xs">
+            Copies current permissions as a starting point. Later changes to that role are not applied.
+          </span>
+        </label>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Search permissions</span>
+          <input type="text" [(ngModel)]="permissionSearch" name="permissionSearch" placeholder="Module or permission" />
+        </label>
+        <div class="border-border max-h-72 space-y-3 overflow-y-auto rounded-md border p-3">
+          @for (group of visibleGroups; track group.prefix) {
+            <section class="border-border/80 rounded-md border p-3">
+              <div class="mb-2 flex items-center justify-between gap-3">
+                <h4 class="text-foreground text-sm font-semibold">{{ group.label }}</h4>
+                @if (group.manage) {
+                  <label class="text-foreground flex items-center gap-2 text-xs font-medium">
+                    <input
+                      type="checkbox"
+                      [checked]="isGroupManageChecked(group)"
+                      [attr.aria-label]="group.label + ' full access'"
+                      (change)="onToggleManage(group, $any($event.target).checked)" />
+                    Full access
+                  </label>
+                }
+              </div>
+              <div class="flex flex-wrap gap-x-4 gap-y-2">
+                @for (verb of group.verbs; track verb.id) {
+                  <label class="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      [checked]="isGroupVerbChecked(group, verb)"
+                      [attr.aria-label]="group.label + ' ' + verb.label"
+                      (change)="onToggleVerb(group, verb, $any($event.target).checked)" />
+                    <span>{{ verb.label }}</span>
+                  </label>
+                }
+              </div>
+            </section>
+          } @empty {
+            <p class="text-muted-foreground py-4 text-center text-sm">No permissions match the search</p>
           }
         </div>
         @if (formError) {

@@ -12,7 +12,7 @@ test.describe('Curriculum (integration)', () => {
   });
 
   test('expands year to reveal project tree', async ({ page }) => {
-    await page.getByRole('button', { name: '▸' }).first().click();
+    await page.getByRole('button', { name: /^Expand / }).first().click();
     await expect(page.getByText(/SEED_Project_/)).toBeVisible();
   });
 });

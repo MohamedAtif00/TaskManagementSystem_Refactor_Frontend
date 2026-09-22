@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
 import { RoleCatalogService } from '@core/network/role-catalog.service';
@@ -10,6 +10,17 @@ import { DeleteRoleUseCase } from '../domain/usecase/delete-role.usecase';
 import { RoleListUseCase } from '../domain/usecase/role-list.usecase';
 import { RolePermissionsUseCase } from '../domain/usecase/role-permissions.usecase';
 import { SaveRoleUseCase } from '../domain/usecase/save-role.usecase';
+import {
+  PermissionGroup,
+  PermissionVerbOption,
+  expandImpliedSelections,
+  filterGroups,
+  groupPermissions,
+  isManageSelected,
+  isVerbChecked,
+  toggleManage,
+  toggleVerb,
+} from './role-permission-groups';
 
 @Component({
   selector: 'app-role-list',
@@ -18,11 +29,14 @@ import { SaveRoleUseCase } from '../domain/usecase/save-role.usecase';
 })
 export class RoleListComponent implements OnInit {
   formError = '';
+  permissionSearch = '';
+  copyFromRoleId: number | null = null;
   readonly loading = signal(true);
   readonly rows = signal<RoleEntity[]>([]);
   readonly permissions = signal<RolePermissionOption[]>([]);
   readonly showForm = signal(false);
   readonly confirmRole = signal<RoleEntity | null>(null);
+  readonly groups = computed(() => groupPermissions(this.permissions()));
   form: RoleFormPayload = this.emptyForm();
 
   constructor(
@@ -32,6 +46,14 @@ export class RoleListComponent implements OnInit {
     private deleteUseCase: DeleteRoleUseCase,
     private catalog: RoleCatalogService,
   ) {}
+
+  get visibleGroups(): PermissionGroup[] {
+    return filterGroups(this.groups(), this.permissionSearch);
+  }
+
+  get selectedIds(): Set<number> {
+    return new Set(this.form.permissionIds);
+  }
 
   ngOnInit(): void {
     this.load();
@@ -54,7 +76,7 @@ export class RoleListComponent implements OnInit {
 
   openCreate(): void {
     this.form = this.emptyForm();
-    this.formError = '';
+    this.resetPickerState();
     this.showForm.set(true);
   }
 
@@ -68,12 +90,9 @@ export class RoleListComponent implements OnInit {
       id: row.id,
       name: row.name,
       description: row.description,
-      permissionIds: this.catalog.permissionIdsFor(
-        { id: row.id, name: row.name, isSystem: row.isSystem, permissionCodes: row.permissionCodes },
-        this.permissions().map((item) => ({ ...item, isSystem: false })),
-      ),
+      permissionIds: this.idsForRole(row),
     };
-    this.formError = '';
+    this.resetPickerState();
     this.showForm.set(true);
   }
 
@@ -81,14 +100,32 @@ export class RoleListComponent implements OnInit {
     this.showForm.set(false);
   }
 
-  isPermissionSelected(id: number): boolean {
-    return this.form.permissionIds.includes(id);
+  isGroupManageChecked(group: PermissionGroup): boolean {
+    return isManageSelected(this.selectedIds, group);
   }
 
-  togglePermission(id: number, checked: boolean): void {
-    this.form.permissionIds = checked
-      ? [...this.form.permissionIds, id]
-      : this.form.permissionIds.filter((item) => item !== id);
+  isGroupVerbChecked(group: PermissionGroup, verb: PermissionVerbOption): boolean {
+    return isVerbChecked(this.selectedIds, group, verb);
+  }
+
+  onToggleManage(group: PermissionGroup, checked: boolean): void {
+    this.form.permissionIds = toggleManage(this.form.permissionIds, group, checked);
+  }
+
+  onToggleVerb(group: PermissionGroup, verb: PermissionVerbOption, checked: boolean): void {
+    this.form.permissionIds = toggleVerb(this.form.permissionIds, group, verb, checked);
+  }
+
+  copyFromRole(roleId: number | null): void {
+    this.copyFromRoleId = roleId;
+    if (roleId == null) {
+      return;
+    }
+    const role = this.rows().find((row) => row.id === roleId);
+    if (!role) {
+      return;
+    }
+    this.form.permissionIds = this.idsForRole(role);
   }
 
   save(): void {
@@ -96,7 +133,11 @@ export class RoleListComponent implements OnInit {
       this.formError = 'Name is required';
       return;
     }
-    this.saveUseCase.execute(this.form).subscribe({
+    const payload: RoleFormPayload = {
+      ...this.form,
+      permissionIds: expandImpliedSelections(this.form.permissionIds, this.groups()),
+    };
+    this.saveUseCase.execute(payload).subscribe({
       next: () => {
         toast.success(this.form.id != null ? 'Role updated' : 'Role created');
         this.showForm.set(false);
@@ -135,6 +176,19 @@ export class RoleListComponent implements OnInit {
       },
       error: (err: Error) => toast.error(err.message),
     });
+  }
+
+  private idsForRole(role: RoleEntity): number[] {
+    return this.catalog.permissionIdsFor(
+      { id: role.id, name: role.name, isSystem: role.isSystem, permissionCodes: role.permissionCodes },
+      this.permissions().map((item) => ({ ...item, isSystem: false })),
+    );
+  }
+
+  private resetPickerState(): void {
+    this.formError = '';
+    this.permissionSearch = '';
+    this.copyFromRoleId = null;
   }
 
   private emptyForm(): RoleFormPayload {

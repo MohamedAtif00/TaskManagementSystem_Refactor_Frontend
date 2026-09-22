@@ -134,11 +134,17 @@ export class MenuService implements OnDestroy {
   }
 
   private markActive() {
+    const topLevelRoutes = this._pagesMenu()
+      .flatMap((menu) => menu.items)
+      .map((item) => item.route)
+      .filter((route): route is string => typeof route === 'string' && route.length > 0);
+
     this._pagesMenu().forEach((menu) => {
       let activeGroup = false;
       menu.items.forEach((subMenu) => {
-        const active = this.isActive(subMenu.route);
-        subMenu.expanded = active;
+        const active = this.isBestMatchingRoute(subMenu.route, topLevelRoutes);
+        const childActive = !!subMenu.children?.some((child) => this.isActive(child.route));
+        subMenu.expanded = active || childActive;
         subMenu.active = active;
         if (active) activeGroup = true;
         if (subMenu.children) {
@@ -157,12 +163,33 @@ export class MenuService implements OnDestroy {
   }
 
   public isActive(instruction: unknown): boolean {
+    if (typeof instruction !== 'string' || instruction.length === 0) {
+      return false;
+    }
     return this.router.isActive(this.router.createUrlTree([instruction]), {
       paths: 'subset',
       queryParams: 'subset',
       fragment: 'ignored',
       matrixParams: 'ignored',
     });
+  }
+
+  private isBestMatchingRoute(route: unknown, siblingRoutes: string[]): boolean {
+    if (typeof route !== 'string' || !this.isActive(route)) {
+      return false;
+    }
+
+    const normalized = this.normalizePath(route);
+    return !siblingRoutes.some((other) => {
+      if (other === route) {
+        return false;
+      }
+      return this.normalizePath(other).length > normalized.length && this.isActive(other);
+    });
+  }
+
+  private normalizePath(route: string): string {
+    return route.replace(/\/+$/, '') || '/';
   }
 
   ngOnDestroy(): void {

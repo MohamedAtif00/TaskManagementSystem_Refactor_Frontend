@@ -1,5 +1,5 @@
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toast } from 'ngx-sonner';
@@ -10,8 +10,11 @@ import { CurriculumCatalogService } from '@core/network/curriculum-catalog.servi
 import { AuthService } from '@core/services/auth.service';
 import { RealtimeService } from '@core/services/realtime.service';
 import { TicketStatsService } from '@core/network/ticket-stats.service';
+import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
+import { LoCodeDisplayToggleComponent } from '@shared/component/lo-code-display-toggle/lo-code-display-toggle.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { LoCodeLabelPipe } from '@shared/pipes/lo-code-label.pipe';
 import {
   BoardSource,
   TaskBoardEntity,
@@ -44,7 +47,9 @@ const BOARD_PAGE_SIZE = 40;
     RouterLink,
     DragDropModule,
     PageHeaderComponent,
+    LoCodeDisplayToggleComponent,
     ButtonComponent,
+    LoCodeLabelPipe,
     TaskColumnComponent,
     TaskDrawerComponent,
     NewTaskModalComponent,
@@ -53,6 +58,7 @@ const BOARD_PAGE_SIZE = 40;
   templateUrl: './task-board.component.html',
 })
 export class TaskBoardComponent implements OnInit, OnDestroy {
+  readonly loDisplay = inject(LoCodeDisplayService);
   readonly columns: BoardColumn[] = [
     { label: 'Backlog', key: 'backlog', statuses: [0] },
     { label: 'To Do', key: 'todo', statuses: [1] },

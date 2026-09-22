@@ -8,6 +8,9 @@ import { SidebarMenuComponent } from './sidebar-menu/sidebar-menu.component';
   selector: 'app-sidebar',
   templateUrl: './sidebar.component.html',
   imports: [NgClass, AngularSvgIconModule, SidebarMenuComponent],
+  host: {
+    class: 'hidden h-full min-h-0 lg:block',
+  },
 })
 export class SidebarComponent {
   constructor(public menuService: MenuService) {}

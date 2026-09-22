@@ -1,4 +1,5 @@
 <app-page-header title="Sprints" subtitle="Time-boxed boards scoped to learning objectives">
+  <app-lo-code-display-toggle />
   @if (isAdmin) {
     <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">
       Add Sprint
@@ -125,7 +126,7 @@
             @for (lo of availableLos(); track lo.id) {
               <label class="flex items-center gap-2 text-sm">
                 <input type="checkbox" [checked]="isLoSelected(lo.id)" (change)="toggleLo(lo, $any($event.target).checked)" />
-                <span>{{ lo.name }} <span class="text-muted-foreground text-xs">({{ lo.unitName }} / {{ lo.lessonName }})</span></span>
+                <span>{{ lo.name | loCodeLabel: loDisplay.view().showMapped : loDisplay.view().direction }} <span class="text-muted-foreground text-xs">({{ lo.unitName }} / {{ lo.lessonName }})</span></span>
               </label>
             }
           </div>

@@ -2,6 +2,7 @@
   <app-table-skeleton [rows]="8" [columns]="4" />
 } @else if (sheet(); as current) {
   <app-page-header [title]="current.name" subtitle="Curriculum sheet">
+    <app-lo-code-display-toggle />
     <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="tasksPath">Back to list</a>
     <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="goBoard()">Board View</app-button>
   </app-page-header>
@@ -16,7 +17,7 @@
             @for (lo of lesson.learningObjectives; track lo.id) {
               <div class="border-border mb-3 rounded-lg border p-3 last:mb-0">
                 <div class="mb-2 flex flex-wrap items-baseline gap-2">
-                  <p class="text-foreground text-sm font-semibold">{{ lo.name }}</p>
+                  <p class="text-foreground text-sm font-semibold">{{ lo.name | loCodeLabel: loDisplay.view().showMapped : loDisplay.view().direction }}</p>
                   <span class="text-muted-foreground text-xs">{{ lo.tag }} · {{ lo.template }} · {{ lo.environment }} · {{ lo.schemaName }}</span>
                 </div>
                 <div class="flex flex-wrap gap-2">

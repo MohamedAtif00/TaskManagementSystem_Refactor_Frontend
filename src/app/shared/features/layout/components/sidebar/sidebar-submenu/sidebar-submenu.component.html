@@ -1,6 +1,10 @@
 <div
-  class="max-h-0 overflow-hidden pt-1 transition-all duration-500 ltr:pl-4 rtl:pr-4"
-  [ngClass]="{ hidden: !menuService.showSideBar, 'max-h-screen': submenu.expanded }">
+  class="pt-1 transition-all duration-500 ltr:pl-4 rtl:pr-4"
+  [ngClass]="{
+    hidden: !menuService.showSideBar,
+    'max-h-0 overflow-hidden': !submenu.expanded,
+    'max-h-64 overflow-y-auto': submenu.expanded,
+  }">
   <ul
     class="border-border text-muted-foreground flex flex-col border-dashed ltr:border-l ltr:pl-2 rtl:border-r rtl:pr-2">
     @for (sub of submenu.children; track sub) {

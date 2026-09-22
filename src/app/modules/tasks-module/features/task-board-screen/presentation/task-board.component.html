@@ -2,6 +2,7 @@
   <app-kanban-skeleton />
 } @else if (board(); as current) {
   <app-page-header [title]="current.name" [subtitle]="source === 'project' ? 'Project board' : 'Sprint board'">
+    <app-lo-code-display-toggle />
     <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="backLink()">Back to list</a>
     @if (source === 'project') {
       <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="goSheet()">Sheet View</app-button>
@@ -25,7 +26,7 @@
         <select [ngModel]="selectedLoId()" (ngModelChange)="onLoChange($event)" name="selectedLoId">
           <option [ngValue]="0">All</option>
           @for (lo of current.learningObjectives; track lo.id) {
-            <option [ngValue]="lo.id">{{ lo.name }}</option>
+            <option [ngValue]="lo.id">{{ lo.name | loCodeLabel: loDisplay.view().showMapped : loDisplay.view().direction }}</option>
           }
         </select>
       </label>

@@ -7,6 +7,9 @@ import { TaskCardComponent } from './task-card.component';
   selector: 'app-task-column',
   imports: [DragDropModule, TaskCardComponent],
   templateUrl: './task-column.component.html',
+  host: {
+    class: 'block min-h-[28rem] w-72 shrink-0',
+  },
 })
 export class TaskColumnComponent {
   @Input({ required: true }) label = '';

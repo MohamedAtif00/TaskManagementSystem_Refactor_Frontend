@@ -108,17 +108,22 @@ export const users = [
 ];
 
 export const roles = [
-  { id: 0, name: 'Project Manager', description: 'PMO', isSystem: true },
-  { id: 1, name: 'Section Head', description: 'Section lead', isSystem: true },
-  { id: 2, name: 'Team Leader', description: 'Team lead', isSystem: true },
-  { id: 3, name: 'Member', description: 'Contributor', isSystem: true },
-  { id: 4, name: 'Owner', description: 'Full access', isSystem: true },
+  { id: 0, name: 'Project Manager', description: 'PMO', isSystem: true, permissionCodes: ['users.read', 'users.write', 'projects.read'] },
+  { id: 1, name: 'Section Head', description: 'Section lead', isSystem: true, permissionCodes: ['users.read'] },
+  { id: 2, name: 'Team Leader', description: 'Team lead', isSystem: true, permissionCodes: ['users.read'] },
+  { id: 3, name: 'Member', description: 'Contributor', isSystem: true, permissionCodes: ['users.read'] },
+  { id: 4, name: 'Owner', description: 'Full access', isSystem: true, permissionCodes: ['users.read', 'users.write', 'projects.read', 'hr.forgotclock.manage'] },
 ];
 
 export const permissions = [
   { id: 1, code: 'users.read', name: 'Read users' },
   { id: 2, code: 'users.write', name: 'Write users' },
   { id: 3, code: 'projects.read', name: 'Read projects' },
+  { id: 10, code: 'hr.forgotclock.read', name: 'Read forgot clock' },
+  { id: 11, code: 'hr.forgotclock.create', name: 'Create forgot clock' },
+  { id: 12, code: 'hr.forgotclock.update', name: 'Update forgot clock' },
+  { id: 13, code: 'hr.forgotclock.delete', name: 'Delete forgot clock' },
+  { id: 14, code: 'hr.forgotclock.manage', name: 'Manage forgot clock' },
 ];
 
 export const teams = [

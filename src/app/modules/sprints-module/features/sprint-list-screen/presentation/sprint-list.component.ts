@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
@@ -7,9 +7,12 @@ import { PermissionCodes } from '@core/models/permission-codes';
 import { ADMIN_ROLES } from '@core/models/user-role';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { AuthService } from '@core/services/auth.service';
+import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
+import { LoCodeDisplayToggleComponent } from '@shared/component/lo-code-display-toggle/lo-code-display-toggle.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
+import { LoCodeLabelPipe } from '@shared/pipes/lo-code-label.pipe';
 import {
   SprintEntity,
   SprintFormPayload,
@@ -24,10 +27,11 @@ import { SprintSubjectsUseCase } from '../domain/usecase/sprint-subjects.usecase
 
 @Component({
   selector: 'app-sprint-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
+  imports: [FormsModule, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, TableSkeletonComponent, LoCodeLabelPipe],
   templateUrl: './sprint-list.component.html',
 })
 export class SprintListComponent implements OnInit {
+  readonly loDisplay = inject(LoCodeDisplayService);
   archived = false;
   readonly loading = signal(true);
   readonly rows = signal<SprintEntity[]>([]);

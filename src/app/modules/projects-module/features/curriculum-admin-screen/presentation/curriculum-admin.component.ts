@@ -1,11 +1,15 @@
-import { NgTemplateOutlet } from '@angular/common';
-import { Component, OnInit, signal } from '@angular/core';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
+import { formatLoCode } from '@core/lo-code/lo-code.formatter';
+import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
 import { SUBJECT_STATUS_LABELS } from '@core/models/role-map';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { LoCodeDisplayToggleComponent } from '@shared/component/lo-code-display-toggle/lo-code-display-toggle.component';
 import { TreeSkeletonComponent } from '@shared/component/skeleton/tree-skeleton.component';
+import { LoCodeLabelPipe } from '@shared/pipes/lo-code-label.pipe';
 import {
   CurriculumKind,
   CurriculumNode,
@@ -42,15 +46,40 @@ const KIND_LABEL: Record<CurriculumKind, string> = {
   lo: 'Learning objective',
 };
 
+const KIND_CHIP: Record<CurriculumKind, string> = {
+  year: 'Year',
+  project: 'Project',
+  term: 'Term',
+  group: 'Group',
+  subject: 'Subject',
+  unit: 'Unit',
+  lesson: 'Lesson',
+  lo: 'LO',
+};
+
+const KIND_CHIP_CLASS: Record<CurriculumKind, string> = {
+  year: 'bg-primary/15 text-primary',
+  project: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
+  term: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
+  group: 'bg-cyan-500/15 text-cyan-800 dark:text-cyan-300',
+  subject: 'bg-green-500/15 text-green-800 dark:text-green-300',
+  unit: 'bg-amber-500/15 text-amber-800 dark:text-amber-300',
+  lesson: 'bg-orange-500/15 text-orange-800 dark:text-orange-300',
+  lo: 'bg-muted text-muted-foreground',
+};
+
 @Component({
   selector: 'app-curriculum-admin',
-  imports: [FormsModule, NgTemplateOutlet, PageHeaderComponent, ButtonComponent, TreeSkeletonComponent],
+  imports: [FormsModule, NgClass, NgTemplateOutlet, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, TreeSkeletonComponent, LoCodeLabelPipe],
   templateUrl: './curriculum-admin.component.html',
 })
 export class CurriculumAdminComponent implements OnInit {
+  readonly loDisplay = inject(LoCodeDisplayService);
   readonly loading = signal(true);
   readonly nodes = signal<CurriculumNode[]>([]);
   readonly openKeys = signal<Set<string>>(new Set());
+  readonly loadingKeys = signal<Set<string>>(new Set());
+  readonly query = signal('');
   readonly schemas = signal<CurriculumSchemaOption[]>([]);
   readonly users = signal<CurriculumUserOption[]>([]);
   readonly showForm = signal(false);
@@ -64,6 +93,9 @@ export class CurriculumAdminComponent implements OnInit {
   ];
   formError = '';
   form: SaveCurriculumPayload = this.emptyForm('year');
+
+  readonly visibleKeys = computed(() => this.collectVisibleKeys(this.nodes(), this.query().trim().toLowerCase()));
+  readonly hasVisibleNodes = computed(() => this.visibleKeys().size > 0);
 
   constructor(
     private treeUseCase: GetCurriculumTreeUseCase,
@@ -102,6 +134,23 @@ export class CurriculumAdminComponent implements OnInit {
     return this.openKeys().has(key);
   }
 
+  isLoading(key: string): boolean {
+    return this.loadingKeys().has(key);
+  }
+
+  isVisible(key: string): boolean {
+    return this.visibleKeys().has(key);
+  }
+
+  isQueryMatch(node: CurriculumNode): boolean {
+    const query = this.query().trim().toLowerCase();
+    return !!query && this.searchText(node).includes(query);
+  }
+
+  canExpand(node: CurriculumNode): boolean {
+    return CHILD_KIND[node.kind] != null;
+  }
+
   childKind(kind: CurriculumKind): CurriculumKind | null {
     return CHILD_KIND[kind];
   }
@@ -110,7 +159,54 @@ export class CurriculumAdminComponent implements OnInit {
     return KIND_LABEL[kind as CurriculumKind] ?? kind;
   }
 
-  toggle(node: CurriculumNode): void {
+  chipOf(kind: CurriculumKind): string {
+    return KIND_CHIP[kind];
+  }
+
+  chipClass(kind: CurriculumKind): string {
+    return KIND_CHIP_CLASS[kind];
+  }
+
+  childCount(node: CurriculumNode): number | null {
+    if (!this.canExpand(node)) {
+      return null;
+    }
+    if (node.kind === 'subject' && !node.childrenLoaded) {
+      return null;
+    }
+    return node.children.length;
+  }
+
+  expandLabel(node: CurriculumNode): string {
+    return `${this.isOpen(node.key) ? 'Collapse' : 'Expand'} ${node.name}`;
+  }
+
+  onQueryChange(value: string): void {
+    this.query.set(value);
+    const needle = value.trim().toLowerCase();
+    if (!needle) {
+      return;
+    }
+    const next = new Set(this.openKeys());
+    this.collectMatchAncestors(this.nodes(), needle, []).forEach((key) => next.add(key));
+    this.openKeys.set(next);
+  }
+
+  expandAll(): void {
+    const next = new Set(this.openKeys());
+    this.collectExpandableKeys(this.nodes()).forEach((key) => next.add(key));
+    this.openKeys.set(next);
+  }
+
+  collapseAll(): void {
+    this.openKeys.set(new Set());
+  }
+
+  toggle(node: CurriculumNode, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.canExpand(node)) {
+      return;
+    }
     const next = new Set(this.openKeys());
     if (next.has(node.key)) {
       next.delete(node.key);
@@ -119,16 +215,18 @@ export class CurriculumAdminComponent implements OnInit {
     }
     next.add(node.key);
     this.openKeys.set(next);
-    if (node.kind === 'subject' && !node.childrenLoaded) {
-      this.childrenUseCase.execute(node).subscribe({
-        next: (children) => {
-          node.children = children;
-          node.childrenLoaded = true;
-          this.nodes.set([...this.nodes()]);
-        },
-        error: (err: Error) => toast.error(err.message),
-      });
+    this.ensureChildren(node);
+  }
+
+  onRowActivate(node: CurriculumNode, event: Event): void {
+    if ((event.target as HTMLElement | null)?.closest('button')) {
+      return;
     }
+    if (this.canExpand(node)) {
+      this.toggle(node);
+      return;
+    }
+    this.openEdit(node, event);
   }
 
   openCreateYear(): void {
@@ -228,25 +326,108 @@ export class CurriculumAdminComponent implements OnInit {
     });
   }
 
+  private ensureChildren(node: CurriculumNode): void {
+    if (node.kind !== 'subject' || node.childrenLoaded || this.isLoading(node.key)) {
+      return;
+    }
+    this.setLoading(node.key, true);
+    this.childrenUseCase.execute(node).subscribe({
+      next: (children) => {
+        node.children = children;
+        node.childrenLoaded = true;
+        this.nodes.set([...this.nodes()]);
+        this.setLoading(node.key, false);
+        if (this.query().trim()) {
+          this.onQueryChange(this.query());
+        }
+      },
+      error: (err: Error) => {
+        this.setLoading(node.key, false);
+        toast.error(err.message);
+      },
+    });
+  }
+
   private reopen(nodes: CurriculumNode[], open: Set<string>): void {
     for (const node of nodes) {
       if (!open.has(node.key)) {
         continue;
       }
       if (node.kind === 'subject' && !node.childrenLoaded) {
-        this.childrenUseCase.execute(node).subscribe({
-          next: (children) => {
-            node.children = children;
-            node.childrenLoaded = true;
-            this.nodes.set([...this.nodes()]);
-            this.reopen(children, open);
-          },
-          error: (err: Error) => toast.error(err.message),
-        });
+        this.ensureChildren(node);
       } else {
         this.reopen(node.children, open);
       }
     }
+  }
+
+  private collectVisibleKeys(nodes: CurriculumNode[], query: string): Set<string> {
+    const visible = new Set<string>();
+    const addBranch = (node: CurriculumNode): void => {
+      visible.add(node.key);
+      for (const child of node.children) {
+        addBranch(child);
+      }
+    };
+    const walk = (items: CurriculumNode[]): boolean => {
+      let any = false;
+      for (const node of items) {
+        const selfMatch = !query || this.searchText(node).includes(query);
+        if (selfMatch) {
+          addBranch(node);
+          any = true;
+          continue;
+        }
+        if (walk(node.children)) {
+          visible.add(node.key);
+          any = true;
+        }
+      }
+      return any;
+    };
+    walk(nodes);
+    return visible;
+  }
+
+  private collectMatchAncestors(nodes: CurriculumNode[], query: string, ancestors: string[]): string[] {
+    const keys: string[] = [];
+    for (const node of nodes) {
+      const path = [...ancestors, node.key];
+      const childKeys = this.collectMatchAncestors(node.children, query, path);
+      if (this.searchText(node).includes(query) || childKeys.length) {
+        keys.push(...ancestors, ...childKeys);
+      }
+    }
+    return keys;
+  }
+
+  private collectExpandableKeys(nodes: CurriculumNode[]): string[] {
+    const keys: string[] = [];
+    for (const node of nodes) {
+      if (this.canExpand(node) && (node.children.length > 0 || node.childrenLoaded)) {
+        keys.push(node.key);
+      }
+      keys.push(...this.collectExpandableKeys(node.children));
+    }
+    return keys;
+  }
+
+  private searchText(node: CurriculumNode): string {
+    const parts = [node.name, this.chipOf(node.kind), node.description, node.tag];
+    if (node.kind === 'lo') {
+      parts.push(formatLoCode(node.name, 'en'), formatLoCode(node.name, 'ar'));
+    }
+    return parts.filter(Boolean).join(' ').toLowerCase();
+  }
+
+  private setLoading(key: string, value: boolean): void {
+    const next = new Set(this.loadingKeys());
+    if (value) {
+      next.add(key);
+    } else {
+      next.delete(key);
+    }
+    this.loadingKeys.set(next);
   }
 
   private emptyForm(kind: CurriculumKind): SaveCurriculumPayload {

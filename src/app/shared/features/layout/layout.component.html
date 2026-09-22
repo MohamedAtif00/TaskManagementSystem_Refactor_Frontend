@@ -1,13 +1,13 @@
 <div class="flex h-screen w-full overflow-hidden">
   <app-sidebar></app-sidebar>
 
-  <div class="flex grow flex-col content-start overflow-hidden bg-background">
+  <div class="flex min-h-0 min-w-0 grow flex-col content-start overflow-hidden bg-background">
     <app-navbar></app-navbar>
     <div
       id="main-content"
-      class="scrollbar-thumb-rounded scrollbar-track-rounded grow overflow-auto bg-muted/25 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted">
-      <div class="px-4 py-4 lg:px-6 lg:py-5">
-        <div class="bg-card border-border min-h-[calc(100vh-7rem)] rounded-2xl border p-4 shadow-sm lg:p-6">
+      class="scrollbar-thumb-rounded scrollbar-track-rounded min-h-0 min-w-0 grow overflow-auto bg-muted/25 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted">
+      <div class="min-w-0 px-4 py-4 lg:px-6 lg:py-5">
+        <div class="bg-card border-border min-h-[calc(100vh-7rem)] min-w-0 overflow-x-auto rounded-2xl border p-4 shadow-sm lg:p-6">
           <router-outlet></router-outlet>
         </div>
       </div>

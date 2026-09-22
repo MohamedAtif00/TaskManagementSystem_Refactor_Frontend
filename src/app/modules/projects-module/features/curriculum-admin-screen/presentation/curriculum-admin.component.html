@@ -1,4 +1,5 @@
 <app-page-header title="Curriculum" subtitle="Years → projects → terms → groups → subjects → units → lessons → LOs">
+  <app-lo-code-display-toggle />
   <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreateYear()">
     Add year
   </app-button>
@@ -7,44 +8,114 @@
 @if (loading()) {
   <app-tree-skeleton [rows]="8" />
 } @else {
-<div class="border-border/60 bg-card shadow-sm rounded-xl border p-4">
-  <ng-template #tree let-nodes>
-    @for (node of nodes ?? []; track node.key) {
-      <div class="border-border/60 border-l pl-3">
-        <div class="flex flex-wrap items-center gap-2 py-1.5">
-          <button class="text-muted-foreground w-5 text-left text-xs" type="button" (click)="toggle(node)">
-            {{ isOpen(node.key) ? '▾' : '▸' }}
-          </button>
-          <span class="text-muted-foreground w-28 shrink-0 text-xs uppercase">{{ labelOf(node.kind) }}</span>
-          <span class="text-foreground text-sm font-semibold">{{ node.name }}</span>
-          @if (node.kind === 'subject') {
-            <span class="text-muted-foreground text-xs">{{ statusLabels[node.status ?? 0] }}</span>
-          }
-          <span class="ml-auto flex items-center gap-3">
-            @if (childKind(node.kind); as child) {
-              <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openAddChild(node, $event)">
-                Add {{ labelOf(child) }}
-              </button>
+  <div class="mb-3 flex flex-wrap items-center gap-2">
+    <label class="w-full max-w-md">
+      <span class="sr-only">Search curriculum</span>
+      <input
+        type="search"
+        class="w-full"
+        name="curriculumSearch"
+        placeholder="Search years, subjects, LOs…"
+        [ngModel]="query()"
+        (ngModelChange)="onQueryChange($event)" />
+    </label>
+    <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="expandAll()">Expand all</app-button>
+    <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="collapseAll()">Collapse all</app-button>
+  </div>
+
+  <div class="border-border/60 bg-card shadow-sm overflow-hidden rounded-xl border" role="tree" aria-label="Curriculum">
+    <ng-template #tree let-nodes let-depth="depth">
+      @for (node of nodes ?? []; track node.key) {
+        @if (isVisible(node.key)) {
+          <div>
+            <div
+              role="treeitem"
+              class="group hover:bg-muted/40 flex cursor-pointer items-center gap-2 py-1.5 pe-3"
+              [class.bg-primary/5]="isQueryMatch(node)"
+              [style.padding-inline-start.px]="10 + depth * 18"
+              [attr.aria-level]="depth + 1"
+              [attr.aria-expanded]="canExpand(node) ? isOpen(node.key) : null"
+              (click)="onRowActivate(node, $event)">
+              @if (canExpand(node)) {
+                <button
+                  class="text-muted-foreground hover:bg-muted flex size-6 shrink-0 items-center justify-center rounded-md"
+                  type="button"
+                  [attr.aria-label]="expandLabel(node)"
+                  (click)="toggle(node, $event)">
+                  @if (isOpen(node.key)) {
+                    <svg class="size-3.5 rotate-90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path d="M7.3 4.7a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L11.58 10 7.3 5.7a1 1 0 0 1 0-1z" />
+                    </svg>
+                  } @else {
+                    <svg class="size-3.5 rtl:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path d="M7.3 4.7a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L11.58 10 7.3 5.7a1 1 0 0 1 0-1z" />
+                    </svg>
+                  }
+                </button>
+              } @else {
+                <span class="size-6 shrink-0" aria-hidden="true"></span>
+              }
+
+              <span
+                class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                [ngClass]="chipClass(node.kind)">
+                {{ chipOf(node.kind) }}
+              </span>
+
+              <span class="text-foreground min-w-0 max-w-md truncate text-sm font-semibold" [class.font-bold]="isQueryMatch(node)" [title]="node.name">
+                @if (node.kind === 'lo') {
+                  {{ node.name | loCodeLabel: loDisplay.view().showMapped : loDisplay.view().direction }}
+                } @else {
+                  {{ node.name }}
+                }
+              </span>
+
+              @if (node.kind === 'subject') {
+                <span class="text-muted-foreground shrink-0 text-xs">{{ statusLabels[node.status ?? 0] }}</span>
+              }
+              @if (childCount(node) !== null) {
+                <span class="text-muted-foreground shrink-0 text-xs tabular-nums">{{ childCount(node) }}</span>
+              }
+
+              <span class="flex shrink-0 items-center gap-2">
+                @if (childKind(node.kind); as child) {
+                  <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openAddChild(node, $event)">
+                    Add {{ labelOf(child) }}
+                  </button>
+                }
+                <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEdit(node, $event)">
+                  Edit
+                </button>
+                <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askArchive(node, $event)">
+                  Archive
+                </button>
+              </span>
+            </div>
+
+            @if (isOpen(node.key)) {
+              @if (isLoading(node.key)) {
+                <p class="text-muted-foreground py-2 text-xs" [style.padding-inline-start.px]="34 + depth * 18">Loading…</p>
+              } @else if (!node.children.length) {
+                <p class="text-muted-foreground py-2 text-xs" [style.padding-inline-start.px]="34 + depth * 18">
+                  No {{ labelOf(childKind(node.kind) ?? node.kind).toLowerCase() }}s yet
+                </p>
+              } @else {
+                <ng-container [ngTemplateOutlet]="tree" [ngTemplateOutletContext]="{ $implicit: node.children, depth: depth + 1 }" />
+              }
             }
-            <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEdit(node, $event)">
-              Edit
-            </button>
-            <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askArchive(node, $event)">
-              Archive
-            </button>
-          </span>
-        </div>
-        @if (isOpen(node.key)) {
-          <ng-container [ngTemplateOutlet]="tree" [ngTemplateOutletContext]="{ $implicit: node.children }" />
+          </div>
         }
-      </div>
+      }
+    </ng-template>
+
+    <ng-container [ngTemplateOutlet]="tree" [ngTemplateOutletContext]="{ $implicit: nodes(), depth: 0 }" />
+
+    @if (!nodes().length) {
+      <p class="text-muted-foreground py-8 text-center text-sm">No years yet. Add a year to start the tree.</p>
+    } @else if (query() && !hasVisibleNodes()) {
+      <p class="text-muted-foreground py-8 text-center text-sm">No matches for “{{ query() }}”.</p>
     }
-  </ng-template>
-  <ng-container [ngTemplateOutlet]="tree" [ngTemplateOutletContext]="{ $implicit: nodes() }" />
-  @if (!nodes().length) {
-    <p class="text-muted-foreground py-8 text-center text-sm">No years yet. Add a year to start the tree.</p>
-  }
-</div>
+  </div>
 }
 
 @if (showForm()) {
@@ -56,8 +127,15 @@
       <div class="space-y-3">
         <label class="block">
           <span class="text-muted-foreground mb-1 block text-xs font-medium">Name</span>
-          <input type="text" [(ngModel)]="form.name" name="nodeName" />
+          <input
+            type="text"
+            [(ngModel)]="form.name"
+            name="nodeName"
+            [placeholder]="form.kind === 'lo' ? 'e.g. Mth_5R_1A_01_04_02' : ''" />
         </label>
+        @if (form.kind === 'lo' && form.name) {
+          <p class="text-muted-foreground text-xs" [title]="form.name">{{ form.name | loCodeLabel: true : loDisplay.view().direction }}</p>
+        }
         @if (form.kind === 'year' || form.kind === 'project' || form.kind === 'subject') {
           <label class="block">
             <span class="text-muted-foreground mb-1 block text-xs font-medium">Description</span>

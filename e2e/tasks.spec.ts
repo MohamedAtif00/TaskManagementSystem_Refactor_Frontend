@@ -88,7 +88,7 @@ test.describe('Tasks / Kanban', () => {
 
 
 
-  test('loads board with a single ticket page request', async ({ page }) => {
+  test('loads board with a ticket page plus column totals', async ({ page }) => {
     const ticketRequests: string[] = [];
     page.on('request', (request) => {
       const url = request.url();
@@ -100,9 +100,11 @@ test.describe('Tasks / Kanban', () => {
     await page.goto('/tasks/11/board');
 
     await expect(page.getByText('Draft linear worksheet')).toBeVisible();
-    expect(ticketRequests.length).toBe(1);
-    expect(ticketRequests[0]).toMatch(/page=1/);
-    expect(ticketRequests[0]).not.toMatch(/status=/);
+    await expect.poll(() => ticketRequests.filter((url) => url.includes('status=')).length).toBe(4);
+
+    const pageRequests = ticketRequests.filter((url) => !url.includes('status='));
+    expect(pageRequests.length).toBe(1);
+    expect(pageRequests[0]).toMatch(/page=1/);
   });
 
   test('opens centered task modal from a card', async ({ page }) => {
