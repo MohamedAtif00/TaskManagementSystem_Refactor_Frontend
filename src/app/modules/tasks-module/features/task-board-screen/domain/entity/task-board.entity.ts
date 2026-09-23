@@ -81,6 +81,7 @@ export interface TaskColumnPageParams {
   pageSize: number;
   learningObjectiveId?: number;
   name?: string;
+  users?: TaskIdName[];
 }
 
 export interface TaskColumnPageEntity {

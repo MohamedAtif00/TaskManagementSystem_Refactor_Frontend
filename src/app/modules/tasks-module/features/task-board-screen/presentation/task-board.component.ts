@@ -3,7 +3,7 @@ import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toast } from 'ngx-sonner';
-import { Subscription } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
 import { UserRole } from '@core/models/user-role';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { CurriculumCatalogService } from '@core/network/curriculum-catalog.service';
@@ -23,8 +23,8 @@ import {
   TaskStatus,
 } from '../domain/entity/task-board.entity';
 import { CompleteTaskUseCase } from '../domain/usecase/complete-task.usecase';
-import { GetTaskBoardPageUseCase } from '../domain/usecase/get-task-board-page.usecase';
 import { GetTaskBoardUseCase } from '../domain/usecase/get-task-board.usecase';
+import { GetTaskColumnPageUseCase } from '../domain/usecase/get-task-column-page.usecase';
 import { GetTaskDetailsUseCase } from '../domain/usecase/get-task-details.usecase';
 import { ProceedTaskUseCase } from '../domain/usecase/proceed-task.usecase';
 import { KanbanSkeletonComponent } from '@shared/component/skeleton/kanban-skeleton.component';
@@ -38,7 +38,7 @@ interface BoardColumn {
   statuses: TaskStatus[];
 }
 
-const BOARD_PAGE_SIZE = 40;
+const COLUMN_PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-task-board',
@@ -65,7 +65,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     { label: 'Doing', key: 'doing', statuses: [2] },
     { label: 'Done', key: 'done', statuses: [3, 4] },
   ];
-  readonly boardPageSize = BOARD_PAGE_SIZE;
+  readonly columnPageSize = COLUMN_PAGE_SIZE;
   readonly loading = signal(true);
   readonly board = signal<TaskBoardEntity | null>(null);
   readonly selected = signal<TaskDetailsEntity | null>(null);
@@ -74,7 +74,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   readonly selectedLoId = signal(0);
   readonly taskQuery = signal('');
   readonly boardPage = signal(1);
-  readonly boardTotalCount = signal(0);
+  readonly columnTotalCounts = signal<Record<string, number>>(this.emptyColumnTotals());
   readonly cardsByColumn = signal<Record<string, TaskCardEntity[]>>(this.emptyCardsByColumn());
   source: BoardSource = 'project';
   entityId = 0;
@@ -87,17 +87,23 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   readonly canCreate = computed(
     () => this.source === 'project' && this.auth.user()?.role !== UserRole.Member,
   );
-  readonly boardTotalPages = computed(() =>
-    Math.max(1, Math.ceil(this.boardTotalCount() / this.boardPageSize)),
+  readonly boardTotalPages = computed(() => {
+    const totals = Object.values(this.columnTotalCounts());
+    if (!totals.length) {
+      return 1;
+    }
+    return Math.max(1, ...totals.map((count) => Math.ceil(count / this.columnPageSize)));
+  });
+  readonly showBoardPager = computed(() =>
+    Object.values(this.columnTotalCounts()).some((count) => count > this.columnPageSize),
   );
-  readonly showBoardPager = computed(() => this.boardTotalCount() > this.boardPageSize);
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private auth: AuthService,
     private boardUseCase: GetTaskBoardUseCase,
-    private boardPageUseCase: GetTaskBoardPageUseCase,
+    private columnPageUseCase: GetTaskColumnPageUseCase,
     private detailsUseCase: GetTaskDetailsUseCase,
     private proceedUseCase: ProceedTaskUseCase,
     private completeUseCase: CompleteTaskUseCase,
@@ -148,7 +154,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   }
 
   totalFor(column: BoardColumn): number {
-    return this.cardsFor(column).length;
+    return this.columnTotalCounts()[column.key] ?? this.cardsFor(column).length;
   }
 
   onSearchTypeChange(value: 'lo' | 'task'): void {
@@ -284,18 +290,42 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   private loadBoardPage(): void {
     this.boardPageSub?.unsubscribe();
-    this.boardPageSub = this.boardPageUseCase.execute(this.boardPageParams()).subscribe({
-      next: (page) => {
-        if (page.items.length === 0 && page.totalCount > 0 && page.page > 1) {
-          const lastPage = Math.max(1, Math.ceil(page.totalCount / this.boardPageSize));
+    const requests = this.columns.map((column) =>
+      this.columnPageUseCase.execute(this.columnPageParams(column)),
+    );
+    this.boardPageSub = forkJoin(requests).subscribe({
+      next: (pages) => {
+        const totals = this.emptyColumnTotals();
+        const cardsByColumn = this.emptyCardsByColumn();
+        let hasAnyCards = false;
+        let maxTotal = 0;
+
+        this.columns.forEach((column, index) => {
+          const page = pages[index];
+          totals[column.key] = page.totalCount;
+          cardsByColumn[column.key] = this.withLoNames(page.items);
+          if (page.items.length) {
+            hasAnyCards = true;
+          }
+          maxTotal = Math.max(maxTotal, page.totalCount);
+        });
+
+        const currentPage = this.boardPage();
+        const lastPage = Math.max(1, Math.ceil(maxTotal / this.columnPageSize));
+        if (!hasAnyCards && maxTotal > 0 && currentPage > 1) {
           this.boardPage.set(lastPage);
           this.loadBoardPage();
           return;
         }
-        this.boardTotalCount.set(page.totalCount);
-        const cards = this.withLoNames(page.items);
-        this.cardsByColumn.set(this.splitIntoColumns(cards));
-        const loIds = [...new Set(cards.map((card) => card.learningObjective.id))];
+
+        this.columnTotalCounts.set(totals);
+        this.cardsByColumn.set(cardsByColumn);
+
+        const loIds = [
+          ...new Set(
+            this.columns.flatMap((column) => cardsByColumn[column.key].map((card) => card.learningObjective.id)),
+          ),
+        ];
         if (loIds.length) {
           this.realtime.joinTicketBoard(loIds);
         }
@@ -308,30 +338,20 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     });
   }
 
-  private boardPageParams() {
+  private columnPageParams(column: BoardColumn) {
     const searchType = this.searchType();
     const learningObjectiveId = searchType === 'lo' ? this.selectedLoId() : 0;
     const name = searchType === 'task' ? this.taskQuery().trim() : '';
     return {
       source: this.source,
       id: this.entityId,
+      statuses: column.statuses,
       page: this.boardPage(),
-      pageSize: this.boardPageSize,
+      pageSize: this.columnPageSize,
       learningObjectiveId: learningObjectiveId || undefined,
       name: name || undefined,
       users: this.board()?.users ?? [],
     };
-  }
-
-  private splitIntoColumns(cards: TaskCardEntity[]): Record<string, TaskCardEntity[]> {
-    const result = this.emptyCardsByColumn();
-    for (const card of cards) {
-      const column = this.columns.find((entry) => entry.statuses.includes(card.status));
-      if (column) {
-        result[column.key].push(card);
-      }
-    }
-    return result;
   }
 
   private withLoNames(cards: TaskCardEntity[]): TaskCardEntity[] {
@@ -376,5 +396,9 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   private emptyCardsByColumn(): Record<string, TaskCardEntity[]> {
     return Object.fromEntries(this.columns.map((column) => [column.key, []]));
+  }
+
+  private emptyColumnTotals(): Record<string, number> {
+    return Object.fromEntries(this.columns.map((column) => [column.key, 0]));
   }
 }

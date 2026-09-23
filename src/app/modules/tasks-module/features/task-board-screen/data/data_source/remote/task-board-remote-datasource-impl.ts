@@ -183,9 +183,10 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
       httpParams = httpParams.set('name', params.name.trim());
     }
 
+    const users = params.users ?? [];
     return this.network.get<TicketListPageResponse>(path, httpParams).pipe(
       map((page) => ({
-        items: (page.items ?? []).map((ticket) => this.toCard(ticket, [], [])),
+        items: (page.items ?? []).map((ticket) => this.toCard(ticket, [], users)),
         page: page.page,
         pageSize: page.pageSize,
         totalCount: page.totalCount,
