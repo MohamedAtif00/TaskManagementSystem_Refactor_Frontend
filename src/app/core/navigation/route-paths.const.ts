@@ -5,6 +5,7 @@ export const ROUTE_PATHS = {
   dashboard: '/dashboard',
   projects: '/projects',
   curriculum: '/projects/curriculum',
+  curriculumSubjectFocus: (subjectId: number | string) => `/projects/curriculum/subjects/${subjectId}`,
   tasks: '/tasks',
   taskBoard: (projectId: number | string) => `/tasks/${projectId}/board`,
   taskSheet: (projectId: number | string) => `/tasks/${projectId}/sheet`,

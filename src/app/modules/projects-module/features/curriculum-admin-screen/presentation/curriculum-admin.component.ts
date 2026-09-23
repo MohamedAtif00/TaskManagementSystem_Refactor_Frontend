@@ -1,9 +1,11 @@
 import { NgClass, NgTemplateOutlet } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
 import { formatLoCode } from '@core/lo-code/lo-code.formatter';
 import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
+import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { SUBJECT_STATUS_LABELS } from '@core/models/role-map';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
@@ -23,54 +25,17 @@ import { GetCurriculumTreeUseCase } from '../domain/usecase/get-curriculum-tree.
 import { GetSubjectUsersUseCase } from '../domain/usecase/get-subject-users.usecase';
 import { LoadCurriculumChildrenUseCase } from '../domain/usecase/load-curriculum-children.usecase';
 import { SaveCurriculumNodeUseCase } from '../domain/usecase/save-curriculum-node.usecase';
-
-const CHILD_KIND: Record<CurriculumKind, CurriculumKind | null> = {
-  year: 'project',
-  project: 'term',
-  term: 'group',
-  group: 'subject',
-  subject: 'unit',
-  unit: 'lesson',
-  lesson: 'lo',
-  lo: null,
-};
-
-const KIND_LABEL: Record<CurriculumKind, string> = {
-  year: 'Year',
-  project: 'Project',
-  term: 'Term',
-  group: 'Subject group',
-  subject: 'Subject',
-  unit: 'Unit',
-  lesson: 'Lesson',
-  lo: 'Learning objective',
-};
-
-const KIND_CHIP: Record<CurriculumKind, string> = {
-  year: 'Year',
-  project: 'Project',
-  term: 'Term',
-  group: 'Group',
-  subject: 'Subject',
-  unit: 'Unit',
-  lesson: 'Lesson',
-  lo: 'LO',
-};
-
-const KIND_CHIP_CLASS: Record<CurriculumKind, string> = {
-  year: 'bg-primary/15 text-primary',
-  project: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
-  term: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
-  group: 'bg-cyan-500/15 text-cyan-800 dark:text-cyan-300',
-  subject: 'bg-green-500/15 text-green-800 dark:text-green-300',
-  unit: 'bg-amber-500/15 text-amber-800 dark:text-amber-300',
-  lesson: 'bg-orange-500/15 text-orange-800 dark:text-orange-300',
-  lo: 'bg-muted text-muted-foreground',
-};
+import {
+  CHILD_KIND,
+  KIND_CHIP,
+  KIND_CHIP_CLASS,
+  KIND_LABEL,
+} from './curriculum-admin.constants';
+import { CurriculumNodeFormComponent } from './curriculum-node-form.component';
 
 @Component({
   selector: 'app-curriculum-admin',
-  imports: [FormsModule, NgClass, NgTemplateOutlet, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, TreeSkeletonComponent, LoCodeLabelPipe],
+  imports: [FormsModule, NgClass, NgTemplateOutlet, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, TreeSkeletonComponent, LoCodeLabelPipe, CurriculumNodeFormComponent],
   templateUrl: './curriculum-admin.component.html',
 })
 export class CurriculumAdminComponent implements OnInit {
@@ -85,12 +50,6 @@ export class CurriculumAdminComponent implements OnInit {
   readonly showForm = signal(false);
   readonly confirmNode = signal<CurriculumNode | null>(null);
   readonly statusLabels = SUBJECT_STATUS_LABELS;
-  readonly statuses = [
-    { id: 0, label: 'Active' },
-    { id: 1, label: 'Closed' },
-    { id: 2, label: 'Hold' },
-    { id: 3, label: 'Reopened' },
-  ];
   formError = '';
   form: SaveCurriculumPayload = this.emptyForm('year');
 
@@ -98,6 +57,7 @@ export class CurriculumAdminComponent implements OnInit {
   readonly hasVisibleNodes = computed(() => this.visibleKeys().size > 0);
 
   constructor(
+    private router: Router,
     private treeUseCase: GetCurriculumTreeUseCase,
     private childrenUseCase: LoadCurriculumChildrenUseCase,
     private saveUseCase: SaveCurriculumNodeUseCase,
@@ -275,13 +235,16 @@ export class CurriculumAdminComponent implements OnInit {
     this.showForm.set(false);
   }
 
-  isUserSelected(id: number): boolean {
-    return !!this.form.userIds?.includes(id);
+  onToggleUser(event: { userId: number; checked: boolean }): void {
+    const current = this.form.userIds ?? [];
+    this.form.userIds = event.checked
+      ? [...current, event.userId]
+      : current.filter((item) => item !== event.userId);
   }
 
-  toggleUser(id: number, checked: boolean): void {
-    const current = this.form.userIds ?? [];
-    this.form.userIds = checked ? [...current, id] : current.filter((item) => item !== id);
+  openFocus(node: CurriculumNode, event: Event): void {
+    event.stopPropagation();
+    void this.router.navigateByUrl(ROUTE_PATHS.curriculumSubjectFocus(node.id));
   }
 
   save(): void {

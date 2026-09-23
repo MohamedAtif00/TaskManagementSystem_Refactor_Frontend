@@ -1,0 +1,119 @@
+@if (loading()) {
+  <app-tree-skeleton [rows]="6" />
+} @else if (error()) {
+  <p class="text-destructive py-8 text-center text-sm">{{ error() }}</p>
+} @else if (subject(); as sub) {
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <nav class="text-muted-foreground mb-2 text-xs">
+        <a class="hover:text-primary font-medium" [routerLink]="curriculumPath">Curriculum</a>
+        <span class="mx-1.5">→</span>
+        <span class="text-foreground">{{ sub.name }}</span>
+      </nav>
+      <h1 class="text-foreground text-2xl font-bold">{{ sub.name }}</h1>
+      @if (sub.description) {
+        <p class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ sub.description }}</p>
+      }
+      <span class="bg-green-500/15 text-green-800 dark:text-green-300 mt-2 inline-block rounded px-2 py-0.5 text-xs font-semibold">
+        {{ statusLabel(sub.status ?? 0) }}
+      </span>
+    </div>
+    <div class="flex shrink-0 flex-wrap items-center gap-2">
+      <app-lo-code-display-toggle />
+      <app-button impact="light" tone="light" size="small" type="button" [routerLink]="curriculumPath">Back to tree</app-button>
+      <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="openEditSubject()">Edit subject</app-button>
+      <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openAddUnit()">Add unit</app-button>
+    </div>
+  </div>
+
+  <div class="space-y-4">
+    @for (unit of sub.units; track unit.key) {
+      <section class="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+        <div class="border-border flex flex-wrap items-center gap-2 border-b px-4 py-3">
+          <span class="bg-amber-500/15 text-amber-800 dark:text-amber-300 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">Unit</span>
+          <h2 class="text-foreground min-w-0 flex-1 truncate text-base font-semibold" [title]="unit.name">{{ unit.name }}</h2>
+          <div class="flex shrink-0 items-center gap-3">
+            <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openAddLesson(unit)">Add lesson</button>
+            <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEdit(unit)">Edit</button>
+            <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askArchive(unit)">Archive</button>
+          </div>
+        </div>
+
+        @if (!unit.children.length) {
+          <p class="text-muted-foreground px-4 py-4 text-sm">No lessons yet — <button class="text-primary font-semibold" type="button" (click)="openAddLesson(unit)">Add lesson</button></p>
+        } @else {
+          @for (lesson of unit.children; track lesson.key) {
+            <div class="border-border border-t px-4 py-3">
+              <div class="mb-2 flex flex-wrap items-center gap-2">
+                <span class="bg-orange-500/15 text-orange-800 dark:text-orange-300 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">Lesson</span>
+                <h3 class="text-foreground min-w-0 flex-1 truncate text-sm font-semibold" [title]="lesson.name">{{ lesson.name }}</h3>
+                <div class="flex shrink-0 items-center gap-3">
+                  <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openAddLo(lesson)">Add LO</button>
+                  <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEdit(lesson)">Edit</button>
+                  <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askArchive(lesson)">Archive</button>
+                </div>
+              </div>
+
+              @if (!lesson.children.length) {
+                <p class="text-muted-foreground ps-1 text-xs">No LOs yet — <button class="text-primary font-semibold" type="button" (click)="openAddLo(lesson)">Add LO</button></p>
+              } @else {
+                <ul class="divide-border divide-y rounded-md border">
+                  @for (lo of lesson.children; track lo.key) {
+                    <li class="flex flex-wrap items-start gap-2 px-3 py-2">
+                      <span class="bg-muted text-muted-foreground mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">LO</span>
+                      <div class="min-w-0 flex-1">
+                        <p class="text-foreground text-sm font-medium" [title]="lo.name">
+                          {{ lo.name | loCodeLabel: loDisplay.view().showMapped : loDisplay.view().direction }}
+                        </p>
+                        @if (lo.tag || lo.template || lo.environment) {
+                          <p class="text-muted-foreground mt-0.5 text-xs">
+                            @if (lo.tag) { <span>Tag: {{ lo.tag }}</span> }
+                            @if (lo.template) { <span class="ms-2">Template: {{ lo.template }}</span> }
+                            @if (lo.environment) { <span class="ms-2">Env: {{ lo.environment }}</span> }
+                          </p>
+                        }
+                      </div>
+                      <div class="flex shrink-0 items-center gap-3">
+                        <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEdit(lo)">Edit</button>
+                        <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askArchive(lo)">Archive</button>
+                      </div>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+        }
+      </section>
+    } @empty {
+      <p class="text-muted-foreground border-border bg-card rounded-xl border py-10 text-center text-sm">
+        No units yet — <button class="text-primary font-semibold" type="button" (click)="openAddUnit()">Add unit</button> to start
+      </p>
+    }
+  </div>
+}
+
+@if (showForm()) {
+  <app-curriculum-node-form
+    [form]="form"
+    [schemas]="schemas()"
+    [users]="users()"
+    [formError]="formError"
+    [selectedUserIds]="form.userIds ?? []"
+    (save)="save()"
+    (close)="closeForm()"
+    (toggleUser)="onToggleUser($event)" />
+}
+
+@if (confirmNode(); as node) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border w-full max-w-sm rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-2 text-lg font-semibold">Archive {{ labelOf(node.kind) }}</h3>
+      <p class="text-muted-foreground mb-5 text-sm">Archive “{{ node.name }}”?</p>
+      <div class="flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="closeConfirm()">Cancel</app-button>
+        <app-button impact="bold" tone="danger" size="small" type="button" (buttonClick)="confirmArchive()">Archive</app-button>
+      </div>
+    </div>
+  </div>
+}

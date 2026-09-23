@@ -11,6 +11,7 @@ import { SaveCurriculumNodeUseCase } from './domain/usecase/save-curriculum-node
 import { ArchiveCurriculumNodeUseCase } from './domain/usecase/archive-curriculum-node.usecase';
 import { CurriculumLookupsUseCase } from './domain/usecase/curriculum-lookups.usecase';
 import { GetSubjectUsersUseCase } from './domain/usecase/get-subject-users.usecase';
+import { GetSubjectFocusUseCase } from '../subject-focus-screen/domain/usecase/get-subject-focus.usecase';
 
 export const CURRICULUM_ADMIN_DI_CONTAINER: Provider[] = [
   { provide: CurriculumAdminRepository, useClass: CurriculumAdminImplementationRepository },
@@ -22,4 +23,5 @@ export const CURRICULUM_ADMIN_DI_CONTAINER: Provider[] = [
   ArchiveCurriculumNodeUseCase,
   CurriculumLookupsUseCase,
   GetSubjectUsersUseCase,
+  GetSubjectFocusUseCase,
 ];

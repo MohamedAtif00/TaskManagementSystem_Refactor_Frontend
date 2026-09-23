@@ -77,7 +77,12 @@
                 <span class="text-muted-foreground shrink-0 text-xs tabular-nums">{{ childCount(node) }}</span>
               }
 
-              <span class="flex shrink-0 items-center gap-2">
+              <span class="ms-auto flex shrink-0 items-center gap-3 ps-3">
+                @if (node.kind === 'subject') {
+                  <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openFocus(node, $event)">
+                    Focus
+                  </button>
+                }
                 @if (childKind(node.kind); as child) {
                   <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openAddChild(node, $event)">
                     Add {{ labelOf(child) }}
@@ -119,93 +124,15 @@
 }
 
 @if (showForm()) {
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-    <div class="bg-card border-border max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-5 shadow-lg">
-      <h3 class="text-foreground mb-4 text-lg font-semibold">
-        {{ form.id != null ? 'Edit' : 'Create' }} {{ labelOf(form.kind) }}
-      </h3>
-      <div class="space-y-3">
-        <label class="block">
-          <span class="text-muted-foreground mb-1 block text-xs font-medium">Name</span>
-          <input
-            type="text"
-            [(ngModel)]="form.name"
-            name="nodeName"
-            [placeholder]="form.kind === 'lo' ? 'e.g. Mth_5R_1A_01_04_02' : ''" />
-        </label>
-        @if (form.kind === 'lo' && form.name) {
-          <p class="text-muted-foreground text-xs" [title]="form.name">{{ form.name | loCodeLabel: true : loDisplay.view().direction }}</p>
-        }
-        @if (form.kind === 'year' || form.kind === 'project' || form.kind === 'subject') {
-          <label class="block">
-            <span class="text-muted-foreground mb-1 block text-xs font-medium">Description</span>
-            <textarea rows="2" [(ngModel)]="form.description" name="nodeDescription"></textarea>
-          </label>
-        }
-        @if (form.kind === 'term') {
-          <div class="grid grid-cols-2 gap-3">
-            <label class="block">
-              <span class="text-muted-foreground mb-1 block text-xs font-medium">Start</span>
-              <input type="date" [(ngModel)]="form.startDate" name="startDate" />
-            </label>
-            <label class="block">
-              <span class="text-muted-foreground mb-1 block text-xs font-medium">End</span>
-              <input type="date" [(ngModel)]="form.endDate" name="endDate" />
-            </label>
-          </div>
-        }
-        @if (form.kind === 'subject' && form.id != null) {
-          <label class="block">
-            <span class="text-muted-foreground mb-1 block text-xs font-medium">Status</span>
-            <select [(ngModel)]="form.status" name="status">
-              @for (status of statuses; track status.id) {
-                <option [ngValue]="status.id">{{ status.label }}</option>
-              }
-            </select>
-          </label>
-          <div class="border-border max-h-40 space-y-2 overflow-y-auto rounded-md border p-2">
-            @for (user of users(); track user.id) {
-              <label class="flex items-center gap-2 text-sm">
-                <input type="checkbox" [checked]="isUserSelected(user.id)" (change)="toggleUser(user.id, $any($event.target).checked)" />
-                <span>{{ user.name }}</span>
-              </label>
-            }
-          </div>
-        }
-        @if (form.kind === 'lo') {
-          @if (form.id == null) {
-            <label class="block">
-              <span class="text-muted-foreground mb-1 block text-xs font-medium">Schema</span>
-              <select [(ngModel)]="form.schemaId" name="schemaId">
-                @for (schema of schemas(); track schema.id) {
-                  <option [ngValue]="schema.id">{{ schema.name }}</option>
-                }
-              </select>
-            </label>
-          }
-          <label class="block">
-            <span class="text-muted-foreground mb-1 block text-xs font-medium">Tag</span>
-            <input type="text" [(ngModel)]="form.tag" name="tag" />
-          </label>
-          <label class="block">
-            <span class="text-muted-foreground mb-1 block text-xs font-medium">Template</span>
-            <input type="text" [(ngModel)]="form.template" name="template" />
-          </label>
-          <label class="block">
-            <span class="text-muted-foreground mb-1 block text-xs font-medium">Environment</span>
-            <input type="text" [(ngModel)]="form.environment" name="environment" />
-          </label>
-        }
-        @if (formError) {
-          <p class="text-destructive text-xs">{{ formError }}</p>
-        }
-      </div>
-      <div class="mt-5 flex justify-end gap-2">
-        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="closeForm()">Cancel</app-button>
-        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="save()">Save</app-button>
-      </div>
-    </div>
-  </div>
+  <app-curriculum-node-form
+    [form]="form"
+    [schemas]="schemas()"
+    [users]="users()"
+    [formError]="formError"
+    [selectedUserIds]="form.userIds ?? []"
+    (save)="save()"
+    (close)="closeForm()"
+    (toggleUser)="onToggleUser($event)" />
 }
 
 @if (confirmNode(); as node) {

@@ -26,4 +26,14 @@ export const PROJECTS_ROUTES: Routes = [
         (m) => m.CurriculumAdminComponent,
       ),
   },
+  {
+    path: 'curriculum/subjects/:subjectId',
+    canActivate: [roleGuard],
+    data: { roles: [UserRole.ProjectManager, UserRole.Owner], permissions: [PermissionCodes.Curriculum.Read] },
+    providers: CURRICULUM_ADMIN_DI_CONTAINER,
+    loadComponent: () =>
+      import('./features/subject-focus-screen/presentation/subject-focus.component').then(
+        (m) => m.SubjectFocusComponent,
+      ),
+  },
 ];
