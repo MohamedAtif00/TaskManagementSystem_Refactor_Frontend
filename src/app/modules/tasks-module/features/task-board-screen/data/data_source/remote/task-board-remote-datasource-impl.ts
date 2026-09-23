@@ -45,6 +45,7 @@ interface TicketDto {
   tl?: boolean;
   isReview?: boolean;
   learningObjectiveId: number;
+  teamId?: number | null;
   userId?: number | null;
   pause?: boolean;
   attention?: boolean;
@@ -115,17 +116,22 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
             map(({ sprint, users }) => ({
               name: sprint.name,
               learningObjectives: (sprint.learningObjectiveIds ?? []).map((id) => ({ id, name: `LO ${id}` })),
-              users: users.map((user) => ({ id: user.id, name: user.name })),
+              users: users.map((user) => ({ id: user.id, name: user.name, teamId: user.teamId ?? null })),
             })),
           )
         : forkJoin({
             subject: this.network.get<SubjectDto>(apiPath(API.Curriculum.Subject, { id: params.id })),
             users: this.network.get<{ id: number; name: string }[]>(apiPath(API.Curriculum.SubjectUsers, { id: params.id })),
+            directory: this.users.list().pipe(catchError(() => of([] as DirectoryUser[]))),
           }).pipe(
-            map(({ subject, users }) => ({
+            map(({ subject, users, directory }) => ({
               name: subject.name,
               learningObjectives: [],
-              users,
+              users: users.map((user) => ({
+                id: user.id,
+                name: user.name,
+                teamId: directory.find((row) => row.id === user.id)?.teamId ?? null,
+              })),
             })),
           );
 
@@ -198,7 +204,7 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   getTask(id: number): Observable<TaskDetailsModel> {
     return forkJoin({
       ticket: this.network.get<TicketDto>(apiPath(API.Tickets.ById, { id })),
-      directory: this.users.list(),
+      directory: this.users.list().pipe(catchError(() => of([] as DirectoryUser[]))),
     }).pipe(
       switchMap(({ ticket, directory }) =>
         this.network.get<{ id: number; name: string }>(apiPath(API.Curriculum.LearningObjective, { id: ticket.learningObjectiveId })).pipe(
@@ -328,7 +334,7 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   listComments(ticketId: number): Observable<TaskComment[]> {
     return forkJoin({
       comments: this.network.get<CommentDto[]>(apiPath(API.Tickets.Comments, { id: ticketId })),
-      directory: this.users.list(),
+      directory: this.users.list().pipe(catchError(() => of([] as DirectoryUser[]))),
     }).pipe(
       map(({ comments, directory }) => comments.map((row) => this.toComment(row, directory))),
       catchError(mapHttpError),
@@ -411,6 +417,7 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   ): TaskDetailsModel {
     return {
       ...this.toCard(ticket, [lo], directory),
+      teamId: ticket.teamId ?? null,
       subjectId: ticket.subjectId ?? 0,
       subjectName: '',
       attention: !!ticket.attention,

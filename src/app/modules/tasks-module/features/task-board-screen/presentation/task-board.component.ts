@@ -1,4 +1,4 @@
-import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -26,6 +26,7 @@ import { CompleteTaskUseCase } from '../domain/usecase/complete-task.usecase';
 import { GetTaskBoardUseCase } from '../domain/usecase/get-task-board.usecase';
 import { GetTaskColumnPageUseCase } from '../domain/usecase/get-task-column-page.usecase';
 import { GetTaskDetailsUseCase } from '../domain/usecase/get-task-details.usecase';
+import { PauseTaskUseCase } from '../domain/usecase/pause-task.usecase';
 import { ProceedTaskUseCase } from '../domain/usecase/proceed-task.usecase';
 import { KanbanSkeletonComponent } from '@shared/component/skeleton/kanban-skeleton.component';
 import { NewTaskModalComponent } from './new-task-modal.component';
@@ -45,7 +46,6 @@ const COLUMN_PAGE_SIZE = 10;
   imports: [
     FormsModule,
     RouterLink,
-    DragDropModule,
     PageHeaderComponent,
     LoCodeDisplayToggleComponent,
     ButtonComponent,
@@ -107,6 +107,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     private detailsUseCase: GetTaskDetailsUseCase,
     private proceedUseCase: ProceedTaskUseCase,
     private completeUseCase: CompleteTaskUseCase,
+    private pauseUseCase: PauseTaskUseCase,
     private realtime: RealtimeService,
     private ticketStats: TicketStatsService,
     private catalog: CurriculumCatalogService,
@@ -153,6 +154,10 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     return this.cardsByColumn()[column.key] ?? [];
   }
 
+  connectedColumns(columnKey: string): string[] {
+    return this.columns.map((column) => column.key).filter((key) => key !== columnKey);
+  }
+
   totalFor(column: BoardColumn): number {
     return this.columnTotalCounts()[column.key] ?? this.cardsFor(column).length;
   }
@@ -192,47 +197,44 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     if (event.previousContainer === event.container) {
       return;
     }
-    if (!this.canCreate()) {
-      toast.error('You cannot move tasks on this board');
-      return;
-    }
 
     const card = event.item.data as TaskCardEntity;
-    const sourceColumn = this.columns.find((column) => column.statuses.includes(card.status));
-    if (!sourceColumn) {
+    const sourceKey = event.previousContainer.id;
+    const targetKey = targetColumn.key;
+    const move =
+      sourceKey === 'backlog' && targetKey === 'todo'
+        ? { action: 'proceed' as const, message: 'Moved to To Do' }
+        : sourceKey === 'todo' && targetKey === 'doing'
+          ? { action: 'proceed' as const, message: card.paused ? 'Resumed' : 'Started' }
+          : sourceKey === 'doing' && targetKey === 'done'
+            ? { action: 'complete' as const, message: 'Task completed' }
+            : sourceKey === 'doing' && targetKey === 'todo'
+              ? { action: 'pause' as const, message: 'Moved to To Do' }
+              : null;
+
+    if (!move) {
+      this.loadBoardPage();
+      toast.error('That column move is not allowed');
       return;
     }
 
-    const sourceIndex = this.columns.indexOf(sourceColumn);
-    const targetIndex = this.columns.indexOf(targetColumn);
-    if (targetIndex !== sourceIndex + 1) {
-      toast.error('Tasks can only move forward one column at a time');
-      return;
-    }
+    const request =
+      move.action === 'complete'
+        ? this.completeUseCase.execute(card.id)
+        : move.action === 'pause'
+          ? this.pauseUseCase.execute(card.id)
+          : this.proceedUseCase.execute(card.id);
 
-    if (card.status === 2 && targetColumn.key === 'done') {
-      this.completeUseCase.execute(card.id).subscribe({
-        next: () => {
-          toast.success('Task completed');
-          this.loadBoardPage();
-        },
-        error: (err: Error) => toast.error(err.message),
-      });
-      return;
-    }
-
-    if (card.status === 0 || card.status === 1) {
-      this.proceedUseCase.execute(card.id).subscribe({
-        next: () => {
-          toast.success(card.status === 0 ? 'Moved to To Do' : 'Started');
-          this.loadBoardPage();
-        },
-        error: (err: Error) => toast.error(err.message),
-      });
-      return;
-    }
-
-    toast.error('Use the task drawer to move backward');
+    request.subscribe({
+      next: () => {
+        toast.success(move.message);
+        this.loadBoardPage();
+      },
+      error: (err: Error) => {
+        toast.error(err.message);
+        this.loadBoardPage();
+      },
+    });
   }
 
   openCard(card: TaskCardEntity): void {

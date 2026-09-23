@@ -2,14 +2,15 @@
   class="bg-muted/40 flex h-full min-h-[28rem] flex-col rounded-xl p-3"
   cdkDropList
   [id]="columnKey"
-  [cdkDropListData]="cards"
+  [cdkDropListData]="sortedCards"
+  [cdkDropListConnectedTo]="connectedTo"
   (cdkDropListDropped)="onDrop($event)">
   <div class="mb-3 flex items-center justify-between">
     <h3 class="text-foreground text-sm font-bold">{{ label }}</h3>
     <span class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs">{{ totalCount }}</span>
   </div>
   <div class="flex min-h-24 flex-col gap-3">
-    @for (card of sorted(); track card.id) {
+    @for (card of sortedCards; track card.id) {
       <div cdkDrag [cdkDragData]="card" class="cursor-grab active:cursor-grabbing">
         <app-task-card [card]="card" (open)="openCard.emit($event)" />
       </div>

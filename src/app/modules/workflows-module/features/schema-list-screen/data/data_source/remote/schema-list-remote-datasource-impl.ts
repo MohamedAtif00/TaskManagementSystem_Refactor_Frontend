@@ -30,7 +30,7 @@ interface StepDto {
   duration: number;
   priority: number;
   nodeId: number;
-  taskBankId: number;
+  ticketBankId: number;
 }
 
 @Injectable()
@@ -135,7 +135,7 @@ export class SchemaListRemoteDataSourceImpl extends SchemaListRemoteDataSource {
   }
 
   saveStep(payload: StepFormPayload): Observable<void> {
-    const body = { taskBankId: payload.taskBankId, duration: payload.duration, priority: payload.priority };
+    const body = { ticketBankId: payload.taskBankId, duration: payload.duration, priority: payload.priority };
     const request$ =
       payload.id != null
         ? this.network.put(apiPath(API.WorkflowSteps.ById, { id: payload.id }), body)
@@ -181,8 +181,8 @@ export class SchemaListRemoteDataSourceImpl extends SchemaListRemoteDataSource {
         duration: step.duration,
         priority: step.priority,
         nodeId: step.nodeId,
-        taskBankId: step.taskBankId,
-        taskBankName: bank.find((item) => item.id === step.taskBankId)?.name ?? `Item ${step.taskBankId}`,
+        taskBankId: step.ticketBankId,
+        taskBankName: bank.find((item) => item.id === step.ticketBankId)?.name ?? `Item ${step.ticketBankId}`,
       })),
     };
   }

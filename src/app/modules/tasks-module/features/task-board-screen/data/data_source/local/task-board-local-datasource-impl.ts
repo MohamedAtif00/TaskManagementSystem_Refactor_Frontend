@@ -116,6 +116,7 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
     this.ensureCreatedActivity(task.id, task.name, task.createdAt);
     return of({
       ...this.toCard(task),
+      teamId: null,
       subjectId: task.subjectId,
       subjectName: subject?.name ?? 'Unknown',
       attention: task.attention,

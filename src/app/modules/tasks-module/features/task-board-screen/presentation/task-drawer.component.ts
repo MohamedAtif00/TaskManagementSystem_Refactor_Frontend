@@ -14,6 +14,7 @@ import {
   TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
 } from '../domain/entity/task-board.entity';
+import { UserRole } from '@core/models/user-role';
 import { AuthService } from '@core/services/auth.service';
 import { AddCommentUseCase } from '../domain/usecase/add-comment.usecase';
 import { DeleteCommentUseCase } from '../domain/usecase/delete-comment.usecase';
@@ -141,6 +142,10 @@ export class TaskDrawerComponent implements OnChanges {
     }
   }
 
+  get showActions(): boolean {
+    return this.task.access !== 'None';
+  }
+
   get canWork(): boolean {
     return this.task.access === 'WorkOn' || this.task.access === 'WorkOnAndManage';
   }
@@ -149,16 +154,61 @@ export class TaskDrawerComponent implements OnChanges {
     return this.task.access === 'Manage' || this.task.access === 'WorkOnAndManage';
   }
 
+  get workBlocked(): boolean {
+    return this.task.paused || this.task.flagged;
+  }
+
   get canStart(): boolean {
-    return this.canWork && (this.task.status === 0 || this.task.status === 1);
+    return this.canWork && !this.workBlocked && (this.task.status === 0 || this.task.status === 1);
   }
 
   get canComplete(): boolean {
-    return this.canWork && this.task.status === 2;
+    return this.canWork && !this.workBlocked && this.task.status === 2;
+  }
+
+  get canAssign(): boolean {
+    return this.canManage;
+  }
+
+  get canChangePriority(): boolean {
+    return this.canManage;
+  }
+
+  get canSkipOrJump(): boolean {
+    const role = this.auth.user()?.role;
+    return this.showActions && (role === UserRole.ProjectManager || role === UserRole.Owner);
+  }
+
+  get canFlag(): boolean {
+    return this.showActions && this.task.status !== 0;
+  }
+
+  get canPause(): boolean {
+    return this.showActions && !this.task.flagged && !this.task.paused && this.task.status === 2;
+  }
+
+  get canResume(): boolean {
+    return this.showActions && this.task.paused && this.task.user?.id === this.auth.user()?.id;
+  }
+
+  get canRollback(): boolean {
+    return this.canWork && !this.workBlocked && !!this.task.isReview && this.task.status === 2;
   }
 
   get canTime(): boolean {
-    return this.canWork || this.canManage;
+    return this.canWork && !this.workBlocked && this.task.status === 2;
+  }
+
+  get assignableUsers(): TaskIdName[] {
+    const role = this.auth.user()?.role;
+    if (role === UserRole.ProjectManager || role === UserRole.Owner || this.task.teamId == null) {
+      return this.users;
+    }
+    const knowsTeams = this.users.some((user) => user.teamId != null);
+    if (!knowsTeams) {
+      return this.users;
+    }
+    return this.users.filter((user) => user.teamId === this.task.teamId);
   }
 
   startLabel(): string {
@@ -226,6 +276,7 @@ export class TaskDrawerComponent implements OnChanges {
     this.proceedUseCase.execute(this.task.id).subscribe({
       next: () => {
         toast.success(this.task.status === 0 ? 'Moved to To Do' : 'Started');
+        this.loadActivity();
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),
@@ -237,6 +288,7 @@ export class TaskDrawerComponent implements OnChanges {
       next: () => {
         this.confirmComplete = false;
         toast.success('Completed');
+        this.loadActivity();
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),
@@ -253,6 +305,7 @@ export class TaskDrawerComponent implements OnChanges {
       next: () => {
         toast.success('Assigned');
         this.showAssignPanel = false;
+        this.loadActivity();
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),
@@ -263,6 +316,7 @@ export class TaskDrawerComponent implements OnChanges {
     this.flagUseCase.execute(this.task.id).subscribe({
       next: () => {
         toast.success(this.task.flagged ? 'Flag cleared' : 'Flagged');
+        this.loadActivity();
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),
@@ -273,6 +327,7 @@ export class TaskDrawerComponent implements OnChanges {
     this.pauseUseCase.execute(this.task.id).subscribe({
       next: () => {
         toast.success(this.task.paused ? 'Resumed' : 'Paused');
+        this.loadActivity();
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),
@@ -283,6 +338,7 @@ export class TaskDrawerComponent implements OnChanges {
     this.rollbackUseCase.execute(this.task.id).subscribe({
       next: () => {
         toast.success('Rolled back');
+        this.loadActivity();
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),
@@ -293,6 +349,7 @@ export class TaskDrawerComponent implements OnChanges {
     this.skipUseCase.execute(this.task.id).subscribe({
       next: () => {
         toast.success('Skipped');
+        this.loadActivity();
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),
@@ -337,6 +394,7 @@ export class TaskDrawerComponent implements OnChanges {
       next: () => {
         toast.success('Jumped');
         this.showJumpPanel = false;
+        this.loadActivity();
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),
@@ -348,6 +406,7 @@ export class TaskDrawerComponent implements OnChanges {
       next: () => {
         toast.success('Priority updated');
         this.showPriorityPanel = false;
+        this.loadActivity();
         this.changed.emit();
       },
       error: (err: Error) => toast.error(err.message),
@@ -407,6 +466,14 @@ export class TaskDrawerComponent implements OnChanges {
     return comment.userId === this.auth.user()?.id;
   }
 
+  canDeleteComment(comment: TaskComment): boolean {
+    const user = this.auth.user();
+    if (!user) {
+      return false;
+    }
+    return comment.userId === user.id || user.role === UserRole.ProjectManager || user.role === UserRole.Owner;
+  }
+
   startEditComment(comment: TaskComment): void {
     this.editingCommentId = comment.id;
     this.editingDraft = comment.content;
@@ -428,6 +495,7 @@ export class TaskDrawerComponent implements OnChanges {
         this.cancelEditComment();
         toast.success('Comment updated');
         this.loadComments();
+        this.loadActivity();
       },
       error: (err: Error) => toast.error(err.message),
     });
@@ -438,6 +506,7 @@ export class TaskDrawerComponent implements OnChanges {
       next: () => {
         toast.success('Comment deleted');
         this.loadComments();
+        this.loadActivity();
       },
       error: (err: Error) => toast.error(err.message),
     });

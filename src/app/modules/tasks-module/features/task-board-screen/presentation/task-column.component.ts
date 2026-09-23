@@ -1,5 +1,5 @@
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { TaskCardEntity } from '../domain/entity/task-board.entity';
 import { TaskCardComponent } from './task-card.component';
 
@@ -11,16 +11,21 @@ import { TaskCardComponent } from './task-card.component';
     class: 'block min-h-[28rem] w-72 shrink-0',
   },
 })
-export class TaskColumnComponent {
+export class TaskColumnComponent implements OnChanges {
   @Input({ required: true }) label = '';
   @Input({ required: true }) columnKey = '';
   @Input() cards: TaskCardEntity[] = [];
+  @Input() connectedTo: string[] = [];
   @Input() totalCount = 0;
   @Output() openCard = new EventEmitter<TaskCardEntity>();
   @Output() dropped = new EventEmitter<CdkDragDrop<TaskCardEntity[]>>();
 
-  sorted(): TaskCardEntity[] {
-    return [...this.cards].sort((a, b) => b.priority - a.priority);
+  sortedCards: TaskCardEntity[] = [];
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['cards']) {
+      this.sortedCards = [...this.cards].sort((a, b) => b.priority - a.priority);
+    }
   }
 
   onDrop(event: CdkDragDrop<TaskCardEntity[]>): void {

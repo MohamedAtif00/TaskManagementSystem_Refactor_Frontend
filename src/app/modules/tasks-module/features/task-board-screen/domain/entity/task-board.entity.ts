@@ -6,6 +6,7 @@ export type BoardSource = 'project' | 'sprint';
 export interface TaskIdName {
   id: number;
   name: string;
+  teamId?: number | null;
 }
 
 export interface TaskCardEntity {
@@ -31,6 +32,7 @@ export interface TaskBoardEntity {
 }
 
 export interface TaskDetailsEntity extends TaskCardEntity {
+  teamId: number | null;
   subjectId: number;
   subjectName: string;
   attention: boolean;

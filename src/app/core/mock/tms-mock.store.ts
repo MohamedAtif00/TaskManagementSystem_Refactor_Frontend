@@ -896,6 +896,9 @@ export class TmsMockStore {
       return undefined;
     }
     task.user = { id: user.id, name: user.name };
+    if (task.status === 0 || task.status === 2) {
+      task.status = 1;
+    }
     return this.cloneTask(task);
   }
 
@@ -905,6 +908,9 @@ export class TmsMockStore {
       return undefined;
     }
     task.flagged = !task.flagged;
+    if (task.flagged && task.status !== 3 && task.status !== 4) {
+      task.status = 1;
+    }
     return this.cloneTask(task);
   }
 
@@ -913,7 +919,13 @@ export class TmsMockStore {
     if (!task) {
       return undefined;
     }
-    task.paused = !task.paused;
+    if (task.paused && task.status === 1) {
+      task.paused = false;
+      task.status = 2;
+    } else if (!task.paused && task.status === 2) {
+      task.paused = true;
+      task.status = 1;
+    }
     return this.cloneTask(task);
   }
 

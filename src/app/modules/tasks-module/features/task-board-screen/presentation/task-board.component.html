@@ -36,12 +36,13 @@
     }
   </div>
 
-  <div class="flex gap-4 pb-4 max-lg:overflow-x-auto lg:overflow-x-visible" cdkDropListGroup>
+  <div class="flex gap-4 pb-4 max-lg:overflow-x-auto lg:overflow-x-visible">
     @for (column of columns; track column.key) {
       <app-task-column
         [label]="column.label"
         [columnKey]="column.key"
         [cards]="cardsFor(column)"
+        [connectedTo]="connectedColumns(column.key)"
         [totalCount]="totalFor(column)"
         (openCard)="openCard($event)"
         (dropped)="onCardDropped($event, column)" />

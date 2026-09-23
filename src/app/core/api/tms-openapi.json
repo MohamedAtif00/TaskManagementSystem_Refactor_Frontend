@@ -4396,7 +4396,7 @@
                 "$ref": "#/components/schemas/CreateStepRequest"
               },
               "example": {
-                "taskBankId": 1,
+                "ticketBankId": 1,
                 "duration": 60,
                 "priority": 0
               }
@@ -4452,7 +4452,7 @@
                 "$ref": "#/components/schemas/UpdateStepRequest"
               },
               "example": {
-                "taskBankId": 1,
+                "ticketBankId": 1,
                 "duration": 60,
                 "priority": 0
               }
@@ -7453,6 +7453,18 @@
             "type": "string",
             "nullable": true
           },
+          "teamId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "headedTeamIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
           "notifications": {
             "type": "integer",
             "format": "int32"
@@ -7469,6 +7481,8 @@
             "identity.users.manage"
           ],
           "group": "Engineering",
+          "teamId": 3,
+          "headedTeamIds": [],
           "notifications": 0
         }
       },
@@ -9270,12 +9284,12 @@
       "CreateStepRequest": {
         "type": "object",
         "required": [
-          "taskBankId",
+          "ticketBankId",
           "duration",
           "priority"
         ],
         "properties": {
-          "taskBankId": {
+          "ticketBankId": {
             "type": "integer",
             "format": "int32"
           },
@@ -9292,12 +9306,12 @@
       "UpdateStepRequest": {
         "type": "object",
         "required": [
-          "taskBankId",
+          "ticketBankId",
           "duration",
           "priority"
         ],
         "properties": {
-          "taskBankId": {
+          "ticketBankId": {
             "type": "integer",
             "format": "int32"
           },
@@ -9334,7 +9348,7 @@
             "type": "integer",
             "format": "int32"
           },
-          "taskBankId": {
+          "ticketBankId": {
             "type": "integer",
             "format": "int32"
           }

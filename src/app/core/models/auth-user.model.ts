@@ -6,6 +6,8 @@ export interface AuthUser {
   code: string;
   role: UserRole;
   group: string;
+  teamId?: number | null;
+  headedTeamIds?: number[];
   token: string;
   permissions: string[];
   notifications: number;

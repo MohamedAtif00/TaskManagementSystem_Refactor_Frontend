@@ -13,6 +13,8 @@ export interface AuthInfoResponse {
   roleName: string;
   permissions: string[];
   group?: string | null;
+  teamId?: number | null;
+  headedTeamIds?: number[];
   notifications: number;
 }
 

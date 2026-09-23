@@ -57,7 +57,7 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
       map((row) =>
         TaskBoardMapper.toDetails({
           ...row,
-          access: this.accessFor(row.user?.id),
+          access: this.accessFor(row),
         }),
       ),
     );
@@ -149,22 +149,41 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
     return environment.useMock ? this.local.stopWork(ticketId) : this.remote.stopWork(ticketId);
   }
 
-  private accessFor(assigneeId?: number): TaskAccess {
+  private accessFor(task: { status: number; teamId?: number | null; user?: { id: number } }): TaskAccess {
     const user = this.auth.user();
-    if (!user) {
+    if (!user || task.status === 3 || task.status === 4) {
       return 'None';
     }
-    const canWork = assigneeId === user.id;
-    const canManage = user.role !== UserRole.Member;
-    if (canWork && canManage) {
-      return 'WorkOnAndManage';
+
+    const assignedToSelf = task.user?.id === user.id;
+    const unassigned = !task.user;
+    const backlog = task.status === 0;
+    const canTake = assignedToSelf || unassigned || backlog;
+    const sameTeam = task.teamId != null && user.teamId != null && task.teamId === user.teamId;
+    const inHeadedSection = task.teamId != null && (user.headedTeamIds ?? []).includes(task.teamId);
+
+    if (user.role === UserRole.Owner || user.role === UserRole.ProjectManager) {
+      return canTake ? 'WorkOnAndManage' : 'Manage';
     }
-    if (canWork) {
+
+    if (user.role === UserRole.SectionHead) {
+      if (!sameTeam && !inHeadedSection) {
+        return 'None';
+      }
+      return canTake ? 'WorkOnAndManage' : 'Manage';
+    }
+
+    if (user.role === UserRole.TeamLeader) {
+      if (!sameTeam) {
+        return 'None';
+      }
+      return canTake ? 'WorkOnAndManage' : 'Manage';
+    }
+
+    if (user.role === UserRole.Member && sameTeam && (assignedToSelf || backlog)) {
       return 'WorkOn';
     }
-    if (canManage) {
-      return 'Manage';
-    }
+
     return 'None';
   }
 }

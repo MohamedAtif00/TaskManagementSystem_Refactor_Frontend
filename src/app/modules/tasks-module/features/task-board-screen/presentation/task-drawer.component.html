@@ -79,7 +79,7 @@
           </div>
         </div>
 
-        @if (canStart || canComplete || canManage || canTime) {
+        @if (showActions) {
           <div class="mt-6 px-6">
             <h3 class="text-foreground mb-3 flex items-center gap-2 text-lg font-bold">
               <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -109,21 +109,23 @@
                   </span>
                 </app-button>
               }
-              @if (canManage || canWork) {
+              @if (canAssign) {
                 <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="showAssignPanel = !showAssignPanel">
                   <span [class]="actionLabelClass">
                     <svg-icon src="assets/icons/heroicons/outline/user-circle.svg" [svgClass]="actionIconClass"></svg-icon>
-                    Assign
+                    {{ task.user ? 'Re-assign' : 'Assign' }}
                   </span>
                 </app-button>
               }
-              @if (canManage) {
+              @if (canChangePriority) {
                 <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="showPriorityPanel = !showPriorityPanel">
                   <span [class]="actionLabelClass">
                     <svg-icon src="assets/icons/heroicons/outline/arrow-sm-up.svg" [svgClass]="actionIconClass"></svg-icon>
                     Change Priority
                   </span>
                 </app-button>
+              }
+              @if (canSkipOrJump) {
                 <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="skip()">
                   <span [class]="actionLabelClass">
                     <svg-icon src="assets/icons/heroicons/outline/arrow-sm-right.svg" [svgClass]="actionIconClass"></svg-icon>
@@ -136,6 +138,8 @@
                     Jump
                   </span>
                 </app-button>
+              }
+              @if (canFlag) {
                 <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="flag()">
                   <span [class]="actionLabelClass">
                     <svg [class]="actionIconClass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -145,15 +149,30 @@
                     {{ task.flagged ? 'Clear flag' : 'Flag' }}
                   </span>
                 </app-button>
+              }
+              @if (canPause) {
                 <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="pause()">
                   <span [class]="actionLabelClass">
                     <svg [class]="actionIconClass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                       <rect x="6" y="4" width="4" height="16" />
                       <rect x="14" y="4" width="4" height="16" />
                     </svg>
-                    {{ task.paused ? 'Resume' : 'Pause' }}
+                    Pause
                   </span>
                 </app-button>
+              }
+              @if (canResume) {
+                <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="pause()">
+                  <span [class]="actionLabelClass">
+                    <svg [class]="actionIconClass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <rect x="6" y="4" width="4" height="16" />
+                      <rect x="14" y="4" width="4" height="16" />
+                    </svg>
+                    Resume
+                  </span>
+                </app-button>
+              }
+              @if (canRollback) {
                 <app-button impact="light" tone="danger" size="small" type="button" (buttonClick)="rollback()">
                   <span [class]="actionLabelClass">
                     <svg-icon src="assets/icons/heroicons/outline/refresh.svg" [svgClass]="actionIconClass"></svg-icon>
@@ -182,13 +201,13 @@
               }
             </div>
 
-            @if (showAssignPanel && (canManage || canWork)) {
+            @if (showAssignPanel && canAssign) {
               <div class="border-border mt-3 flex flex-wrap items-end gap-2 rounded-lg border p-3">
                 <label class="block min-w-48 grow">
                   <span class="text-muted-foreground mb-1 block text-xs font-medium">{{ task.user ? 'Re-assign' : 'Assign' }}</span>
                   <select [(ngModel)]="assignUserId" name="assignUserId">
                     <option value="">Select a person</option>
-                    @for (user of users; track user.id) {
+                    @for (user of assignableUsers; track user.id) {
                       <option [value]="user.id">{{ user.name }}</option>
                     }
                   </select>
@@ -202,7 +221,7 @@
               </div>
             }
 
-            @if (showPriorityPanel && canManage) {
+            @if (showPriorityPanel && canChangePriority) {
               <div class="border-border mt-3 flex flex-wrap items-end gap-2 rounded-lg border p-3">
                 <label class="block min-w-40 grow">
                   <span class="text-muted-foreground mb-1 block text-xs font-medium">Priority</span>
@@ -221,7 +240,7 @@
               </div>
             }
 
-            @if (showJumpPanel && canManage) {
+            @if (showJumpPanel && canSkipOrJump) {
               <div class="border-border mt-3 rounded-lg border p-3">
                 @if (jumpPointsBusy) {
                   <p class="text-muted-foreground text-sm">Loading jump points…</p>
@@ -282,12 +301,14 @@
                       <span class="text-foreground text-sm font-semibold">{{ comment.userName }}</span>
                       <div class="flex items-center gap-2">
                         <span class="text-muted-foreground text-xs">{{ formatStamp(comment.createdAt) }}</span>
-                        @if (canEditComment(comment)) {
-                          @if (editingCommentId === comment.id) {
-                            <button type="button" class="text-primary text-xs font-semibold" (click)="saveComment(comment)">Save</button>
-                            <button type="button" class="text-muted-foreground text-xs font-semibold" (click)="cancelEditComment()">Cancel</button>
-                          } @else {
+                        @if (editingCommentId === comment.id) {
+                          <button type="button" class="text-primary text-xs font-semibold" (click)="saveComment(comment)">Save</button>
+                          <button type="button" class="text-muted-foreground text-xs font-semibold" (click)="cancelEditComment()">Cancel</button>
+                        } @else {
+                          @if (canEditComment(comment)) {
                             <button type="button" class="text-primary text-xs font-semibold" (click)="startEditComment(comment)">Edit</button>
+                          }
+                          @if (canDeleteComment(comment)) {
                             <button type="button" class="text-destructive text-xs font-semibold" (click)="removeComment(comment)">Delete</button>
                           }
                         }

@@ -9,6 +9,8 @@ export class SignInMapper {
       code: model.code,
       role: model.role,
       group: model.group,
+      teamId: model.teamId ?? null,
+      headedTeamIds: model.headedTeamIds ?? [],
       token: model.token,
       permissions: model.permissions ?? [],
       notifications: model.notifications ?? 0,

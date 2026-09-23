@@ -53,6 +53,7 @@ export class TaskBoardMapper {
   static toDetails(model: TaskDetailsModel): TaskDetailsEntity {
     return {
       ...this.toCard(model),
+      teamId: model.teamId ?? null,
       subjectId: model.subjectId,
       subjectName: model.subjectName,
       attention: model.attention,
