@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map, shareReplay } from 'rxjs/operators';
 import { TicketStatsResponse } from '@core/api/tms-contracts';
@@ -44,13 +45,15 @@ export interface AggregatedTicketStats {
 
 @Injectable({ providedIn: 'root' })
 export class TicketStatsService {
-  private snapshot$?: Observable<{ tickets: TicketSnapshot[]; los: { id: number; subjectId: number }[] }>;
+  private snapshotCache = new Map<string, Observable<{ tickets: TicketSnapshot[]; los: { id: number; subjectId: number }[] }>>();
 
   constructor(private network: NetworkService) {}
 
   aggregateForSubjects(subjectIds: number[], memberUserId?: number): Observable<AggregatedTicketStats> {
     const uniqueIds = [...new Set(subjectIds)];
-    return this.loadSnapshot().pipe(map((snapshot) => this.mergeStats(snapshot, uniqueIds, memberUserId)));
+    return this.loadSnapshot({ subjectIds: uniqueIds }).pipe(
+      map((snapshot) => this.mergeStats(snapshot, uniqueIds, memberUserId)),
+    );
   }
 
   loadSubjectStats(subjectId: number): Observable<SubjectTicketStats> {
@@ -63,7 +66,7 @@ export class TicketStatsService {
     if (!loIds.length) {
       return of(0);
     }
-    return this.loadSnapshot().pipe(
+    return this.loadSnapshot({ learningObjectiveIds: loIds }).pipe(
       map((snapshot) => {
         const stats = this.classifyLos(loIds, snapshot.tickets);
         return stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
@@ -72,11 +75,28 @@ export class TicketStatsService {
   }
 
   invalidate(): void {
-    this.snapshot$ = undefined;
+    this.snapshotCache.clear();
   }
 
-  private loadSnapshot(): Observable<{ tickets: TicketSnapshot[]; los: { id: number; subjectId: number }[] }> {
-    this.snapshot$ ??= this.network.get<TicketStatsResponse>(API.Tickets.Stats).pipe(
+  private loadSnapshot(filters: {
+    subjectIds?: number[];
+    learningObjectiveIds?: number[];
+  }): Observable<{ tickets: TicketSnapshot[]; los: { id: number; subjectId: number }[] }> {
+    const cacheKey = this.buildCacheKey(filters);
+    const cached = this.snapshotCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    let params = new HttpParams();
+    for (const id of filters.subjectIds ?? []) {
+      params = params.append('subjectId', String(id));
+    }
+    for (const id of filters.learningObjectiveIds ?? []) {
+      params = params.append('learningObjectiveId', String(id));
+    }
+
+    const request$ = this.network.get<TicketStatsResponse>(API.Tickets.Stats, params).pipe(
       map((response) => ({
         tickets: (response.tickets ?? []).map((ticket) => ({
           id: ticket.id,
@@ -90,7 +110,18 @@ export class TicketStatsService {
       catchError(mapHttpError),
       shareReplay(1),
     );
-    return this.snapshot$;
+
+    this.snapshotCache.set(cacheKey, request$);
+    return request$;
+  }
+
+  private buildCacheKey(filters: {
+    subjectIds?: number[];
+    learningObjectiveIds?: number[];
+  }): string {
+    const subjects = [...(filters.subjectIds ?? [])].sort((a, b) => a - b).join(',');
+    const los = [...(filters.learningObjectiveIds ?? [])].sort((a, b) => a - b).join(',');
+    return `s:${subjects}|lo:${los}`;
   }
 
   private classifyLos(loIds: number[], tickets: TicketSnapshot[]): LoStats {
