@@ -1,0 +1,38 @@
+<app-page-header title="Kanban analytics" subtitle="Select a subject to view task and LO progress charts">
+  <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="reportsPath + '/summaries'">Subject summaries</a>
+</app-page-header>
+
+@if (loading()) {
+  <app-table-skeleton [rows]="10" [columns]="4" />
+} @else {
+  <div class="border-border/60 bg-card shadow-sm overflow-hidden rounded-xl border">
+    <table class="text-muted-foreground table w-full table-auto border-collapse text-left text-sm">
+      <thead class="border-border border-b text-xs">
+        <tr>
+          <th class="px-4 py-3">Subject</th>
+          <th class="px-4 py-3">Project</th>
+          <th class="px-4 py-3">Progress</th>
+          <th class="px-4 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr class="border-border/60 hover:bg-muted/30 border-b last:border-b-0">
+            <td class="text-foreground px-4 py-3 font-semibold">{{ row.name }}</td>
+            <td class="px-4 py-3">{{ row.projectName }}</td>
+            <td class="px-4 py-3">{{ row.progressPercent }}%</td>
+            <td class="px-4 py-3">
+              <a class="text-primary text-sm font-semibold hover:underline" [routerLink]="analyticsPath(row.id)">
+                View charts
+              </a>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td class="text-muted-foreground px-4 py-10 text-center" colspan="4">No subjects found</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

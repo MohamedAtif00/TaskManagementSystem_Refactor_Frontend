@@ -23,7 +23,7 @@ export class SubjectAnalyticsComponent implements OnInit {
 
   readonly loading = signal(true);
   readonly subjectName = signal('Subject');
-  readonly reportsPath = ROUTE_PATHS.reports;
+  readonly kanbanAnalyticsPath = ROUTE_PATHS.kanbanAnalytics;
 
   pieSeries: ApexNonAxisChartSeries = [];
   pieLabels = ['Idle', 'Running', 'Done'];

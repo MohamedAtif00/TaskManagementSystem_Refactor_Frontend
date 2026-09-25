@@ -9,28 +9,24 @@ import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 
-interface SubjectSummaryRow {
+interface KanbanAnalyticsRow {
   id: number;
   name: string;
   projectName: string;
-  idle: number;
-  running: number;
-  done: number;
-  total: number;
   progressPercent: number;
 }
 
 @Component({
-  selector: 'app-summaries',
+  selector: 'app-kanban-analytics-list',
   imports: [RouterLink, PageHeaderComponent, TableSkeletonComponent],
-  templateUrl: './summaries.component.html',
+  templateUrl: './kanban-analytics-list.component.html',
 })
-export class SummariesComponent implements OnInit {
+export class KanbanAnalyticsListComponent implements OnInit {
   private readonly catalog = inject(CurriculumCatalogService);
   private readonly ticketStats = inject(TicketStatsService);
 
   readonly loading = signal(true);
-  readonly rows = signal<SubjectSummaryRow[]>([]);
+  readonly rows = signal<KanbanAnalyticsRow[]>([]);
   readonly reportsPath = ROUTE_PATHS.reports;
 
   ngOnInit(): void {
@@ -52,10 +48,6 @@ export class SummariesComponent implements OnInit {
                   id: subject.id,
                   name: subject.name,
                   projectName: subject.projectName,
-                  idle: loStats.idle,
-                  running: loStats.running,
-                  done: loStats.done,
-                  total: loStats.total,
                   progressPercent: loStats.total ? Math.round((loStats.done / loStats.total) * 100) : 0,
                 };
               }),

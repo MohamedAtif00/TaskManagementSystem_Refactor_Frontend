@@ -22,12 +22,30 @@ export const REPORTS_ROUTES: Routes = [
       import('./features/summaries-screen/presentation/summaries.component').then((m) => m.SummariesComponent),
   },
   {
+    path: 'kanban-analytics',
+    canActivate: [roleGuard],
+    data: { roles: ADMIN_ROLES, permissions: [PermissionCodes.Tickets.Read] },
+    loadComponent: () =>
+      import('./features/kanban-analytics-list-screen/presentation/kanban-analytics-list.component').then(
+        (m) => m.KanbanAnalyticsListComponent,
+      ),
+  },
+  {
     path: 'subject-analytics/:projectId',
     canActivate: [roleGuard],
     data: { permissions: [PermissionCodes.Tickets.Read] },
     loadComponent: () =>
       import('./features/subject-analytics-screen/presentation/subject-analytics.component').then(
         (m) => m.SubjectAnalyticsComponent,
+      ),
+  },
+  {
+    path: 'sprint-analytics',
+    canActivate: [roleGuard],
+    data: { permissions: [PermissionCodes.Sprints.Read] },
+    loadComponent: () =>
+      import('./features/sprint-analytics-list-screen/presentation/sprint-analytics-list.component').then(
+        (m) => m.SprintAnalyticsListComponent,
       ),
   },
   {

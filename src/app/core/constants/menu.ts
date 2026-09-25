@@ -15,17 +15,6 @@ export class Menu {
           route: ROUTE_PATHS.dashboard,
         },
         {
-          icon: 'assets/icons/heroicons/outline/document-report.svg',
-          label: 'Reports',
-          route: ROUTE_PATHS.reports,
-          roles: [UserRole.ProjectManager, UserRole.Owner],
-          permissions: [PermissionCodes.Tickets.Read],
-          children: [
-            { label: 'Project overview', route: `${ROUTE_PATHS.reports}/project-overview` },
-            { label: 'Summaries', route: `${ROUTE_PATHS.reports}/summaries` },
-          ],
-        },
-        {
           icon: 'assets/icons/heroicons/outline/inbox.svg',
           label: 'Inbox',
           route: ROUTE_PATHS.notifications,
@@ -101,6 +90,39 @@ export class Menu {
           route: ROUTE_PATHS.myLeaves,
           roles: [UserRole.Member],
           permissions: [PermissionCodes.HrLeave.Create],
+        },
+      ],
+    },
+    {
+      group: 'Analytics',
+      separator: true,
+      items: [
+        {
+          icon: 'assets/icons/heroicons/outline/document-report.svg',
+          label: 'Project overview',
+          route: `${ROUTE_PATHS.reports}/project-overview`,
+          roles: [UserRole.ProjectManager, UserRole.Owner],
+          permissions: [PermissionCodes.Curriculum.Read],
+        },
+        {
+          icon: 'assets/icons/heroicons/outline/document-report.svg',
+          label: 'Summaries',
+          route: `${ROUTE_PATHS.reports}/summaries`,
+          roles: [UserRole.ProjectManager, UserRole.Owner],
+          permissions: [PermissionCodes.Tickets.Read],
+        },
+        {
+          icon: 'assets/icons/heroicons/outline/view-grid.svg',
+          label: 'Kanban analytics',
+          route: ROUTE_PATHS.kanbanAnalytics,
+          roles: [UserRole.ProjectManager, UserRole.Owner],
+          permissions: [PermissionCodes.Tickets.Read],
+        },
+        {
+          icon: 'assets/icons/heroicons/outline/bookmark.svg',
+          label: 'Sprint analytics',
+          route: ROUTE_PATHS.sprintAnalytics,
+          permissions: [PermissionCodes.Sprints.Read],
         },
       ],
     },

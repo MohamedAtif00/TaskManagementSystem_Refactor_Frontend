@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toast } from 'ngx-sonner';
 import { environment } from '@environments/environment';
 import { PermissionCodes } from '@core/models/permission-codes';
@@ -27,7 +27,7 @@ import { SprintSubjectsUseCase } from '../domain/usecase/sprint-subjects.usecase
 
 @Component({
   selector: 'app-sprint-list',
-  imports: [FormsModule, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, TableSkeletonComponent, LoCodeLabelPipe],
+  imports: [FormsModule, RouterLink, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, TableSkeletonComponent, LoCodeLabelPipe],
   templateUrl: './sprint-list.component.html',
 })
 export class SprintListComponent implements OnInit {
@@ -93,6 +93,10 @@ export class SprintListComponent implements OnInit {
       return;
     }
     void this.router.navigateByUrl(ROUTE_PATHS.sprintBoard(row.id));
+  }
+
+  analyticsPath(sprintId: number): string {
+    return ROUTE_PATHS.sprintAnalyticsDetail(sprintId);
   }
 
   openCreate(): void {

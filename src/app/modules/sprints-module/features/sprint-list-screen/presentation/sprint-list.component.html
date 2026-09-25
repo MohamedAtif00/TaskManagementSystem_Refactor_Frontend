@@ -66,6 +66,12 @@
                   <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openBoard(row, $event)">
                     Board
                   </button>
+                  <a
+                    class="text-muted-foreground hover:text-primary text-xs font-semibold"
+                    [routerLink]="analyticsPath(row.id)"
+                    (click)="$event.stopPropagation()">
+                    Analytics
+                  </a>
                 }
                 @if (isManage && !row.isArchived) {
                   <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEdit(row, $event)">

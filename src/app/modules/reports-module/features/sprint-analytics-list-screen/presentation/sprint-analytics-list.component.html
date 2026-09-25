@@ -1,0 +1,42 @@
+<app-page-header title="Sprint analytics" subtitle="Select a sprint to view task distribution charts">
+  <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="sprintsPath">Sprints</a>
+</app-page-header>
+
+@if (loading()) {
+  <app-table-skeleton [rows]="8" [columns]="6" />
+} @else {
+  <div class="border-border/60 bg-card shadow-sm overflow-hidden rounded-xl border">
+    <table class="text-muted-foreground table w-full table-auto border-collapse text-left text-sm">
+      <thead class="border-border border-b text-xs">
+        <tr>
+          <th class="px-4 py-3">Name</th>
+          <th class="px-4 py-3">Start</th>
+          <th class="px-4 py-3">End</th>
+          <th class="px-4 py-3">LOs</th>
+          <th class="px-4 py-3">Progress</th>
+          <th class="px-4 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr class="border-border/60 hover:bg-muted/30 border-b last:border-b-0">
+            <td class="text-foreground px-4 py-3 font-semibold">{{ row.name }}</td>
+            <td class="px-4 py-3">{{ row.startDate }}</td>
+            <td class="px-4 py-3">{{ row.endDate }}</td>
+            <td class="px-4 py-3">{{ row.loNumber }}</td>
+            <td class="px-4 py-3">{{ row.progressPercent }}%</td>
+            <td class="px-4 py-3">
+              <a class="text-primary text-sm font-semibold hover:underline" [routerLink]="analyticsPath(row.id)">
+                View charts
+              </a>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td class="text-muted-foreground px-4 py-10 text-center" colspan="6">No sprints found</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

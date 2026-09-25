@@ -28,7 +28,7 @@ export class SprintAnalyticsComponent implements OnInit {
 
   readonly loading = signal(true);
   readonly sprintName = signal('Sprint');
-  readonly sprintsPath = ROUTE_PATHS.sprints;
+  readonly sprintAnalyticsPath = ROUTE_PATHS.sprintAnalytics;
 
   pieSeries: ApexNonAxisChartSeries = [];
   pieLabels = ['Backlog', 'To Do', 'Doing', 'Done'];
