@@ -54,4 +54,8 @@ if (Test-PortInUse 4200) {
     ) | Out-Null
 }
 
-Write-Host "`nStack starting. Open http://127.0.0.1:4200 and sign in with TST001." -ForegroundColor Green
+if ($Seed) {
+    Write-Host "`nStack starting. Open http://127.0.0.1:4200 and sign in with TST001." -ForegroundColor Green
+} else {
+    Write-Host "`nStack starting. Open http://127.0.0.1:4200 and sign in with a legacy user Code from [identity].[Users]." -ForegroundColor Green
+}

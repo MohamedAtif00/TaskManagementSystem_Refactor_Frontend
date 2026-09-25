@@ -13,6 +13,7 @@
     "e2e:ui": "playwright test --ui",
     "openapi:sync": "node scripts/sync-openapi.mjs",
     "stack:seed": "powershell -File scripts/seed-stack.ps1",
+    "stack:legacy": "powershell -File scripts/start-legacy-stack.ps1",
     "stack:start": "powershell -File scripts/dev-stack.ps1",
     "postinstall": "node node_modules/esbuild/install.js"
   },
