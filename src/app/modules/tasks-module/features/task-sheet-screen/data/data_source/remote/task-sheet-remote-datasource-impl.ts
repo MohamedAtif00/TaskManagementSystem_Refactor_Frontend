@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
+import { HttpParams } from '@angular/common/http';
 import { Observable, forkJoin, of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { catchError, expand, map, reduce, switchMap } from 'rxjs/operators';
+import { TicketListPageResponse } from '@core/api/tms-contracts';
 import { API, apiPath } from '@core/network/api/api.const';
 import { CurriculumCatalogService } from '@core/network/curriculum-catalog.service';
 import { mapHttpError } from '@core/network/http-error';
@@ -58,7 +60,7 @@ export class TaskSheetRemoteDataSourceImpl extends TaskSheetRemoteDataSource {
     return forkJoin({
       subject: this.network.get<SubjectDto>(apiPath(API.Curriculum.Subject, { id: projectId })),
       sheet: this.catalog.getSubjectSheet(projectId),
-      tickets: this.network.get<TicketDto[]>(apiPath(API.Tickets.ListBySubject, { id: projectId })),
+      tickets: this.fetchAllTickets(apiPath(API.Tickets.ListBySubject, { id: projectId })),
       directory: this.users.list(),
       assigned: this.network.get<{ id: number; name: string }[]>(apiPath(API.Curriculum.SubjectUsers, { id: projectId })).pipe(
         catchError(() => of([] as { id: number; name: string }[])),
@@ -93,7 +95,7 @@ export class TaskSheetRemoteDataSourceImpl extends TaskSheetRemoteDataSource {
   private getSprintSheet(sprintId: number): Observable<TaskSheetModel> {
     return forkJoin({
       sprint: this.network.get<SprintDto>(apiPath(API.Sprints.ById, { id: sprintId })),
-      tickets: this.network.get<TicketDto[]>(apiPath(API.Tickets.ListBySprint, { id: sprintId })),
+      tickets: this.fetchAllTickets(apiPath(API.Tickets.ListBySprint, { id: sprintId })),
       directory: this.users.list(),
     }).pipe(
       switchMap(({ sprint, tickets, directory }) => {
@@ -150,6 +152,39 @@ export class TaskSheetRemoteDataSourceImpl extends TaskSheetRemoteDataSource {
       users: directory.map((user) => ({ id: user.id, name: user.name })),
       units: [],
     };
+  }
+
+  private fetchAllTickets(path: string): Observable<TicketDto[]> {
+    const pageSize = 500;
+
+    return this.fetchTicketsPage(path, 1, pageSize).pipe(
+      expand((page) => {
+        const loaded = page.page * page.pageSize;
+        return loaded < page.totalCount
+          ? this.fetchTicketsPage(path, page.page + 1, pageSize)
+          : of(null);
+      }),
+      reduce(
+        (all, page) => (page ? all.concat(page.items) : all),
+        [] as TicketDto[],
+      ),
+    );
+  }
+
+  private fetchTicketsPage(
+    path: string,
+    page: number,
+    pageSize: number,
+  ): Observable<{ items: TicketDto[]; page: number; pageSize: number; totalCount: number }> {
+    const params = new HttpParams().set('page', String(page)).set('pageSize', String(pageSize));
+    return this.network.get<TicketListPageResponse>(path, params).pipe(
+      map((response) => ({
+        items: (response.items ?? []) as TicketDto[],
+        page: response.page,
+        pageSize: response.pageSize,
+        totalCount: response.totalCount,
+      })),
+    );
   }
 
   private mapTickets(
