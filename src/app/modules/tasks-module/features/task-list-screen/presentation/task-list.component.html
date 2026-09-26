@@ -3,14 +3,14 @@
 </app-page-header>
 
 <div class="mb-4 flex flex-wrap gap-3">
-  <input type="search" class="max-w-sm" placeholder="Search subjects" [(ngModel)]="search" (ngModelChange)="load()" />
-  <select class="max-w-40" [(ngModel)]="year" (ngModelChange)="load()">
+  <input type="search" class="max-w-sm" placeholder="Search subjects" [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+  <select class="max-w-40" [(ngModel)]="year" (ngModelChange)="onFilterChange()">
     <option value="">All years</option>
     @for (item of years(); track item) {
       <option [value]="item">{{ item }}</option>
     }
   </select>
-  <select class="max-w-40" [(ngModel)]="term" (ngModelChange)="load()">
+  <select class="max-w-40" [(ngModel)]="term" (ngModelChange)="onFilterChange()">
     <option value="">All terms</option>
     @for (item of terms(); track item) {
       <option [value]="item">{{ item }}</option>
@@ -19,7 +19,7 @@
 </div>
 
 @if (loading()) {
-  <app-table-skeleton [rows]="8" [columns]="6" />
+  <app-table-skeleton [rows]="8" [columns]="5" />
 } @else {
 <div class="border-border/60 bg-card shadow-sm flex min-w-full flex-col rounded-xl border p-2">
   <div class="scrollbar-thumb-rounded scrollbar-track-rounded scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted grow overflow-x-auto px-5">
@@ -30,7 +30,6 @@
           <th class="px-3 py-3">Path</th>
           <th class="px-3 py-3">Year</th>
           <th class="px-3 py-3">Term</th>
-          <th class="px-3 py-3">Status</th>
           <th class="px-3 py-3">Progress</th>
         </tr>
       </thead>
@@ -41,16 +40,16 @@
             <td class="px-3 py-3 text-sm">{{ row.folderPath }}</td>
             <td class="px-3 py-3 text-sm">{{ row.year }}</td>
             <td class="px-3 py-3 text-sm">{{ row.term }}</td>
-            <td class="px-3 py-3 text-sm">{{ row.status }}</td>
             <td class="px-3 py-3 text-sm">{{ row.progressPercent }}%</td>
           </tr>
         } @empty {
           <tr>
-            <td class="py-8 text-center text-sm" colspan="6">No subjects found</td>
+            <td class="py-8 text-center text-sm" colspan="5">No subjects found</td>
           </tr>
         }
       </tbody>
     </table>
   </div>
 </div>
+  <app-pager [page]="page()" [pageSize]="pageSize" [totalCount]="totalCount()" (pageChange)="onPageChange($event)" />
 }

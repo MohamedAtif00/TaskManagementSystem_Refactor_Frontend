@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
@@ -6,28 +6,35 @@ import { downloadCsv } from '@core/utils/csv-export';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { PagerComponent } from '@shared/component/pager/pager.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
-import { TaskSubjectEntity } from '../domain/entity/task-list.entity';
+import { TaskSubjectEntity, TASK_LIST_PAGE_SIZE } from '../domain/entity/task-list.entity';
 import { TaskFilterOptionsUseCase } from '../domain/usecase/task-filter-options.usecase';
 import { TaskListUseCase } from '../domain/usecase/task-list.usecase';
+import { TaskListRepository } from '../domain/repository/task-list.repository';
 
 @Component({
   selector: 'app-task-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, PagerComponent, TableSkeletonComponent],
   templateUrl: './task-list.component.html',
 })
-export class TaskListComponent implements OnInit {
+export class TaskListComponent implements OnInit, OnDestroy {
   search = '';
   year = '';
   term = '';
+  readonly page = signal(1);
+  readonly pageSize = TASK_LIST_PAGE_SIZE;
+  readonly totalCount = signal(0);
   readonly loading = signal(true);
   readonly years = signal<string[]>([]);
   readonly terms = signal<string[]>([]);
   readonly rows = signal<TaskSubjectEntity[]>([]);
+  private searchTimer?: ReturnType<typeof setTimeout>;
 
   constructor(
     private taskListUseCase: TaskListUseCase,
     private filterOptionsUseCase: TaskFilterOptionsUseCase,
+    private repository: TaskListRepository,
     private router: Router,
   ) {}
 
@@ -42,13 +49,47 @@ export class TaskListComponent implements OnInit {
     this.load();
   }
 
+  ngOnDestroy(): void {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+  }
+
+  onSearchChange(): void {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    this.searchTimer = setTimeout(() => this.resetAndLoad(), 300);
+  }
+
+  onFilterChange(): void {
+    this.resetAndLoad();
+  }
+
+  onPageChange(page: number): void {
+    this.page.set(page);
+    this.load();
+  }
+
+  private resetAndLoad(): void {
+    this.page.set(1);
+    this.load();
+  }
+
   load(): void {
     this.loading.set(true);
     this.taskListUseCase
-      .execute({ search: this.search, year: this.year, term: this.term })
+      .execute({
+        search: this.search,
+        year: this.year,
+        term: this.term,
+        page: this.page(),
+        pageSize: this.pageSize,
+      })
       .subscribe({
-        next: (rows) => {
-          this.rows.set(rows);
+        next: (page) => {
+          this.rows.set(page.items);
+          this.totalCount.set(page.totalCount);
           this.loading.set(false);
         },
         error: (err: Error) => {
@@ -65,19 +106,24 @@ export class TaskListComponent implements OnInit {
   }
 
   exportCsv(): void {
-    const rows = this.rows();
-    if (!rows.length) {
-      toast.error('Nothing to export');
-      return;
-    }
-    downloadCsv('subjects.csv', rows, [
-      { header: 'Name', value: (row) => row.name },
-      { header: 'Path', value: (row) => row.folderPath },
-      { header: 'Year', value: (row) => row.year },
-      { header: 'Term', value: (row) => row.term },
-      { header: 'Status', value: (row) => row.status },
-      { header: 'Progress %', value: (row) => row.progressPercent },
-    ]);
-    toast.success('Subjects exported');
+    this.repository
+      .exportTasks({ search: this.search, year: this.year, term: this.term })
+      .subscribe({
+        next: (rows) => {
+          if (!rows.length) {
+            toast.error('Nothing to export');
+            return;
+          }
+          downloadCsv('subjects.csv', rows, [
+            { header: 'Name', value: (row) => row.name },
+            { header: 'Path', value: (row) => row.folderPath },
+            { header: 'Year', value: (row) => row.year },
+            { header: 'Term', value: (row) => row.term },
+            { header: 'Progress %', value: (row) => row.progressPercent },
+          ]);
+          toast.success('Subjects exported');
+        },
+        error: (err: Error) => toast.error(err.message),
+      });
   }
 }
