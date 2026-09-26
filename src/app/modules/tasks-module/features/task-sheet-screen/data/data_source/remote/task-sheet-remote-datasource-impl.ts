@@ -155,7 +155,7 @@ export class TaskSheetRemoteDataSourceImpl extends TaskSheetRemoteDataSource {
   }
 
   private fetchAllTickets(path: string): Observable<TicketDto[]> {
-    const pageSize = 500;
+    const pageSize = 100;
 
     return this.fetchTicketsPage(path, 1, pageSize).pipe(
       expand((page) => {
