@@ -1,3 +1,5 @@
+import { DEFAULT_PAGE_SIZE, ListPageResponse } from '@core/models/list-page.model';
+
 export type LeaveKind = 'leave' | 'permission' | 'wfh' | 'forgotClock';
 export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
 
@@ -25,7 +27,13 @@ export interface LeaveQueueFilters {
   type: string;
   dateFrom: string;
   dateTo: string;
+  page: number;
+  pageSize: number;
 }
+
+export type LeaveQueuePage = ListPageResponse<LeaveQueueItem>;
+
+export const LEAVE_QUEUE_PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export interface DecidePayload {
   kind: LeaveKind;

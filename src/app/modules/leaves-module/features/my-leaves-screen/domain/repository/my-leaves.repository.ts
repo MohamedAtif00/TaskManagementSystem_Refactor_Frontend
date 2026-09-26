@@ -5,12 +5,15 @@ import {
   CreateLeavePayload,
   CreatePermissionPayload,
   CreateWfhPayload,
+  LeaveBalanceEntity,
   LeavePreviewEntity,
-  MyLeavesEntity,
+  MyLeaveListParams,
+  MyLeaveRequestPage,
 } from '../entity/my-leaves.entity';
 
 export abstract class MyLeavesRepository {
-  abstract getMine(userId: number): Observable<MyLeavesEntity>;
+  abstract getBalances(userId: number): Observable<LeaveBalanceEntity>;
+  abstract getRequests(params: MyLeaveListParams): Observable<MyLeaveRequestPage>;
   abstract previewLeave(payload: Pick<CreateLeavePayload, 'startDate' | 'endDate'>): Observable<LeavePreviewEntity>;
   abstract createLeave(userId: number, payload: CreateLeavePayload): Observable<void>;
   abstract createPermission(userId: number, payload: CreatePermissionPayload): Observable<void>;

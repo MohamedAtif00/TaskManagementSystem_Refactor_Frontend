@@ -1,6 +1,8 @@
+import { HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, forkJoin, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
+import { ListPageResponse } from '@core/models/list-page.model';
 import { ForgotClockRequestResponse, LeavePreviewResponse } from '@core/api/tms-contracts';
 import { API, apiPath } from '@core/network/api/api.const';
 import { mapHttpError } from '@core/network/http-error';
@@ -15,16 +17,26 @@ import {
   CreateWfhPayload,
   ForgotClockPunchType,
   ForgotClockRequestEntity,
+  LeaveBalanceEntity,
   LeavePreviewEntity,
   LeaveRequestEntity,
   LeaveStatus,
   LeaveType,
+  MyLeaveListParams,
+  MyLeaveRequestItem,
+  MyLeaveSegment,
   PermissionRequestEntity,
   PermissionType,
   WfhRequestEntity,
 } from '../../../domain/entity/my-leaves.entity';
-import { MyLeavesModel } from '../../model/my-leaves.model';
 import { MyLeavesRemoteDataSource } from './my-leaves-remote-datasource';
+
+interface SearchResult<T> {
+  items?: T[];
+  page?: number;
+  pageSize?: number;
+  totalCount?: number;
+}
 
 interface LeaveDto {
   id: number;
@@ -72,25 +84,39 @@ export class MyLeavesRemoteDataSourceImpl extends MyLeavesRemoteDataSource {
     super();
   }
 
-  getMine(userId: number): Observable<MyLeavesModel> {
-    return forkJoin({
-      balances: this.network.get<BalancesDto>(API.Leaves.Balances),
-      leaves: this.network.get<LeaveDto[]>(API.Leaves.List),
-      permissions: this.network.get<PermissionDto[]>(API.Permissions.List),
-      wfh: this.network.get<WfhDto[]>(API.WorkFromHome.List),
-      forgotClock: this.network.get<ForgotClockRequestResponse[]>(API.ForgotClock.List).pipe(catchError(() => of([]))),
-      directory: this.users.list(),
-    }).pipe(
-      map(({ balances, leaves, permissions, wfh, forgotClock, directory }) => {
-        const me = directory.find((row) => row.id === userId) ?? { id: userId, name: 'Me', code: '' };
+  getBalances(_userId: number): Observable<LeaveBalanceEntity> {
+    return this.network.get<BalancesDto>(API.Leaves.Balances).pipe(
+      map((balances) => mapBalances(balances)),
+      catchError(mapHttpError),
+    );
+  }
+
+  getRequests(params: MyLeaveListParams): Observable<ListPageResponse<MyLeaveRequestItem>> {
+    return this.users.list().pipe(
+      switchMap((directory) => {
+        const me = directory.find((row) => row.id === params.userId) ?? { id: params.userId, name: 'Me', code: '' };
         const user = { id: me.id, name: me.name, code: me.code };
-        return {
-          balances: mapBalances(balances),
-          leaves: leaves.map((row) => this.toLeave(row, user)),
-          permissions: permissions.map((row) => this.toPermission(row, user)),
-          wfh: wfh.map((row) => this.toWfh(row, user)),
-          forgotClock: forgotClock.map((row) => this.toForgotClock(row, user)),
-        };
+        const dates = this.segmentDates(params.segment);
+        const httpParams = new HttpParams({
+          fromObject: {
+            page: String(params.page),
+            pageSize: String(params.pageSize),
+            ...(dates.fromDate ? { fromDate: dates.fromDate } : {}),
+            ...(dates.toDate ? { toDate: dates.toDate } : {}),
+          },
+        });
+        const url = this.searchUrl(params.kind);
+        return this.network.get<SearchResult<unknown>>(url, httpParams).pipe(
+          map((result) => {
+            const items = (result.items ?? []).map((row) => this.mapRequest(params.kind, row, user));
+            return {
+              items,
+              page: result.page ?? params.page,
+              pageSize: result.pageSize ?? params.pageSize,
+              totalCount: result.totalCount ?? 0,
+            };
+          }),
+        );
       }),
       catchError(mapHttpError),
     );
@@ -191,6 +217,45 @@ export class MyLeavesRemoteDataSourceImpl extends MyLeavesRemoteDataSource {
       map(() => undefined),
       catchError(mapHttpError),
     );
+  }
+
+  private searchUrl(kind: MyLeaveListParams['kind']): string {
+    switch (kind) {
+      case 'leave':
+        return API.Leaves.Search;
+      case 'permission':
+        return API.Permissions.Search;
+      case 'wfh':
+        return API.WorkFromHome.Search;
+      case 'forgotClock':
+        return API.ForgotClock.Search;
+    }
+  }
+
+  private segmentDates(segment: MyLeaveSegment): { fromDate?: string; toDate?: string } {
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    if (segment === 'upcoming') {
+      return { fromDate: today };
+    }
+    return { toDate: yesterday };
+  }
+
+  private mapRequest(
+    kind: MyLeaveListParams['kind'],
+    row: unknown,
+    user: { id: number; name: string; code: string },
+  ): MyLeaveRequestItem {
+    switch (kind) {
+      case 'leave':
+        return this.toLeave(row as LeaveDto, user);
+      case 'permission':
+        return this.toPermission(row as PermissionDto, user);
+      case 'wfh':
+        return this.toWfh(row as WfhDto, user);
+      case 'forgotClock':
+        return this.toForgotClock(row as ForgotClockRequestResponse, user);
+    }
   }
 
   private toLeave(row: LeaveDto, user: { id: number; name: string; code: string }): LeaveRequestEntity {

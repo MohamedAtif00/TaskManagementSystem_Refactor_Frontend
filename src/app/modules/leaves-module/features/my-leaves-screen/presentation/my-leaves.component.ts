@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { toast } from 'ngx-sonner';
@@ -15,6 +15,7 @@ import {
 import { countWorkingDays } from '@core/hr/working-days';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { PagerComponent } from '@shared/component/pager/pager.component';
 import { StatCardComponent } from '@shared/component/stat-card/stat-card.component';
 import { StatCardsSkeletonComponent } from '@shared/component/skeleton/stat-cards-skeleton.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
@@ -22,12 +23,14 @@ import { WorkDayTimePickerComponent } from '@shared/component/work-day-time-pick
 import {
   ForgotClockPunchType,
   ForgotClockRequestEntity,
+  LeaveBalanceEntity,
   LeaveKind,
   LeavePreviewEntity,
   LeaveRequestEntity,
   LeaveStatus,
   LeaveType,
-  MyLeavesEntity,
+  MY_LEAVE_PAGE_SIZE,
+  MyLeaveSegment,
   PermissionRequestEntity,
   PermissionType,
   WfhRequestEntity,
@@ -37,7 +40,8 @@ import { CreateForgotClockUseCase } from '../domain/usecase/create-forgot-clock.
 import { CreateLeaveUseCase } from '../domain/usecase/create-leave.usecase';
 import { CreatePermissionUseCase } from '../domain/usecase/create-permission.usecase';
 import { CreateWfhUseCase } from '../domain/usecase/create-wfh.usecase';
-import { GetMyLeavesUseCase } from '../domain/usecase/get-my-leaves.usecase';
+import { GetMyLeaveBalancesUseCase } from '../domain/usecase/get-my-leave-balances.usecase';
+import { GetMyLeaveRequestsUseCase } from '../domain/usecase/get-my-leave-requests.usecase';
 import { PreviewLeaveUseCase } from '../domain/usecase/preview-leave.usecase';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -68,6 +72,7 @@ const PUNCH_TYPE_LABELS: Record<ForgotClockPunchType, string> = {
     FormsModule,
     PageHeaderComponent,
     ButtonComponent,
+    PagerComponent,
     StatCardComponent,
     WorkDayTimePickerComponent,
     StatCardsSkeletonComponent,
@@ -77,9 +82,19 @@ const PUNCH_TYPE_LABELS: Record<ForgotClockPunchType, string> = {
 })
 export class MyLeavesComponent implements OnInit, OnDestroy {
   tab: LeaveKind = 'leave';
+  segment: MyLeaveSegment = 'upcoming';
   formKind: LeaveKind = 'leave';
-  readonly loading = signal(true);
-  readonly data = signal<MyLeavesEntity | null>(null);
+
+  readonly balancesLoading = signal(true);
+  readonly tableLoading = signal(true);
+  readonly balances = signal<LeaveBalanceEntity | null>(null);
+  readonly page = signal(1);
+  readonly pageSize = MY_LEAVE_PAGE_SIZE;
+  readonly totalCount = signal(0);
+  readonly requestRows = signal<
+    LeaveRequestEntity[] | PermissionRequestEntity[] | WfhRequestEntity[] | ForgotClockRequestEntity[]
+  >([]);
+
   readonly showForm = signal(false);
   readonly confirm = signal<{ kind: LeaveKind; id: number; label: string; dates: string } | null>(null);
   formError = '';
@@ -112,18 +127,10 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
   readonly punchTypeLabels = PUNCH_TYPE_LABELS;
   readonly formatTime = formatWorkDayTime;
 
-  readonly upcomingLeaves = computed(() => this.splitLeaves(true));
-  readonly earlierLeaves = computed(() => this.splitLeaves(false));
-  readonly upcomingPermissions = computed(() => this.splitPermissions(true));
-  readonly earlierPermissions = computed(() => this.splitPermissions(false));
-  readonly upcomingWfh = computed(() => this.splitWfh(true));
-  readonly earlierWfh = computed(() => this.splitWfh(false));
-  readonly upcomingForgot = computed(() => this.splitForgot(true));
-  readonly earlierForgot = computed(() => this.splitForgot(false));
-
   constructor(
     private auth: AuthService,
-    private getMine: GetMyLeavesUseCase,
+    private getBalances: GetMyLeaveBalancesUseCase,
+    private getRequests: GetMyLeaveRequestsUseCase,
     private createLeave: CreateLeaveUseCase,
     private createPermission: CreatePermissionUseCase,
     private createWfh: CreateWfhUseCase,
@@ -133,26 +140,88 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.load();
+    this.loadBalances();
+    this.loadRequests();
   }
 
-  load(): void {
+  setTab(tab: LeaveKind): void {
+    this.tab = tab;
+    this.page.set(1);
+    this.loadRequests();
+  }
+
+  setSegment(segment: MyLeaveSegment): void {
+    this.segment = segment;
+    this.page.set(1);
+    this.loadRequests();
+  }
+
+  onPageChange(page: number): void {
+    this.page.set(page);
+    this.loadRequests();
+  }
+
+  loadBalances(): void {
     const userId = this.auth.user()?.id;
     if (!userId) {
-      this.loading.set(false);
+      this.balancesLoading.set(false);
       return;
     }
-    this.loading.set(true);
-    this.getMine.execute(userId).subscribe({
-      next: (data) => {
-        this.data.set(data);
-        this.loading.set(false);
+    this.balancesLoading.set(true);
+    this.getBalances.execute(userId).subscribe({
+      next: (balances) => {
+        this.balances.set(balances);
+        this.balancesLoading.set(false);
       },
       error: (err: Error) => {
-        this.loading.set(false);
+        this.balancesLoading.set(false);
         toast.error(err.message);
       },
     });
+  }
+
+  loadRequests(): void {
+    const userId = this.auth.user()?.id;
+    if (!userId) {
+      this.tableLoading.set(false);
+      return;
+    }
+    this.tableLoading.set(true);
+    this.getRequests
+      .execute({
+        userId,
+        kind: this.tab,
+        segment: this.segment,
+        page: this.page(),
+        pageSize: this.pageSize,
+      })
+      .subscribe({
+        next: (page) => {
+          this.requestRows.set(page.items as LeaveRequestEntity[]);
+          this.totalCount.set(page.totalCount);
+          this.tableLoading.set(false);
+        },
+        error: (err: Error) => {
+          this.tableLoading.set(false);
+          toast.error(err.message);
+        },
+      });
+  }
+
+  leaveRows(): LeaveRequestEntity[] {
+    return this.tab === 'leave' ? (this.requestRows() as LeaveRequestEntity[]) : [];
+  }
+
+  permissionRows(): PermissionRequestEntity[] {
+    return this.tab === 'permission' ? (this.requestRows() as PermissionRequestEntity[]) : [];
+  }
+
+  wfhRows(): WfhRequestEntity[] {
+    return this.tab === 'wfh' ? (this.requestRows() as WfhRequestEntity[]) : [];
+  }
+
+  forgotRows(): ForgotClockRequestEntity[] {
+    return this.tab === 'forgotClock' ? (this.requestRows() as ForgotClockRequestEntity[]) : [];
   }
 
   ratio(used: number, max: number): string {
@@ -229,7 +298,7 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
   }
 
   remainingPreview(): string {
-    const balances = this.data()?.balances;
+    const balances = this.balances();
     if (!balances) {
       return '';
     }
@@ -464,7 +533,8 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
       next: () => {
         toast.success('Request cancelled');
         this.confirm.set(null);
-        this.load();
+        this.loadBalances();
+        this.loadRequests();
       },
       error: (err: Error) => toast.error(err.message),
     });
@@ -474,34 +544,9 @@ export class MyLeavesComponent implements OnInit, OnDestroy {
     toast.success('Request submitted');
     this.showForm.set(false);
     this.tab = kind;
-    this.load();
-  }
-
-  private isUpcoming(status: LeaveStatus, start: string): boolean {
-    if (status === 'Pending') {
-      return true;
-    }
-    return status === 'Approved' && start >= this.today();
-  }
-
-  private splitLeaves(upcoming: boolean): LeaveRequestEntity[] {
-    return (this.data()?.leaves ?? []).filter((row) => this.isUpcoming(row.status, row.startDate) === upcoming);
-  }
-
-  private splitPermissions(upcoming: boolean): PermissionRequestEntity[] {
-    return (this.data()?.permissions ?? []).filter(
-      (row) => this.isUpcoming(row.status, row.permissionDate) === upcoming,
-    );
-  }
-
-  private splitWfh(upcoming: boolean): WfhRequestEntity[] {
-    return (this.data()?.wfh ?? []).filter((row) => this.isUpcoming(row.status, row.date) === upcoming);
-  }
-
-  private splitForgot(upcoming: boolean): ForgotClockRequestEntity[] {
-    return (this.data()?.forgotClock ?? []).filter(
-      (row) => this.isUpcoming(row.status, row.attendanceDate) === upcoming,
-    );
+    this.page.set(1);
+    this.loadBalances();
+    this.loadRequests();
   }
 
   private today(): string {

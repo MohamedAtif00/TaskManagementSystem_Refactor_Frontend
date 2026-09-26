@@ -1,16 +1,20 @@
 import { Observable } from 'rxjs';
+import { ListPageResponse } from '@core/models/list-page.model';
 import {
   CancelRequestPayload,
   CreateForgotClockPayload,
   CreateLeavePayload,
   CreatePermissionPayload,
   CreateWfhPayload,
+  LeaveBalanceEntity,
   LeavePreviewEntity,
+  MyLeaveListParams,
+  MyLeaveRequestItem,
 } from '../../../domain/entity/my-leaves.entity';
-import { MyLeavesModel } from '../../model/my-leaves.model';
 
 export abstract class MyLeavesLocalDataSource {
-  abstract getMine(userId: number): Observable<MyLeavesModel>;
+  abstract getBalances(userId: number): Observable<LeaveBalanceEntity>;
+  abstract getRequests(params: MyLeaveListParams): Observable<ListPageResponse<MyLeaveRequestItem>>;
   abstract previewLeave(payload: Pick<CreateLeavePayload, 'startDate' | 'endDate'>): Observable<LeavePreviewEntity>;
   abstract createLeave(userId: number, payload: CreateLeavePayload): Observable<void>;
   abstract createPermission(userId: number, payload: CreatePermissionPayload): Observable<void>;

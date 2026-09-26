@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
-import { MemberLeaveHistory, MemberLeaveRow } from '../entity/members-leaves.entity';
+import { MemberLeaveHistory, MemberLeaveListPage, MemberLeaveListParams } from '../entity/members-leaves.entity';
 
 export abstract class MembersLeavesRepository {
-  abstract getMembers(): Observable<MemberLeaveRow[]>;
+  abstract getMembers(params: MemberLeaveListParams): Observable<MemberLeaveListPage>;
   abstract getHistory(userId: number): Observable<MemberLeaveHistory>;
 }

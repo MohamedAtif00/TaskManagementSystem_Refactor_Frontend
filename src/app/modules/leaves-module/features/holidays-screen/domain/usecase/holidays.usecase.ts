@@ -1,14 +1,14 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { BaseUseCase } from '@core/base/usecase/base-usecase';
-import { HolidayEntity, HolidayFormPayload } from '../entity/holidays.entity';
+import { HolidayEntity, HolidayFormPayload, HolidayListPage, HolidayListParams } from '../entity/holidays.entity';
 import { HolidaysRepository } from '../repository/holidays.repository';
 
 @Injectable()
-export class ListHolidaysUseCase implements BaseUseCase<void, HolidayEntity[]> {
+export class ListHolidaysUseCase implements BaseUseCase<HolidayListParams, HolidayListPage> {
   constructor(private repository: HolidaysRepository) {}
-  execute(): Observable<HolidayEntity[]> {
-    return this.repository.list();
+  execute(params: HolidayListParams): Observable<HolidayListPage> {
+    return this.repository.list(params);
   }
 }
 

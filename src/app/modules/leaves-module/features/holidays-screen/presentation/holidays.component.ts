@@ -5,16 +5,20 @@ import { PermissionCodes } from '@core/models/permission-codes';
 import { AuthService } from '@core/services/auth.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { PagerComponent } from '@shared/component/pager/pager.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
-import { HolidayEntity, HolidayFormPayload } from '../domain/entity/holidays.entity';
+import { HolidayEntity, HolidayFormPayload, HOLIDAY_PAGE_SIZE } from '../domain/entity/holidays.entity';
 import { DeleteHolidayUseCase, ListHolidaysUseCase, SaveHolidayUseCase } from '../domain/usecase/holidays.usecase';
 
 @Component({
   selector: 'app-holidays',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, PagerComponent, TableSkeletonComponent],
   templateUrl: './holidays.component.html',
 })
 export class HolidaysComponent implements OnInit {
+  readonly page = signal(1);
+  readonly pageSize = HOLIDAY_PAGE_SIZE;
+  readonly totalCount = signal(0);
   readonly loading = signal(true);
   readonly rows = signal<HolidayEntity[]>([]);
   readonly showForm = signal(false);
@@ -36,11 +40,17 @@ export class HolidaysComponent implements OnInit {
     this.load();
   }
 
+  onPageChange(page: number): void {
+    this.page.set(page);
+    this.load();
+  }
+
   load(): void {
     this.loading.set(true);
-    this.listUseCase.execute().subscribe({
-      next: (rows) => {
-        this.rows.set(rows);
+    this.listUseCase.execute({ page: this.page(), pageSize: this.pageSize }).subscribe({
+      next: (page) => {
+        this.rows.set(page.items);
+        this.totalCount.set(page.totalCount);
         this.loading.set(false);
       },
       error: (err: Error) => {
@@ -71,6 +81,7 @@ export class HolidaysComponent implements OnInit {
       next: () => {
         toast.success(this.form.id ? 'Holiday updated' : 'Holiday created');
         this.showForm.set(false);
+        this.page.set(1);
         this.load();
       },
       error: (err: Error) => (this.formError = err.message),

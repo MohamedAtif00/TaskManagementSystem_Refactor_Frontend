@@ -1,4 +1,5 @@
 import { Observable } from 'rxjs';
+import { ListPageResponse } from '@core/models/list-page.model';
 import {
   BulkDecidePayload,
   BulkOpinionResult,
@@ -9,7 +10,7 @@ import {
 import { LeaveQueueModel } from '../../model/leave-calendar.model';
 
 export abstract class LeaveCalendarLocalDataSource {
-  abstract getQueue(kind: LeaveKind, filters: LeaveQueueFilters): Observable<LeaveQueueModel[]>;
+  abstract getQueue(kind: LeaveKind, filters: LeaveQueueFilters): Observable<ListPageResponse<LeaveQueueModel>>;
   abstract getDetails(kind: LeaveKind, id: number): Observable<LeaveQueueModel>;
   abstract decide(payload: DecidePayload): Observable<void>;
   abstract bulkDecide(payload: BulkDecidePayload): Observable<BulkOpinionResult>;

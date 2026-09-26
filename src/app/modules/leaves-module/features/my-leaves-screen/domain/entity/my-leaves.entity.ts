@@ -1,3 +1,5 @@
+import { DEFAULT_PAGE_SIZE, ListPageResponse } from '@core/models/list-page.model';
+
 export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
 export type LeaveType = 'Annual' | 'Sick' | 'Emergency' | 'UnpaidLeave' | 'FromNextBalance';
 export type PermissionType = 'EarlyDeparture' | 'LateArrival' | 'WorkAssignment' | 'Departure';
@@ -95,6 +97,26 @@ export interface MyLeavesEntity {
   wfh: WfhRequestEntity[];
   forgotClock: ForgotClockRequestEntity[];
 }
+
+export type MyLeaveSegment = 'upcoming' | 'earlier';
+
+export interface MyLeaveListParams {
+  userId: number;
+  kind: LeaveKind;
+  segment: MyLeaveSegment;
+  page: number;
+  pageSize: number;
+}
+
+export type MyLeaveRequestItem =
+  | LeaveRequestEntity
+  | PermissionRequestEntity
+  | WfhRequestEntity
+  | ForgotClockRequestEntity;
+
+export type MyLeaveRequestPage = ListPageResponse<MyLeaveRequestItem>;
+
+export const MY_LEAVE_PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export interface CreateLeavePayload {
   type: LeaveType;

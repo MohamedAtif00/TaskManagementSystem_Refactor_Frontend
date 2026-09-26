@@ -5,7 +5,8 @@ import { MyLeavesRemoteDataSource } from './data/data_source/remote/my-leaves-re
 import { MyLeavesRemoteDataSourceImpl } from './data/data_source/remote/my-leaves-remote-datasource-impl';
 import { MyLeavesLocalDataSource } from './data/data_source/local/my-leaves-local-datasource';
 import { MyLeavesLocalDataSourceImpl } from './data/data_source/local/my-leaves-local-datasource-impl';
-import { GetMyLeavesUseCase } from './domain/usecase/get-my-leaves.usecase';
+import { GetMyLeaveBalancesUseCase } from './domain/usecase/get-my-leave-balances.usecase';
+import { GetMyLeaveRequestsUseCase } from './domain/usecase/get-my-leave-requests.usecase';
 import { PreviewLeaveUseCase } from './domain/usecase/preview-leave.usecase';
 import { CreateLeaveUseCase } from './domain/usecase/create-leave.usecase';
 import { CreatePermissionUseCase } from './domain/usecase/create-permission.usecase';
@@ -17,7 +18,8 @@ export const MY_LEAVES_DI_CONTAINER: Provider[] = [
   { provide: MyLeavesRepository, useClass: MyLeavesImplementationRepository },
   { provide: MyLeavesRemoteDataSource, useClass: MyLeavesRemoteDataSourceImpl },
   { provide: MyLeavesLocalDataSource, useClass: MyLeavesLocalDataSourceImpl },
-  GetMyLeavesUseCase,
+  GetMyLeaveBalancesUseCase,
+  GetMyLeaveRequestsUseCase,
   PreviewLeaveUseCase,
   CreateLeaveUseCase,
   CreatePermissionUseCase,

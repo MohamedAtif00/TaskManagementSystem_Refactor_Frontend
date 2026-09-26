@@ -22,7 +22,7 @@
 
     <span class="text-muted-foreground mb-1 block text-xs font-medium">Status</span>
 
-    <select [(ngModel)]="status" name="status" (ngModelChange)="load()">
+    <select [(ngModel)]="status" name="status" (ngModelChange)="onFilterChange()">
 
       <option value="">All</option>
 
@@ -44,7 +44,7 @@
 
       <span class="text-muted-foreground mb-1 block text-xs font-medium">Type</span>
 
-      <select [(ngModel)]="type" name="type" (ngModelChange)="load()">
+      <select [(ngModel)]="type" name="type" (ngModelChange)="onFilterChange()">
 
         <option value="">All</option>
 
@@ -64,7 +64,7 @@
 
     <span class="text-muted-foreground mb-1 block text-xs font-medium">From</span>
 
-    <input type="date" [(ngModel)]="dateFrom" name="dateFrom" (ngModelChange)="load()" />
+    <input type="date" [(ngModel)]="dateFrom" name="dateFrom" (ngModelChange)="onFilterChange()" />
 
   </label>
 
@@ -72,7 +72,7 @@
 
     <span class="text-muted-foreground mb-1 block text-xs font-medium">To</span>
 
-    <input type="date" [(ngModel)]="dateTo" name="dateTo" (ngModelChange)="load()" />
+    <input type="date" [(ngModel)]="dateTo" name="dateTo" (ngModelChange)="onFilterChange()" />
 
   </label>
 
@@ -241,6 +241,7 @@
 
 </div>
 
+  <app-pager [page]="page()" [pageSize]="pageSize" [totalCount]="totalCount()" (pageChange)="onPageChange($event)" />
 }
 
 

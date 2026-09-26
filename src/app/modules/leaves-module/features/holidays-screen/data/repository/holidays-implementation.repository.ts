@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
-import { HolidayEntity, HolidayFormPayload } from '../../domain/entity/holidays.entity';
+import { HolidayEntity, HolidayFormPayload, HolidayListPage, HolidayListParams } from '../../domain/entity/holidays.entity';
 import { HolidaysRepository } from '../../domain/repository/holidays.repository';
 import { HolidaysLocalDataSource, HolidaysRemoteDataSource } from '../data_source/holidays.datasource';
 
@@ -12,8 +12,8 @@ export class HolidaysImplementationRepository implements HolidaysRepository {
     private remote: HolidaysRemoteDataSource,
   ) {}
 
-  list(): Observable<HolidayEntity[]> {
-    return environment.useMock ? this.local.list() : this.remote.list();
+  list(params: HolidayListParams): Observable<HolidayListPage> {
+    return environment.useMock ? this.local.list(params) : this.remote.list(params);
   }
 
   save(payload: HolidayFormPayload): Observable<HolidayEntity> {

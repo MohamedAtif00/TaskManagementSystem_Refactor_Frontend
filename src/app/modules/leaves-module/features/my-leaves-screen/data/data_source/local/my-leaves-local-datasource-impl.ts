@@ -4,15 +4,20 @@ import { delay } from 'rxjs/operators';
 import { MOCK_PUBLIC_HOLIDAYS } from '@core/hr/mock-holidays';
 import { countWorkingDays } from '@core/hr/working-days';
 import { TmsMockStore } from '@core/mock/tms-mock.store';
+import { ListPageResponse } from '@core/models/list-page.model';
 import {
   CancelRequestPayload,
   CreateForgotClockPayload,
   CreateLeavePayload,
   CreatePermissionPayload,
   CreateWfhPayload,
+  LeaveBalanceEntity,
   LeavePreviewEntity,
+  LeaveStatus,
+  MyLeaveListParams,
+  MyLeaveRequestItem,
+  MyLeaveSegment,
 } from '../../../domain/entity/my-leaves.entity';
-import { MyLeavesModel } from '../../model/my-leaves.model';
 import { MyLeavesLocalDataSource } from './my-leaves-local-datasource';
 
 @Injectable()
@@ -21,19 +26,45 @@ export class MyLeavesLocalDataSourceImpl extends MyLeavesLocalDataSource {
     super();
   }
 
-  getMine(userId: number): Observable<MyLeavesModel> {
+  getBalances(userId: number): Observable<LeaveBalanceEntity> {
     const user = this.store.getUser(userId);
     if (!user) {
       return throwError(() => new Error('User not found'));
     }
-    const filters = { userId };
+    return of({ ...user.balances }).pipe(delay(80));
+  }
+
+  getRequests(params: MyLeaveListParams): Observable<ListPageResponse<MyLeaveRequestItem>> {
+    const user = this.store.getUser(params.userId);
+    if (!user) {
+      return throwError(() => new Error('User not found'));
+    }
+    const filters = { userId: params.userId };
+    let all: MyLeaveRequestItem[] = [];
+    if (params.kind === 'leave') {
+      all = this.store.listLeaves(filters).filter((row) =>
+        this.matchesSegment(params.segment, row.status, row.startDate),
+      );
+    } else if (params.kind === 'permission') {
+      all = this.store.listPermissions(filters).filter((row) =>
+        this.matchesSegment(params.segment, row.status, row.permissionDate),
+      );
+    } else if (params.kind === 'wfh') {
+      all = this.store.listWfh(filters).filter((row) => this.matchesSegment(params.segment, row.status, row.date));
+    }
+    const skip = (params.page - 1) * params.pageSize;
     return of({
-      balances: user.balances,
-      leaves: this.store.listLeaves(filters),
-      permissions: this.store.listPermissions(filters),
-      wfh: this.store.listWfh(filters),
-      forgotClock: [],
+      items: all.slice(skip, skip + params.pageSize),
+      page: params.page,
+      pageSize: params.pageSize,
+      totalCount: all.length,
     }).pipe(delay(120));
+  }
+
+  private matchesSegment(segment: MyLeaveSegment, status: LeaveStatus, start: string): boolean {
+    const today = new Date().toISOString().slice(0, 10);
+    const upcoming = status === 'Pending' || (status === 'Approved' && start >= today);
+    return segment === 'upcoming' ? upcoming : !upcoming;
   }
 
   createLeave(userId: number, payload: CreateLeavePayload): Observable<void> {

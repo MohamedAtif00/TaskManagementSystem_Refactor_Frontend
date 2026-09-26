@@ -9,6 +9,7 @@ import {
   LeaveKind,
   LeaveQueueFilters,
   LeaveQueueItem,
+  LeaveQueuePage,
 } from '../../domain/entity/leave-calendar.entity';
 import { LeaveCalendarRepository } from '../../domain/repository/leave-calendar.repository';
 import { LeaveCalendarLocalDataSource } from '../data_source/local/leave-calendar-local-datasource';
@@ -22,11 +23,16 @@ export class LeaveCalendarImplementationRepository implements LeaveCalendarRepos
     private remote: LeaveCalendarRemoteDataSource,
   ) {}
 
-  getQueue(kind: LeaveKind, filters: LeaveQueueFilters): Observable<LeaveQueueItem[]> {
+  getQueue(kind: LeaveKind, filters: LeaveQueueFilters): Observable<LeaveQueuePage> {
     const source = environment.useMock
       ? this.local.getQueue(kind, filters)
       : this.remote.getQueue(kind, filters);
-    return source.pipe(map((rows) => rows.map((row) => LeaveCalendarMapper.toEntity(row))));
+    return source.pipe(
+      map((page) => ({
+        ...page,
+        items: page.items.map((row) => LeaveCalendarMapper.toEntity(row)),
+      })),
+    );
   }
 
   getDetails(kind: LeaveKind, id: number): Observable<LeaveQueueItem> {

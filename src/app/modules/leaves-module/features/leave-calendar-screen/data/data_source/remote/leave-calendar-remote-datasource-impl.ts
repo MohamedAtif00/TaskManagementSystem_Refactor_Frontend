@@ -8,6 +8,7 @@ import { hoursBetween, lastComment } from '@core/network/hr-map';
 import { mapHttpError } from '@core/network/http-error';
 import { NetworkService } from '@core/network/network.service';
 import { DirectoryUser, UserDirectoryService } from '@core/network/user-directory.service';
+import { ListPageResponse } from '@core/models/list-page.model';
 import {
   BulkDecidePayload,
   BulkOpinionResult,
@@ -58,6 +59,8 @@ interface WfhDto {
 
 interface SearchResult<T> {
   items?: T[];
+  page?: number;
+  pageSize?: number;
   totalCount?: number;
 }
 
@@ -70,9 +73,21 @@ export class LeaveCalendarRemoteDataSourceImpl extends LeaveCalendarRemoteDataSo
     super();
   }
 
-  getQueue(kind: LeaveKind, filters: LeaveQueueFilters): Observable<LeaveQueueModel[]> {
+  getQueue(kind: LeaveKind, filters: LeaveQueueFilters): Observable<ListPageResponse<LeaveQueueModel>> {
     return this.users.list().pipe(
-      switchMap((directory) => this.fetchKind(kind, filters).pipe(map((rows) => this.mapRows(kind, rows, directory, filters)))),
+      switchMap((directory) =>
+        this.fetchKind(kind, filters).pipe(
+          map((result) => {
+            const rows = this.mapRows(kind, result.items, directory, filters);
+            return {
+              items: rows,
+              page: result.page,
+              pageSize: result.pageSize,
+              totalCount: result.totalCount,
+            };
+          }),
+        ),
+      ),
       catchError(mapHttpError),
     );
   }
@@ -82,7 +97,16 @@ export class LeaveCalendarRemoteDataSourceImpl extends LeaveCalendarRemoteDataSo
     return this.users.list().pipe(
       switchMap((directory) =>
         this.network.get<LeaveDto | PermissionDto | WfhDto | ForgotClockRequestResponse>(url).pipe(
-          map((row) => this.mapRows(kind, [row], directory, { status: '', type: '', dateFrom: '', dateTo: '' })[0]),
+          map((row) =>
+            this.mapRows(kind, [row], directory, {
+              status: '',
+              type: '',
+              dateFrom: '',
+              dateTo: '',
+              page: 1,
+              pageSize: 1,
+            })[0],
+          ),
         ),
       ),
       catchError(mapHttpError),
@@ -105,25 +129,36 @@ export class LeaveCalendarRemoteDataSourceImpl extends LeaveCalendarRemoteDataSo
     );
   }
 
-  private fetchKind(kind: LeaveKind, filters: LeaveQueueFilters): Observable<unknown[]> {
-    const pendingUrl = this.pendingUrl(kind);
+  private fetchKind(kind: LeaveKind, filters: LeaveQueueFilters): Observable<ListPageResponse<unknown>> {
     const searchUrl = this.searchUrl(kind);
     const params = new HttpParams({
       fromObject: {
-        page: '1',
-        pageSize: '100',
+        page: String(filters.page),
+        pageSize: String(filters.pageSize),
         ...(filters.status ? { status: filters.status } : {}),
         ...(filters.type ? { type: filters.type } : {}),
         ...(filters.dateFrom ? { fromDate: filters.dateFrom } : {}),
         ...(filters.dateTo ? { toDate: filters.dateTo } : {}),
       },
     });
-    const asList = (result: unknown[] | SearchResult<unknown>) => (Array.isArray(result) ? result : (result.items ?? []));
-    const search$ = this.network.get<unknown[] | SearchResult<unknown>>(searchUrl, params).pipe(map(asList));
-    if (!filters.status || filters.status === 'Pending') {
-      return this.network.get<unknown[] | SearchResult<unknown>>(pendingUrl).pipe(map(asList), catchError(() => search$));
-    }
-    return search$;
+    return this.network.get<unknown[] | SearchResult<unknown>>(searchUrl, params).pipe(
+      map((result) => {
+        if (Array.isArray(result)) {
+          return {
+            items: result,
+            page: filters.page,
+            pageSize: filters.pageSize,
+            totalCount: result.length,
+          };
+        }
+        return {
+          items: result.items ?? [],
+          page: result.page ?? filters.page,
+          pageSize: result.pageSize ?? filters.pageSize,
+          totalCount: result.totalCount ?? 0,
+        };
+      }),
+    );
   }
 
   private mapRows(

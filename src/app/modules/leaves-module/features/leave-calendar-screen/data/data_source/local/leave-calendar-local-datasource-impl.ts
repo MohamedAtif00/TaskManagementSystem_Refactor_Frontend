@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
+import { ListPageResponse } from '@core/models/list-page.model';
 import { LeaveListFilters, TmsMockStore } from '@core/mock/tms-mock.store';
 import {
   BulkDecidePayload,
@@ -19,8 +20,16 @@ export class LeaveCalendarLocalDataSourceImpl extends LeaveCalendarLocalDataSour
     super();
   }
 
-  getQueue(kind: LeaveKind, filters: LeaveQueueFilters): Observable<LeaveQueueModel[]> {
-    return of(this.mapKind(kind, filters)).pipe(delay(120));
+  getQueue(kind: LeaveKind, filters: LeaveQueueFilters): Observable<ListPageResponse<LeaveQueueModel>> {
+    const all = this.mapKind(kind, filters);
+    const skip = (filters.page - 1) * filters.pageSize;
+    const items = all.slice(skip, skip + filters.pageSize);
+    return of({
+      items,
+      page: filters.page,
+      pageSize: filters.pageSize,
+      totalCount: all.length,
+    }).pipe(delay(120));
   }
 
   getDetails(kind: LeaveKind, id: number): Observable<LeaveQueueModel> {
@@ -67,7 +76,7 @@ export class LeaveCalendarLocalDataSourceImpl extends LeaveCalendarLocalDataSour
 
   private mapKind(
     kind: LeaveKind,
-    filters: LeaveQueueFilters = { status: '', type: '', dateFrom: '', dateTo: '' },
+    filters: LeaveQueueFilters = { status: '', type: '', dateFrom: '', dateTo: '', page: 1, pageSize: 20 },
   ): LeaveQueueItem[] {
     if (kind === 'forgotClock') {
       return [];

@@ -1,11 +1,13 @@
+import { HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { HolidayResponse } from '@core/api/tms-contracts';
+import { ListPageResponse } from '@core/models/list-page.model';
 import { API, apiPath } from '@core/network/api/api.const';
 import { mapHttpError } from '@core/network/http-error';
 import { NetworkService } from '@core/network/network.service';
-import { HolidayFormPayload } from '../../../domain/entity/holidays.entity';
+import { HolidayFormPayload, HolidayListParams } from '../../../domain/entity/holidays.entity';
 import { HolidayModel } from '../../model/holidays.model';
 import { HolidaysRemoteDataSource } from '../holidays.datasource';
 
@@ -15,9 +17,20 @@ export class HolidaysRemoteDataSourceImpl extends HolidaysRemoteDataSource {
     super();
   }
 
-  list(): Observable<HolidayModel[]> {
-    return this.network.get<HolidayResponse[]>(API.Holidays.List).pipe(
-      map((rows) => rows.map((row) => this.toModel(row))),
+  list(params: HolidayListParams): Observable<ListPageResponse<HolidayModel>> {
+    const httpParams = new HttpParams({
+      fromObject: {
+        page: String(params.page),
+        pageSize: String(params.pageSize),
+      },
+    });
+    return this.network.get<ListPageResponse<HolidayResponse>>(API.Holidays.List, httpParams).pipe(
+      map((page) => ({
+        items: page.items.map((row) => this.toModel(row)),
+        page: page.page,
+        pageSize: page.pageSize,
+        totalCount: page.totalCount,
+      })),
       catchError(mapHttpError),
     );
   }

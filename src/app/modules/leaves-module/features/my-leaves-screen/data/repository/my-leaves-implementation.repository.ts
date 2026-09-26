@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 import {
   CancelRequestPayload,
@@ -8,13 +7,14 @@ import {
   CreateLeavePayload,
   CreatePermissionPayload,
   CreateWfhPayload,
+  LeaveBalanceEntity,
   LeavePreviewEntity,
-  MyLeavesEntity,
+  MyLeaveListParams,
+  MyLeaveRequestPage,
 } from '../../domain/entity/my-leaves.entity';
 import { MyLeavesRepository } from '../../domain/repository/my-leaves.repository';
 import { MyLeavesLocalDataSource } from '../data_source/local/my-leaves-local-datasource';
 import { MyLeavesRemoteDataSource } from '../data_source/remote/my-leaves-remote-datasource';
-import { MyLeavesMapper } from '../model/my-leaves.model';
 
 @Injectable()
 export class MyLeavesImplementationRepository implements MyLeavesRepository {
@@ -23,9 +23,12 @@ export class MyLeavesImplementationRepository implements MyLeavesRepository {
     private remote: MyLeavesRemoteDataSource,
   ) {}
 
-  getMine(userId: number): Observable<MyLeavesEntity> {
-    const source = environment.useMock ? this.local.getMine(userId) : this.remote.getMine(userId);
-    return source.pipe(map((row) => MyLeavesMapper.toEntity(row)));
+  getBalances(userId: number): Observable<LeaveBalanceEntity> {
+    return environment.useMock ? this.local.getBalances(userId) : this.remote.getBalances(userId);
+  }
+
+  getRequests(params: MyLeaveListParams): Observable<MyLeaveRequestPage> {
+    return environment.useMock ? this.local.getRequests(params) : this.remote.getRequests(params);
   }
 
   previewLeave(payload: Pick<CreateLeavePayload, 'startDate' | 'endDate'>): Observable<LeavePreviewEntity> {

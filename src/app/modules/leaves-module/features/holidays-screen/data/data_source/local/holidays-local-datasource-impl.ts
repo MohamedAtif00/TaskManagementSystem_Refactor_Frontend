@@ -2,7 +2,8 @@ import { Injectable } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
 import { MOCK_PUBLIC_HOLIDAYS } from '@core/hr/mock-holidays';
-import { HolidayFormPayload } from '../../../domain/entity/holidays.entity';
+import { ListPageResponse } from '@core/models/list-page.model';
+import { HolidayFormPayload, HolidayListParams } from '../../../domain/entity/holidays.entity';
 import { HolidayModel } from '../../model/holidays.model';
 import { HolidaysLocalDataSource } from '../holidays.datasource';
 
@@ -10,8 +11,15 @@ import { HolidaysLocalDataSource } from '../holidays.datasource';
 export class HolidaysLocalDataSourceImpl extends HolidaysLocalDataSource {
   private rows: HolidayModel[] = MOCK_PUBLIC_HOLIDAYS;
 
-  list(): Observable<HolidayModel[]> {
-    return of(this.rows.map((row) => ({ ...row }))).pipe(delay(80));
+  list(params: HolidayListParams): Observable<ListPageResponse<HolidayModel>> {
+    const all = this.rows.map((row) => ({ ...row }));
+    const skip = (params.page - 1) * params.pageSize;
+    return of({
+      items: all.slice(skip, skip + params.pageSize),
+      page: params.page,
+      pageSize: params.pageSize,
+      totalCount: all.length,
+    }).pipe(delay(80));
   }
 
   save(payload: HolidayFormPayload): Observable<HolidayModel> {
