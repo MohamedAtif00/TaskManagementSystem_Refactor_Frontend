@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { delay } from 'rxjs/operators';
+import { CurriculumStatusTab, subjectMatchesStatusTab } from '@core/models/curriculum-status-tab';
 import {
   ArchiveCurriculumPayload,
   CurriculumKind,
@@ -19,6 +20,8 @@ export class CurriculumAdminLocalDataSourceImpl extends CurriculumAdminLocalData
     { id: 5, name: 'Mona Member' },
   ];
   private subjectUsers = new Map<number, number[]>([[11, [5]]]);
+  /** Next-level nodes keyed by parent node key until that parent is expanded. */
+  private lazyChildStore = new Map<string, CurriculumNodeModel[]>();
   private tree: CurriculumNodeModel[] = [
     {
       key: 'year-1',
@@ -58,6 +61,24 @@ export class CurriculumAdminLocalDataSourceImpl extends CurriculumAdminLocalData
                       childrenLoaded: false,
                       children: [],
                     },
+                    {
+                      key: 'subject-12',
+                      id: 12,
+                      kind: 'subject',
+                      name: 'Geometry',
+                      status: 2,
+                      childrenLoaded: false,
+                      children: [],
+                    },
+                    {
+                      key: 'subject-13',
+                      id: 13,
+                      kind: 'subject',
+                      name: 'Statistics',
+                      status: 1,
+                      childrenLoaded: false,
+                      children: [],
+                    },
                   ],
                 },
               ],
@@ -68,49 +89,67 @@ export class CurriculumAdminLocalDataSourceImpl extends CurriculumAdminLocalData
     },
   ];
 
-  getTree(): Observable<CurriculumNodeModel[]> {
-    return of(this.clone(this.tree)).pipe(delay(80));
+  getTree(statusTab: CurriculumStatusTab): Observable<CurriculumNodeModel[]> {
+    return of(this.filterTreeByTab(this.clone(this.tree), statusTab)).pipe(delay(80));
   }
 
   loadChildren(node: CurriculumNode): Observable<CurriculumNodeModel[]> {
-    if (node.kind !== 'subject') {
-      return of(node.children);
-    }
     const found = this.find(this.tree, node.key);
-    if (found && !found.childrenLoaded) {
-      found.childrenLoaded = true;
-      found.children = [
-        {
-          key: `unit-${this.nextId}`,
-          id: this.nextId++,
-          kind: 'unit',
-          name: 'Unit 1',
-          childrenLoaded: true,
-          children: [
-            {
-              key: `lesson-${this.nextId}`,
-              id: this.nextId,
-              kind: 'lesson',
-              name: 'Lesson 1',
-              childrenLoaded: true,
-              children: [
-                {
-                  key: `lo-${this.nextId + 1}`,
-                  id: this.nextId + 1,
-                  kind: 'lo',
-                  name: 'Mth_5R_1A_01_04_02',
-                  tag: 'MTH',
-                  children: [],
-                  childrenLoaded: true,
-                },
-              ],
-            },
-          ],
-        },
-      ];
-      this.nextId += 2;
+    if (!found) {
+      return of([]).pipe(delay(80));
     }
-    return of(found ? this.clone(found.children) : []).pipe(delay(80));
+
+    switch (node.kind) {
+      case 'subject':
+        if (!found.childrenLoaded) {
+          found.childrenLoaded = true;
+          const unitId = this.nextId++;
+          const lessonId = this.nextId;
+          const loId = this.nextId + 1;
+          const lo: CurriculumNodeModel = {
+            key: `lo-${loId}`,
+            id: loId,
+            kind: 'lo',
+            name: 'Mth_5R_1A_01_04_02',
+            tag: 'MTH',
+            children: [],
+            childrenLoaded: true,
+          };
+          const lesson: CurriculumNodeModel = {
+            key: `lesson-${lessonId}`,
+            id: lessonId,
+            kind: 'lesson',
+            name: 'Lesson 1',
+            children: [],
+            childrenLoaded: false,
+          };
+          const unit: CurriculumNodeModel = {
+            key: `unit-${unitId}`,
+            id: unitId,
+            kind: 'unit',
+            name: 'Unit 1',
+            children: [],
+            childrenLoaded: false,
+          };
+          this.lazyChildStore.set(lesson.key, [lo]);
+          this.lazyChildStore.set(unit.key, [lesson]);
+          found.children = [unit];
+          this.nextId += 2;
+        }
+        break;
+      case 'unit':
+      case 'lesson':
+        if (!found.childrenLoaded) {
+          found.childrenLoaded = true;
+          found.children = this.clone(this.lazyChildStore.get(found.key) ?? []);
+          this.lazyChildStore.delete(found.key);
+        }
+        break;
+      default:
+        break;
+    }
+
+    return of(this.clone(found.children)).pipe(delay(80));
   }
 
   save(payload: SaveCurriculumPayload): Observable<void> {
@@ -216,6 +255,24 @@ export class CurriculumAdminLocalDataSourceImpl extends CurriculumAdminLocalData
       return true;
     }
     return nodes.some((node) => this.remove(node.children, kind, id));
+  }
+
+  private filterTreeByTab(nodes: CurriculumNodeModel[], tab: CurriculumStatusTab): CurriculumNodeModel[] {
+    const result: CurriculumNodeModel[] = [];
+    for (const node of nodes) {
+      if (node.kind === 'subject') {
+        if (subjectMatchesStatusTab(node.status, tab)) {
+          result.push({ ...node, children: this.clone(node.children) });
+        }
+        continue;
+      }
+      const children = this.filterTreeByTab(node.children, tab);
+      if (!children.length) {
+        continue;
+      }
+      result.push({ ...node, children });
+    }
+    return result;
   }
 
   private clone(nodes: CurriculumNodeModel[]): CurriculumNodeModel[] {

@@ -1,4 +1,5 @@
 import { Observable } from 'rxjs';
+import { CurriculumStatusTab } from '@core/models/curriculum-status-tab';
 import {
   ArchiveCurriculumPayload,
   CurriculumNode,
@@ -8,7 +9,7 @@ import {
 } from '../entity/curriculum-admin.entity';
 
 export abstract class CurriculumAdminRepository {
-  abstract getTree(): Observable<CurriculumNode[]>;
+  abstract getTree(statusTab: CurriculumStatusTab): Observable<CurriculumNode[]>;
   abstract loadChildren(node: CurriculumNode): Observable<CurriculumNode[]>;
   abstract save(payload: SaveCurriculumPayload): Observable<void>;
   abstract archive(payload: ArchiveCurriculumPayload): Observable<void>;

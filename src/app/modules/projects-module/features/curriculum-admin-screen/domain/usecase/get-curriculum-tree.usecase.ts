@@ -1,14 +1,19 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { BaseUseCase, NoParam } from '@core/base/usecase/base-usecase';
+import { BaseUseCase } from '@core/base/usecase/base-usecase';
+import { CurriculumStatusTab } from '@core/models/curriculum-status-tab';
 import { CurriculumNode } from '../entity/curriculum-admin.entity';
 import { CurriculumAdminRepository } from '../repository/curriculum-admin.repository';
 
+export interface GetCurriculumTreeParams {
+  statusTab: CurriculumStatusTab;
+}
+
 @Injectable()
-export class GetCurriculumTreeUseCase implements BaseUseCase<NoParam, CurriculumNode[]> {
+export class GetCurriculumTreeUseCase implements BaseUseCase<GetCurriculumTreeParams, CurriculumNode[]> {
   constructor(private repository: CurriculumAdminRepository) {}
 
-  execute(): Observable<CurriculumNode[]> {
-    return this.repository.getTree();
+  execute(params: GetCurriculumTreeParams): Observable<CurriculumNode[]> {
+    return this.repository.getTree(params.statusTab);
   }
 }

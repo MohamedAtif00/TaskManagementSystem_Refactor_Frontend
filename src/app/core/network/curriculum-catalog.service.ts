@@ -1,6 +1,8 @@
+import { HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map, shareReplay, switchMap } from 'rxjs/operators';
+import { CurriculumStatusTab } from '@core/models/curriculum-status-tab';
 import { SUBJECT_STATUS_LABELS } from '@core/models/role-map';
 import { API, apiPath } from './api/api.const';
 import { mapHttpError } from './http-error';
@@ -81,9 +83,11 @@ export interface LoItem {
   lessonId: number;
 }
 
+type TreesCacheKey = 'all' | CurriculumStatusTab;
+
 @Injectable({ providedIn: 'root' })
 export class CurriculumCatalogService {
-  private treesCache$?: Observable<YearTree[]>;
+  private readonly treesCache = new Map<TreesCacheKey, Observable<YearTree[]>>();
   private readonly subjectUnitsCache = new Map<number, Observable<UnitItem[]>>();
   private readonly unitLessonsCache = new Map<number, Observable<LessonItem[]>>();
   private readonly lessonLosCache = new Map<number, Observable<LoItem[]>>();
@@ -92,28 +96,36 @@ export class CurriculumCatalogService {
 
   constructor(private network: NetworkService) {}
 
-  getTrees(): Observable<YearTree[]> {
-    this.treesCache$ ??= this.network.get<{ id: number; name: string }[]>(API.Curriculum.Years).pipe(
+  getTrees(statusTab?: CurriculumStatusTab): Observable<YearTree[]> {
+    const key: TreesCacheKey = statusTab ?? 'all';
+    const existing = this.treesCache.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    const treeParams = statusTab ? new HttpParams().set('statusTab', statusTab) : undefined;
+    const loaded$ = this.network.get<{ id: number; name: string }[]>(API.Curriculum.Years).pipe(
       switchMap((years) => {
         if (!years.length) {
           return of([] as YearTree[]);
         }
         return forkJoin(
           years.map((year) =>
-            this.network.get<YearTree>(apiPath(API.Curriculum.YearTree, { id: year.id })).pipe(
-              map((tree) => ({ ...tree, name: tree.name || year.name })),
-            ),
+            this.network
+              .get<YearTree>(apiPath(API.Curriculum.YearTree, { id: year.id }), treeParams)
+              .pipe(map((tree) => ({ ...tree, name: tree.name || year.name }))),
           ),
         );
       }),
       catchError(mapHttpError),
       shareReplay(1),
     );
-    return this.treesCache$;
+    this.treesCache.set(key, loaded$);
+    return loaded$;
   }
 
   clearCache(): void {
-    this.treesCache$ = undefined;
+    this.treesCache.clear();
     this.subjectUnitsCache.clear();
     this.unitLessonsCache.clear();
     this.lessonLosCache.clear();

@@ -5,8 +5,10 @@ import { Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
 import { formatLoCode } from '@core/lo-code/lo-code.formatter';
 import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
+import { CurriculumStatusTab } from '@core/models/curriculum-status-tab';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { SUBJECT_STATUS_LABELS } from '@core/models/role-map';
+import { CurriculumCatalogService } from '@core/network/curriculum-catalog.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { LoCodeDisplayToggleComponent } from '@shared/component/lo-code-display-toggle/lo-code-display-toggle.component';
@@ -27,6 +29,7 @@ import { LoadCurriculumChildrenUseCase } from '../domain/usecase/load-curriculum
 import { SaveCurriculumNodeUseCase } from '../domain/usecase/save-curriculum-node.usecase';
 import {
   CHILD_KIND,
+  CURRICULUM_STATUS_TABS,
   KIND_CHIP,
   KIND_CHIP_CLASS,
   KIND_LABEL,
@@ -40,11 +43,15 @@ import { CurriculumNodeFormComponent } from './curriculum-node-form.component';
 })
 export class CurriculumAdminComponent implements OnInit {
   readonly loDisplay = inject(LoCodeDisplayService);
+  private readonly catalog = inject(CurriculumCatalogService);
+  private readonly nodesByTab = new Map<CurriculumStatusTab, CurriculumNode[]>();
   readonly loading = signal(true);
   readonly nodes = signal<CurriculumNode[]>([]);
   readonly openKeys = signal<Set<string>>(new Set());
   readonly loadingKeys = signal<Set<string>>(new Set());
   readonly query = signal('');
+  readonly statusTab = signal<CurriculumStatusTab>('active');
+  readonly statusTabs = CURRICULUM_STATUS_TABS;
   readonly schemas = signal<CurriculumSchemaOption[]>([]);
   readonly users = signal<CurriculumUserOption[]>([]);
   readonly showForm = signal(false);
@@ -74,11 +81,13 @@ export class CurriculumAdminComponent implements OnInit {
     });
   }
 
-  load(): void {
+  load(statusTab?: CurriculumStatusTab): void {
+    const tab = statusTab ?? this.statusTab();
     this.loading.set(true);
     const open = this.openKeys();
-    this.treeUseCase.execute().subscribe({
+    this.treeUseCase.execute({ statusTab: tab }).subscribe({
       next: (rows) => {
+        this.nodesByTab.set(tab, rows);
         this.nodes.set(rows);
         this.reopen(rows, open);
         this.loading.set(false);
@@ -88,6 +97,11 @@ export class CurriculumAdminComponent implements OnInit {
         toast.error(err.message);
       },
     });
+  }
+
+  private invalidateTreeCaches(): void {
+    this.catalog.clearCache();
+    this.nodesByTab.clear();
   }
 
   isOpen(key: string): boolean {
@@ -131,7 +145,7 @@ export class CurriculumAdminComponent implements OnInit {
     if (!this.canExpand(node)) {
       return null;
     }
-    if (node.kind === 'subject' && !node.childrenLoaded) {
+    if (!node.childrenLoaded) {
       return null;
     }
     return node.children.length;
@@ -139,6 +153,19 @@ export class CurriculumAdminComponent implements OnInit {
 
   expandLabel(node: CurriculumNode): string {
     return `${this.isOpen(node.key) ? 'Collapse' : 'Expand'} ${node.name}`;
+  }
+
+  setStatusTab(tab: CurriculumStatusTab): void {
+    if (this.statusTab() === tab) {
+      return;
+    }
+    this.statusTab.set(tab);
+    const cached = this.nodesByTab.get(tab);
+    if (cached) {
+      this.nodes.set(cached);
+      return;
+    }
+    this.load(tab);
   }
 
   onQueryChange(value: string): void {
@@ -154,7 +181,7 @@ export class CurriculumAdminComponent implements OnInit {
 
   expandAll(): void {
     const next = new Set(this.openKeys());
-    this.collectExpandableKeys(this.nodes()).forEach((key) => next.add(key));
+    this.collectExpandableKeys(this.nodes(), this.visibleKeys()).forEach((key) => next.add(key));
     this.openKeys.set(next);
   }
 
@@ -256,6 +283,7 @@ export class CurriculumAdminComponent implements OnInit {
       next: () => {
         toast.success('Saved');
         this.showForm.set(false);
+        this.invalidateTreeCaches();
         this.load();
       },
       error: (err: Error) => {
@@ -283,14 +311,19 @@ export class CurriculumAdminComponent implements OnInit {
       next: () => {
         toast.success('Archived');
         this.confirmNode.set(null);
+        this.invalidateTreeCaches();
         this.load();
       },
       error: (err: Error) => toast.error(err.message),
     });
   }
 
+  private isLazyLoadKind(kind: CurriculumKind): boolean {
+    return kind === 'subject' || kind === 'unit' || kind === 'lesson';
+  }
+
   private ensureChildren(node: CurriculumNode): void {
-    if (node.kind !== 'subject' || node.childrenLoaded || this.isLoading(node.key)) {
+    if (!this.isLazyLoadKind(node.kind) || node.childrenLoaded || this.isLoading(node.key)) {
       return;
     }
     this.setLoading(node.key, true);
@@ -316,11 +349,10 @@ export class CurriculumAdminComponent implements OnInit {
       if (!open.has(node.key)) {
         continue;
       }
-      if (node.kind === 'subject' && !node.childrenLoaded) {
+      if (this.isLazyLoadKind(node.kind) && !node.childrenLoaded) {
         this.ensureChildren(node);
-      } else {
-        this.reopen(node.children, open);
       }
+      this.reopen(node.children, open);
     }
   }
 
@@ -364,13 +396,17 @@ export class CurriculumAdminComponent implements OnInit {
     return keys;
   }
 
-  private collectExpandableKeys(nodes: CurriculumNode[]): string[] {
+  private collectExpandableKeys(nodes: CurriculumNode[], visible: Set<string>): string[] {
     const keys: string[] = [];
     for (const node of nodes) {
-      if (this.canExpand(node) && (node.children.length > 0 || node.childrenLoaded)) {
+      if (
+        visible.has(node.key) &&
+        this.canExpand(node) &&
+        (node.children.length > 0 || node.childrenLoaded)
+      ) {
         keys.push(node.key);
       }
-      keys.push(...this.collectExpandableKeys(node.children));
+      keys.push(...this.collectExpandableKeys(node.children, visible));
     }
     return keys;
   }

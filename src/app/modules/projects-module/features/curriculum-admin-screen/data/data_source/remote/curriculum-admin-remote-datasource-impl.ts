@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { CurriculumStatusTab } from '@core/models/curriculum-status-tab';
 import { API, apiPath } from '@core/network/api/api.const';
 import { CurriculumCatalogService, YearTree } from '@core/network/curriculum-catalog.service';
 import { mapHttpError } from '@core/network/http-error';
@@ -35,29 +36,42 @@ export class CurriculumAdminRemoteDataSourceImpl extends CurriculumAdminRemoteDa
     super();
   }
 
-  getTree(): Observable<CurriculumNodeModel[]> {
-    return this.catalog.getTrees().pipe(map((trees) => trees.map((tree) => this.fromYear(tree))));
+  getTree(statusTab: CurriculumStatusTab): Observable<CurriculumNodeModel[]> {
+    return this.catalog.getTrees(statusTab).pipe(map((trees) => trees.map((tree) => this.fromYear(tree))));
   }
 
   loadChildren(node: CurriculumNode): Observable<CurriculumNodeModel[]> {
-    if (node.kind !== 'subject') {
-      return of(node.children);
-    }
-    return this.catalog.getSubjectSheet(node.id).pipe(
-      map((sheet) =>
-        sheet.units.map((unit) => ({
-          key: `unit-${unit.id}`,
-          id: unit.id,
-          kind: 'unit' as const,
-          name: unit.name,
-          childrenLoaded: true,
-          children: unit.lessons.map((lesson) => ({
-            key: `lesson-${lesson.id}`,
-            id: lesson.id,
-            kind: 'lesson' as const,
-            name: lesson.name,
-            childrenLoaded: true,
-            children: lesson.learningObjectives.map((lo) => ({
+    switch (node.kind) {
+      case 'subject':
+        return this.catalog.getSubjectUnits(node.id).pipe(
+          map((units) =>
+            units.map((unit) => ({
+              key: `unit-${unit.id}`,
+              id: unit.id,
+              kind: 'unit' as const,
+              name: unit.name,
+              children: [],
+              childrenLoaded: false,
+            })),
+          ),
+        );
+      case 'unit':
+        return this.catalog.getUnitLessons(node.id).pipe(
+          map((lessons) =>
+            lessons.map((lesson) => ({
+              key: `lesson-${lesson.id}`,
+              id: lesson.id,
+              kind: 'lesson' as const,
+              name: lesson.name,
+              children: [],
+              childrenLoaded: false,
+            })),
+          ),
+        );
+      case 'lesson':
+        return this.catalog.getLessonLos(node.id).pipe(
+          map((los) =>
+            los.map((lo) => ({
               key: `lo-${lo.id}`,
               id: lo.id,
               kind: 'lo' as const,
@@ -68,10 +82,11 @@ export class CurriculumAdminRemoteDataSourceImpl extends CurriculumAdminRemoteDa
               children: [],
               childrenLoaded: true,
             })),
-          })),
-        })),
-      ),
-    );
+          ),
+        );
+      default:
+        return of(node.children);
+    }
   }
 
   save(payload: SaveCurriculumPayload): Observable<void> {

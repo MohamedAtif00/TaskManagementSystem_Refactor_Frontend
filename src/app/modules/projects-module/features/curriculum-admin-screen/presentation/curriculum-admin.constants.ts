@@ -51,6 +51,9 @@ export const SUBJECT_STATUSES = [
   { id: 3, label: 'Reopened' },
 ];
 
+export { CURRICULUM_STATUS_TABS, subjectMatchesStatusTab } from '@core/models/curriculum-status-tab';
+export type { CurriculumStatusTab } from '@core/models/curriculum-status-tab';
+
 export function labelOf(kind: string): string {
   return KIND_LABEL[kind as CurriculumKind] ?? kind;
 }

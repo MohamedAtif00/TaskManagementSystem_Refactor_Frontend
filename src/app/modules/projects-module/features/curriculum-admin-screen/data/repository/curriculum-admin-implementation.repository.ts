@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { CurriculumStatusTab } from '@core/models/curriculum-status-tab';
 import { environment } from '@environments/environment';
 import {
   ArchiveCurriculumPayload,
@@ -21,8 +22,8 @@ export class CurriculumAdminImplementationRepository implements CurriculumAdminR
     private remote: CurriculumAdminRemoteDataSource,
   ) {}
 
-  getTree(): Observable<CurriculumNode[]> {
-    const source = environment.useMock ? this.local.getTree() : this.remote.getTree();
+  getTree(statusTab: CurriculumStatusTab): Observable<CurriculumNode[]> {
+    const source = environment.useMock ? this.local.getTree(statusTab) : this.remote.getTree(statusTab);
     return source.pipe(map((rows) => rows.map((row) => CurriculumAdminMapper.toNode(row))));
   }
 

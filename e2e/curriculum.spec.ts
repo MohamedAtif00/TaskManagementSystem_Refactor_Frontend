@@ -29,4 +29,30 @@ test.describe('Curriculum admin', () => {
     await expect(page.getByRole('heading', { name: /Create Year/i })).toBeVisible();
     await clickAppButton(page, 'Cancel');
   });
+
+  test('filters subjects by status tab', async ({ page }) => {
+    await page.getByRole('button', { name: 'Expand 2026' }).click();
+    await page.getByRole('button', { name: 'Expand Primary 2026' }).click();
+    await page.getByRole('button', { name: 'Expand Term 1' }).click();
+    await page.getByRole('button', { name: 'Expand Math' }).click();
+
+    await expect(page.getByText('Algebra')).toBeVisible();
+    await expect(page.getByText('Geometry')).toBeVisible();
+    await expect(page.getByText('Statistics')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Hold', exact: true }).click();
+    await expect(page.getByText('Geometry')).toBeVisible();
+    await expect(page.getByText('Algebra')).not.toBeVisible();
+    await expect(page.getByText('Statistics')).not.toBeVisible();
+
+    await page.getByRole('button', { name: 'Closed', exact: true }).click();
+    await expect(page.getByText('Statistics')).toBeVisible();
+    await expect(page.getByText('Algebra')).not.toBeVisible();
+    await expect(page.getByText('Geometry')).not.toBeVisible();
+
+    await page.getByRole('button', { name: 'Active', exact: true }).click();
+    await expect(page.getByText('Algebra')).toBeVisible();
+    await expect(page.getByText('Geometry')).not.toBeVisible();
+    await expect(page.getByText('Statistics')).not.toBeVisible();
+  });
 });
