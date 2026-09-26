@@ -1,0 +1,23 @@
+@if (visible()) {
+  <div class="flex items-center justify-center gap-3 pb-4 pt-2">
+    <app-button
+      impact="light"
+      tone="light"
+      size="small"
+      type="button"
+      [disabled]="page() <= 1"
+      (buttonClick)="onPrev()">
+      Prev
+    </app-button>
+    <span class="text-muted-foreground text-sm">Page {{ page() }} / {{ totalPages() }}</span>
+    <app-button
+      impact="light"
+      tone="light"
+      size="small"
+      type="button"
+      [disabled]="page() >= totalPages()"
+      (buttonClick)="onNext()">
+      Next
+    </app-button>
+  </div>
+}
