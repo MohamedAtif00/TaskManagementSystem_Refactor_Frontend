@@ -1,65 +1,61 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
 import { toast } from 'ngx-sonner';
-import { CurriculumCatalogService, YearTree } from '@core/network/curriculum-catalog.service';
+import { DEFAULT_PAGE_SIZE } from '@core/models/list-page.model';
 import { TicketStatsService } from '@core/network/ticket-stats.service';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { PagerComponent } from '@shared/component/pager/pager.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
-
-interface SubjectSummaryRow {
-  id: number;
-  name: string;
-  projectName: string;
-  idle: number;
-  running: number;
-  done: number;
-  total: number;
-  progressPercent: number;
-}
+import { ReportsSubjectCatalogService } from '../../../shared/reports-subject-catalog.service';
+import { mergeSubjectStats, ReportSubjectStatsRow } from '../../../shared/reports-subject-row.model';
 
 @Component({
   selector: 'app-summaries',
-  imports: [RouterLink, PageHeaderComponent, TableSkeletonComponent],
+  imports: [RouterLink, PageHeaderComponent, TableSkeletonComponent, PagerComponent],
   templateUrl: './summaries.component.html',
 })
 export class SummariesComponent implements OnInit {
-  private readonly catalog = inject(CurriculumCatalogService);
+  private readonly catalog = inject(ReportsSubjectCatalogService);
   private readonly ticketStats = inject(TicketStatsService);
 
   readonly loading = signal(true);
-  readonly rows = signal<SubjectSummaryRow[]>([]);
+  readonly rows = signal<ReportSubjectStatsRow[]>([]);
+  readonly page = signal(1);
+  readonly pageSize = DEFAULT_PAGE_SIZE;
+  readonly totalCount = signal(0);
   readonly reportsPath = ROUTE_PATHS.reports;
 
   ngOnInit(): void {
     this.load();
   }
 
+  onPageChange(page: number): void {
+    this.page.set(page);
+    this.load();
+  }
+
   load(): void {
     this.loading.set(true);
-    this.catalog.getTrees().pipe(catchError(() => of([] as YearTree[]))).subscribe({
-      next: (trees) => {
-        const subjects = this.collectSubjects(trees);
-        const subjectIds = subjects.map((subject) => subject.id);
-        this.ticketStats.aggregateForSubjects(subjectIds).subscribe({
-          next: (stats) => {
+    this.catalog.loadPage({ page: this.page(), pageSize: this.pageSize }).subscribe({
+      next: (page) => {
+        const ids = page.items.map((item) => item.id);
+        if (!ids.length) {
+          this.rows.set([]);
+          this.totalCount.set(page.totalCount);
+          this.loading.set(false);
+          return;
+        }
+        this.ticketStats.aggregateForSubjects(ids).subscribe({
+          next: (aggregate) => {
             this.rows.set(
-              subjects.map((subject) => {
-                const loStats = stats.bySubject.get(subject.id)?.loStats ?? { idle: 0, running: 0, done: 0, total: 0 };
-                return {
-                  id: subject.id,
-                  name: subject.name,
-                  projectName: subject.projectName,
-                  idle: loStats.idle,
-                  running: loStats.running,
-                  done: loStats.done,
-                  total: loStats.total,
-                  progressPercent: loStats.total ? Math.round((loStats.done / loStats.total) * 100) : 0,
-                };
+              page.items.map((item) => {
+                const subjectStats = aggregate.bySubject.get(item.id);
+                return mergeSubjectStats(item, subjectStats?.loStats, subjectStats?.progressPercent);
               }),
             );
+            this.totalCount.set(page.totalCount);
             this.loading.set(false);
           },
           error: (err: Error) => {
@@ -77,21 +73,5 @@ export class SummariesComponent implements OnInit {
 
   analyticsPath(subjectId: number): string {
     return ROUTE_PATHS.subjectAnalytics(subjectId);
-  }
-
-  private collectSubjects(trees: YearTree[]): Array<{ id: number; name: string; projectName: string }> {
-    const rows: Array<{ id: number; name: string; projectName: string }> = [];
-    for (const tree of trees) {
-      for (const project of tree.projects ?? []) {
-        for (const term of project.terms ?? []) {
-          for (const group of term.subjectGroups ?? []) {
-            for (const subject of group.subjects ?? []) {
-              rows.push({ id: subject.id, name: subject.name, projectName: project.name });
-            }
-          }
-        }
-      }
-    }
-    return rows;
   }
 }

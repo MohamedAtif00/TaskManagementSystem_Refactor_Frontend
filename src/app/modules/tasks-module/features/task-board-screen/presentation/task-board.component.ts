@@ -9,7 +9,8 @@ import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { CurriculumCatalogService } from '@core/network/curriculum-catalog.service';
 import { AuthService } from '@core/services/auth.service';
 import { RealtimeService } from '@core/services/realtime.service';
-import { TicketStatsService } from '@core/network/ticket-stats.service';
+import { AnalyticsOverviewService } from '@core/network/analytics-overview.service';
+import { TicketSummaryService } from '@core/network/ticket-summary.service';
 import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { LoCodeDisplayToggleComponent } from '@shared/component/lo-code-display-toggle/lo-code-display-toggle.component';
@@ -81,6 +82,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   private ticketUpdates?: Subscription;
   private boardPageSub?: Subscription;
   private queryDebounce?: ReturnType<typeof setTimeout>;
+  private refreshDebounce?: ReturnType<typeof setTimeout>;
   private losLoading = false;
 
   readonly backLink = computed(() => (this.source === 'project' ? ROUTE_PATHS.tasks : ROUTE_PATHS.sprints));
@@ -109,7 +111,8 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     private completeUseCase: CompleteTaskUseCase,
     private pauseUseCase: PauseTaskUseCase,
     private realtime: RealtimeService,
-    private ticketStats: TicketStatsService,
+    private analytics: AnalyticsOverviewService,
+  private ticketSummary: TicketSummaryService,
     private catalog: CurriculumCatalogService,
   ) {}
 
@@ -123,8 +126,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     }
     this.load();
     this.ticketUpdates = this.realtime.onTicketUpdated().subscribe(() => {
-      this.ticketStats.invalidate();
-      this.loadBoardPage();
+      this.scheduleBoardRefresh();
     });
   }
 
@@ -134,6 +136,24 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     if (this.queryDebounce) {
       clearTimeout(this.queryDebounce);
     }
+    if (this.refreshDebounce) {
+      clearTimeout(this.refreshDebounce);
+    }
+  }
+
+  private scheduleBoardRefresh(): void {
+    if (this.refreshDebounce) {
+      clearTimeout(this.refreshDebounce);
+    }
+    this.refreshDebounce = setTimeout(() => {
+      this.analytics.invalidate();
+      if (this.source === 'project') {
+        this.ticketSummary.invalidateSubject(this.entityId);
+      } else {
+        this.ticketSummary.invalidateSprint(this.entityId);
+      }
+      this.loadBoardPage();
+    }, 300);
   }
 
   load(): void {

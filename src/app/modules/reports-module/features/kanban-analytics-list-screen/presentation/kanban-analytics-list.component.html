@@ -2,6 +2,15 @@
   <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="reportsPath + '/summaries'">Subject summaries</a>
 </app-page-header>
 
+<div class="mb-4">
+  <input
+    type="search"
+    class="max-w-sm"
+    placeholder="Search subjects"
+    [(ngModel)]="search"
+    (ngModelChange)="onSearchChange()" />
+</div>
+
 @if (loading()) {
   <app-table-skeleton [rows]="10" [columns]="4" />
 } @else {
@@ -10,7 +19,7 @@
       <thead class="border-border border-b text-xs">
         <tr>
           <th class="px-4 py-3">Subject</th>
-          <th class="px-4 py-3">Project</th>
+          <th class="px-4 py-3">Path</th>
           <th class="px-4 py-3">Progress</th>
           <th class="px-4 py-3">Actions</th>
         </tr>
@@ -19,8 +28,14 @@
         @for (row of rows(); track row.id) {
           <tr class="border-border/60 hover:bg-muted/30 border-b last:border-b-0">
             <td class="text-foreground px-4 py-3 font-semibold">{{ row.name }}</td>
-            <td class="px-4 py-3">{{ row.projectName }}</td>
-            <td class="px-4 py-3">{{ row.progressPercent }}%</td>
+            <td class="px-4 py-3">{{ row.folderPath }}</td>
+            <td class="px-4 py-3">
+              @if (progressLoading()) {
+                <span class="text-muted-foreground">Loading…</span>
+              } @else {
+                {{ row.progressPercent }}%
+              }
+            </td>
             <td class="px-4 py-3">
               <a class="text-primary text-sm font-semibold hover:underline" [routerLink]="analyticsPath(row.id)">
                 View charts
@@ -35,4 +50,5 @@
       </tbody>
     </table>
   </div>
+  <app-pager [page]="page()" [pageSize]="pageSize" [totalCount]="totalCount()" (pageChange)="onPageChange($event)" />
 }

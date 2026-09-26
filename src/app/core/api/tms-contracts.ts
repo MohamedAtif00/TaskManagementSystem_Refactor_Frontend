@@ -126,6 +126,30 @@ export interface TicketStatsResponse {
   learningObjectives: TicketStatsLearningObjective[];
 }
 
+export interface TicketSummaryResponse {
+  backlog: number;
+  toDo: number;
+  doing: number;
+  done: number;
+  totalCount: number;
+  calculatedAtUtc: string;
+}
+
+export interface AnalyticsOverviewResponse {
+  scopeId: number;
+  scopeType: string;
+  totalLearningObjectives: number;
+  idleLearningObjectives: number;
+  runningLearningObjectives: number;
+  doneLearningObjectives: number;
+  progressPercent: number;
+  backlogTickets: number;
+  toDoTickets: number;
+  doingTickets: number;
+  doneTickets: number;
+  calculatedAtUtc: string;
+}
+
 export interface LeavePreviewResponse {
   requestedDays: number;
   availableAnnual: number;

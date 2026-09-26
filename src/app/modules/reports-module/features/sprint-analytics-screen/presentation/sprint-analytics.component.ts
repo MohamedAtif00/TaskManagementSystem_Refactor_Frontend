@@ -2,19 +2,16 @@ import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/c
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { ApexChart, ApexDataLabels, ApexLegend, ApexNonAxisChartSeries, ApexPlotOptions, ApexXAxis } from 'ng-apexcharts';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { toast } from 'ngx-sonner';
 import { API, apiPath } from '@core/network/api/api.const';
 import { NetworkService } from '@core/network/network.service';
+import { TicketStatsService } from '@core/network/ticket-stats.service';
+import { TicketSummaryService } from '@core/network/ticket-summary.service';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { ChartSkeletonComponent } from '@shared/component/skeleton/chart-skeleton.component';
-
-interface SprintTicket {
-  id: number;
-  status: number;
-  learningObjectiveId: number;
-}
 
 @Component({
   selector: 'app-sprint-analytics',
@@ -24,6 +21,8 @@ interface SprintTicket {
 export class SprintAnalyticsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly network = inject(NetworkService);
+  private readonly ticketStats = inject(TicketStatsService);
+  private readonly ticketSummary = inject(TicketSummaryService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   readonly loading = signal(true);
@@ -46,34 +45,46 @@ export class SprintAnalyticsComponent implements OnInit {
 
   ngOnInit(): void {
     const sprintId = Number(this.route.snapshot.paramMap.get('sprintId'));
-    forkJoin({
-      sprint: this.network.get<{ id: number; name: string; learningObjectiveIds?: number[] }>(
+    this.network
+      .get<{ id: number; name: string; learningObjectiveIds?: number[] }>(
         apiPath(API.Sprints.ById, { id: sprintId }),
-      ),
-      tickets: this.network.get<SprintTicket[]>(apiPath(API.Tickets.ListBySprint, { id: sprintId })),
-    }).subscribe({
-      next: ({ sprint, tickets }) => {
-        this.sprintName.set(sprint.name);
-        const statusCounts = [0, 0, 0, 0];
-        const loCounts = new Map<number, number>();
-        for (const ticket of tickets) {
-          if (ticket.status >= 0 && ticket.status <= 3) {
-            statusCounts[ticket.status] += 1;
-          }
-          loCounts.set(ticket.learningObjectiveId, (loCounts.get(ticket.learningObjectiveId) ?? 0) + 1);
-        }
-        this.pieSeries = statusCounts;
-        this.barXaxis = {
-          categories: [...loCounts.keys()].slice(0, 12).map((id) => `LO ${id}`),
-        };
-        this.barSeries = [{ name: 'Tasks', data: [...loCounts.values()].slice(0, 12) }];
-        this.loading.set(false);
-        this.cdr.markForCheck();
-      },
-      error: (err: Error) => {
-        this.loading.set(false);
-        toast.error(err.message);
-      },
-    });
+      )
+      .pipe(
+        switchMap((sprint) => {
+          const loIds$ = sprint.learningObjectiveIds
+            ? of(sprint.learningObjectiveIds)
+            : this.network
+                .get<number[]>(apiPath(API.Sprints.LearningObjectives, { id: sprintId }))
+                .pipe(catchError(() => of([] as number[])));
+
+          return forkJoin({
+            sprint: of(sprint),
+            loIds: loIds$,
+            summary: this.ticketSummary.loadForSprint(sprintId),
+          });
+        }),
+        switchMap(({ sprint, loIds, summary }) =>
+          this.ticketStats.loadLoStats(loIds).pipe(map((loStats) => ({ sprint, summary, loStats }))),
+        ),
+      )
+      .subscribe({
+        next: ({ sprint, summary, loStats }) => {
+          this.sprintName.set(sprint.name);
+          this.pieSeries = [summary.backlog, summary.toDo, summary.doing, summary.done];
+          this.barXaxis = { categories: ['Idle', 'Running', 'Done'] };
+          this.barSeries = [
+            {
+              name: 'Learning objectives',
+              data: [loStats.idle, loStats.running, loStats.done],
+            },
+          ];
+          this.loading.set(false);
+          this.cdr.markForCheck();
+        },
+        error: (err: Error) => {
+          this.loading.set(false);
+          toast.error(err.message);
+        },
+      });
   }
 }

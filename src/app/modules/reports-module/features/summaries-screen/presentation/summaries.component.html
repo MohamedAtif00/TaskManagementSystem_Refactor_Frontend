@@ -10,7 +10,7 @@
       <thead class="border-border border-b text-xs">
         <tr>
           <th class="px-4 py-3">Subject</th>
-          <th class="px-4 py-3">Project</th>
+          <th class="px-4 py-3">Path</th>
           <th class="px-4 py-3">Idle</th>
           <th class="px-4 py-3">Running</th>
           <th class="px-4 py-3">Done</th>
@@ -22,7 +22,7 @@
         @for (row of rows(); track row.id) {
           <tr class="border-border/60 hover:bg-muted/30 border-b last:border-b-0">
             <td class="text-foreground px-4 py-3 font-semibold">{{ row.name }}</td>
-            <td class="px-4 py-3">{{ row.projectName }}</td>
+            <td class="px-4 py-3">{{ row.folderPath }}</td>
             <td class="px-4 py-3">{{ row.idle }}</td>
             <td class="px-4 py-3">{{ row.running }}</td>
             <td class="px-4 py-3">{{ row.done }}</td>
@@ -41,4 +41,5 @@
       </tbody>
     </table>
   </div>
+  <app-pager [page]="page()" [pageSize]="pageSize" [totalCount]="totalCount()" (pageChange)="onPageChange($event)" />
 }

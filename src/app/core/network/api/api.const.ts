@@ -85,11 +85,17 @@ export const API = {
   WorkflowSteps: {
     ById: '/workflows/steps/{id}',
   },
+  Analytics: {
+    SubjectOverview: '/analytics/subjects/{id}/overview',
+    ProjectOverview: '/analytics/projects/{id}/overview',
+    SprintOverview: '/analytics/sprints/{id}/overview',
+  },
   Tickets: {
     ListBySubject: '/subjects/{id}/tickets',
     ListBySprint: '/sprints/{id}/tickets',
     ListByLo: '/learning-objectives/{id}/tickets',
     Stats: '/tickets/stats',
+    Summary: '/tickets/summary',
     ById: '/tickets/{id}',
     Create: '/tickets',
     Proceed: '/tickets/{id}/proceed',

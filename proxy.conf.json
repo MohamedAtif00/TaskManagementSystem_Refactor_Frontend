@@ -1,4 +1,9 @@
 {
+  "/analytics": {
+    "target": "http://localhost:61173",
+    "secure": false,
+    "changeOrigin": true
+  },
   "/auth": {
     "target": "http://localhost:61173",
     "secure": false,

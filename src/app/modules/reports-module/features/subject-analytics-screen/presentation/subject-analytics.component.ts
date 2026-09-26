@@ -2,10 +2,12 @@ import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/c
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { ApexChart, ApexDataLabels, ApexLegend, ApexNonAxisChartSeries, ApexPlotOptions, ApexXAxis } from 'ng-apexcharts';
+import { forkJoin } from 'rxjs';
 import { toast } from 'ngx-sonner';
 import { API, apiPath } from '@core/network/api/api.const';
 import { NetworkService } from '@core/network/network.service';
 import { TicketStatsService } from '@core/network/ticket-stats.service';
+import { TicketSummaryService } from '@core/network/ticket-summary.service';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { ChartSkeletonComponent } from '@shared/component/skeleton/chart-skeleton.component';
@@ -19,6 +21,7 @@ export class SubjectAnalyticsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly network = inject(NetworkService);
   private readonly ticketStats = inject(TicketStatsService);
+  private readonly ticketSummary = inject(TicketSummaryService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   readonly loading = signal(true);
@@ -34,28 +37,28 @@ export class SubjectAnalyticsComponent implements OnInit {
 
   barSeries: { name: string; data: number[] }[] = [];
   barChart: ApexChart = { type: 'bar', height: 280, toolbar: { show: false } };
-  barXaxis: ApexXAxis = { categories: ['To Do', 'Doing', 'Done', 'Rollback'] };
+  barXaxis: ApexXAxis = { categories: ['Backlog', 'To Do', 'Doing', 'Done'] };
   barColors = ['#3b82f6'];
   barPlot: ApexPlotOptions = { bar: { borderRadius: 4, columnWidth: '45%' } };
   barDataLabels: ApexDataLabels = { enabled: false };
 
   ngOnInit(): void {
-    const projectId = Number(this.route.snapshot.paramMap.get('projectId'));
-    this.network.get<{ id: number; name: string }>(apiPath(API.Curriculum.Subject, { id: projectId })).subscribe({
-      next: (subject) => this.subjectName.set(subject.name),
-      error: () => this.subjectName.set(`Subject ${projectId}`),
-    });
-    this.ticketStats.loadSubjectStats(projectId).subscribe({
-      next: (stats) => {
+    const subjectId = Number(this.route.snapshot.paramMap.get('projectId'));
+    forkJoin({
+      subject: this.network.get<{ id: number; name: string }>(apiPath(API.Curriculum.Subject, { id: subjectId })),
+      stats: this.ticketStats.loadSubjectStats(subjectId),
+      summary: this.ticketSummary.loadForSubject(subjectId),
+    }).subscribe({
+      next: ({ subject, stats, summary }) => {
+        this.subjectName.set(subject.name);
         const lo = stats.loStats;
         this.pieSeries = [lo.idle, lo.running, lo.done];
-        const statusCounts = [0, 0, 0, 0];
-        for (const ticket of stats.tickets) {
-          if (ticket.status >= 0 && ticket.status <= 3) {
-            statusCounts[ticket.status] += 1;
-          }
-        }
-        this.barSeries = [{ name: 'Tasks', data: statusCounts }];
+        this.barSeries = [
+          {
+            name: 'Tasks',
+            data: [summary.backlog, summary.toDo, summary.doing, summary.done],
+          },
+        ];
         this.loading.set(false);
         this.cdr.markForCheck();
       },

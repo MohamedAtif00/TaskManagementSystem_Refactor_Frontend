@@ -66,11 +66,17 @@ export class TicketStatsService {
     if (!loIds.length) {
       return of(0);
     }
+    return this.loadLoStats(loIds).pipe(
+      map((stats) => (stats.total ? Math.round((stats.done / stats.total) * 100) : 0)),
+    );
+  }
+
+  loadLoStats(loIds: number[]): Observable<LoStats> {
+    if (!loIds.length) {
+      return of({ idle: 0, running: 0, done: 0, total: 0 });
+    }
     return this.loadSnapshot({ learningObjectiveIds: loIds }).pipe(
-      map((snapshot) => {
-        const stats = this.classifyLos(loIds, snapshot.tickets);
-        return stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
-      }),
+      map((snapshot) => this.classifyLos(loIds, snapshot.tickets)),
     );
   }
 
