@@ -5,6 +5,7 @@ import { environment } from '@environments/environment';
 import {
   SprintEntity,
   SprintFormPayload,
+  SprintListPageEntity,
   SprintListParams,
   SprintLoOption,
   SprintSubjectOption,
@@ -21,9 +22,14 @@ export class SprintListImplementationRepository implements SprintListRepository 
     private remote: SprintListRemoteDataSource,
   ) {}
 
-  getSprints(params: SprintListParams): Observable<SprintEntity[]> {
+  getSprints(params: SprintListParams): Observable<SprintListPageEntity> {
     const source = environment.useMock ? this.local.getSprints(params) : this.remote.getSprints(params);
-    return source.pipe(map((rows) => rows.map((row) => SprintListMapper.toEntity(row))));
+    return source.pipe(
+      map((page) => ({
+        ...page,
+        items: page.items.map((row) => SprintListMapper.toEntity(row)),
+      })),
+    );
   }
 
   saveSprint(payload: SprintFormPayload): Observable<SprintEntity> {

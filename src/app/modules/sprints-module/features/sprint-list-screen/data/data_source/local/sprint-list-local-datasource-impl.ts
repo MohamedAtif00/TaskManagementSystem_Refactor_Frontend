@@ -12,8 +12,19 @@ export class SprintListLocalDataSourceImpl extends SprintListLocalDataSource {
     super();
   }
 
-  getSprints(params: SprintListParams): Observable<SprintModel[]> {
-    return of(this.store.listSprints(params.archived)).pipe(delay(120));
+  getSprints(params: SprintListParams): Observable<import('@core/models/list-page.model').ListPageResponse<SprintModel>> {
+    return of(this.store.listSprints(params.archived)).pipe(
+      delay(120),
+      map((rows) => {
+        const start = (params.page - 1) * params.pageSize;
+        return {
+          items: rows.slice(start, start + params.pageSize),
+          page: params.page,
+          pageSize: params.pageSize,
+          totalCount: rows.length,
+        };
+      }),
+    );
   }
 
   saveSprint(payload: SprintFormPayload): Observable<SprintModel> {

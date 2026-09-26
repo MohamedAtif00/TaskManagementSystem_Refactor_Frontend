@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE_SIZE, ListPageResponse } from '@core/models/list-page.model';
 import { UserRole } from '@core/models/user-role';
 
 export interface UserListItemEntity {
@@ -11,7 +12,13 @@ export interface UserListItemEntity {
 
 export interface UserListParams {
   search: string;
+  page: number;
+  pageSize: number;
 }
+
+export type UserListPageEntity = ListPageResponse<UserListItemEntity>;
+
+export const USER_LIST_PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export interface UserFormPayload {
   id?: number;

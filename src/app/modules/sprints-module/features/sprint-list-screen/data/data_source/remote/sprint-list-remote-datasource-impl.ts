@@ -2,6 +2,7 @@ import { HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, forkJoin, of, throwError } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { ListPageResponse } from '@core/models/list-page.model';
 import { API, apiPath } from '@core/network/api/api.const';
 import { CurriculumCatalogService } from '@core/network/curriculum-catalog.service';
 import { mapHttpError } from '@core/network/http-error';
@@ -9,7 +10,6 @@ import { NetworkService } from '@core/network/network.service';
 import { SprintFormPayload, SprintListParams } from '../../../domain/entity/sprint-list.entity';
 import { SprintLoModel, SprintModel, SprintSubjectModel } from '../../model/sprint-list.model';
 import { SprintListRemoteDataSource } from './sprint-list-remote-datasource';
-import { TicketStatsService } from '@core/network/ticket-stats.service';
 
 interface SprintDto {
   id: number;
@@ -17,6 +17,8 @@ interface SprintDto {
   description: string;
   startDate: string;
   endDate: string;
+  learningObjectiveCount?: number;
+  progressPercent?: number;
   learningObjectiveIds?: number[];
 }
 
@@ -25,20 +27,23 @@ export class SprintListRemoteDataSourceImpl extends SprintListRemoteDataSource {
   constructor(
     private network: NetworkService,
     private catalog: CurriculumCatalogService,
-    private ticketStats: TicketStatsService,
   ) {
     super();
   }
 
-  getSprints(params: SprintListParams): Observable<SprintModel[]> {
-    const httpParams = new HttpParams().set('archived', String(params.archived));
-    return this.network.get<SprintDto[]>(API.Sprints.List, httpParams).pipe(
-      switchMap((rows) => {
-        if (!rows.length) {
-          return of([] as SprintModel[]);
-        }
-        return forkJoin(rows.map((row) => this.toModel(row, params.archived)));
-      }),
+  getSprints(params: SprintListParams): Observable<ListPageResponse<SprintModel>> {
+    let httpParams = new HttpParams()
+      .set('archived', String(params.archived))
+      .set('page', String(params.page))
+      .set('pageSize', String(params.pageSize));
+
+    return this.network.get<ListPageResponse<SprintDto>>(API.Sprints.List, httpParams).pipe(
+      map((page) => ({
+        items: (page.items ?? []).map((row) => this.toListModel(row, params.archived)),
+        page: page.page,
+        pageSize: page.pageSize,
+        totalCount: page.totalCount,
+      })),
       catchError(mapHttpError),
     );
   }
@@ -76,7 +81,7 @@ export class SprintListRemoteDataSourceImpl extends SprintListRemoteDataSource {
               })
               .pipe(
                 catchError(() => of(null)),
-                switchMap(() => this.toModel({ ...saved, learningObjectiveIds: next }, false)),
+                map(() => this.toListModel({ ...saved, learningObjectiveIds: next, learningObjectiveCount: next.length }, false)),
               ),
           ),
         );
@@ -91,42 +96,35 @@ export class SprintListRemoteDataSourceImpl extends SprintListRemoteDataSource {
     }
     return this.network.get<SprintDto>(apiPath(API.Sprints.ById, { id })).pipe(
       switchMap((sprint) =>
-        this.network.delete(apiPath(API.Sprints.Archive, { id })).pipe(switchMap(() => this.toModel(sprint, true))),
+        this.network.delete(apiPath(API.Sprints.Archive, { id })).pipe(
+          map(() => this.toListModel(sprint, true)),
+        ),
       ),
       catchError(mapHttpError),
     );
   }
 
   getSubjects(): Observable<SprintSubjectModel[]> {
-    return this.catalog.getTrees().pipe(map((trees) => this.catalog.flattenSubjects(trees).map((row) => ({ id: row.id, name: row.name }))));
+    return this.catalog.getTrees().pipe(
+      map((trees) => this.catalog.flattenSubjects(trees).map((row) => ({ id: row.id, name: row.name }))),
+    );
   }
 
   getLos(subjectId: number): Observable<SprintLoModel[]> {
     return this.catalog.getLosForSubject(subjectId);
   }
 
-  private toModel(sprint: SprintDto, archived: boolean): Observable<SprintModel> {
-    const ids$ = sprint.learningObjectiveIds
-      ? of(sprint.learningObjectiveIds)
-      : this.network.get<number[]>(apiPath(API.Sprints.LearningObjectives, { id: sprint.id })).pipe(catchError(() => of([] as number[])));
-
-    return ids$.pipe(
-      switchMap((ids) =>
-        this.ticketStats.progressForLos(ids).pipe(
-          catchError(() => of(0)),
-          map((progressPercent) => ({
-            id: sprint.id,
-            name: sprint.name,
-            description: sprint.description ?? '',
-            startDate: String(sprint.startDate).slice(0, 10),
-            endDate: String(sprint.endDate).slice(0, 10),
-            isArchived: archived,
-            loNumber: ids.length,
-            progressPercent,
-            learningObjects: ids.map((id) => ({ id, name: `LO ${id}` })),
-          })),
-        ),
-      ),
-    );
+  private toListModel(sprint: SprintDto, archived: boolean): SprintModel {
+    return {
+      id: sprint.id,
+      name: sprint.name,
+      description: sprint.description ?? '',
+      startDate: String(sprint.startDate).slice(0, 10),
+      endDate: String(sprint.endDate).slice(0, 10),
+      isArchived: archived,
+      loNumber: sprint.learningObjectiveCount ?? sprint.learningObjectiveIds?.length ?? 0,
+      progressPercent: sprint.progressPercent ?? 0,
+      learningObjects: [],
+    };
   }
 }

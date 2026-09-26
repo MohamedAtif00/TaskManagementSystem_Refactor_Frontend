@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { delay, map } from 'rxjs/operators';
+import { ListPageResponse } from '@core/models/list-page.model';
 import { mapApiRole } from '@core/models/role-map';
 import { TmsMockStore } from '@core/mock/tms-mock.store';
 import { UserFormPayload, UserListParams } from '../../../domain/entity/user-list.entity';
@@ -13,12 +14,12 @@ export class UserListLocalDataSourceImpl extends UserListLocalDataSource {
     super();
   }
 
-  getUsers(params: UserListParams): Observable<UserListItemModel[]> {
+  getUsers(params: UserListParams): Observable<ListPageResponse<UserListItemModel>> {
     const search = params.search.trim().toLowerCase();
     return of(this.store.listAdminUsers()).pipe(
       delay(120),
-      map((rows) =>
-        rows
+      map((rows) => {
+        const filtered = rows
           .map((row) => ({
             id: row.id,
             name: row.name,
@@ -27,8 +28,15 @@ export class UserListLocalDataSourceImpl extends UserListLocalDataSource {
             roleName: row.roleName,
             hrCode: row.code,
           }))
-          .filter((row) => !search || `${row.name} ${row.hrCode} ${row.group} ${row.roleName}`.toLowerCase().includes(search)),
-      ),
+          .filter((row) => !search || `${row.name} ${row.hrCode} ${row.group} ${row.roleName}`.toLowerCase().includes(search));
+        const skip = (params.page - 1) * params.pageSize;
+        return {
+          items: filtered.slice(skip, skip + params.pageSize),
+          page: params.page,
+          pageSize: params.pageSize,
+          totalCount: filtered.length,
+        };
+      }),
     );
   }
 

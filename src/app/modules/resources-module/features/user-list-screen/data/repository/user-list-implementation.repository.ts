@@ -6,7 +6,7 @@ import {
   UserDetailEntity,
   UserFormOptions,
   UserFormPayload,
-  UserListItemEntity,
+  UserListPageEntity,
   UserListParams,
 } from '../../domain/entity/user-list.entity';
 import { UserListRepository } from '../../domain/repository/user-list.repository';
@@ -21,9 +21,14 @@ export class UserListImplementationRepository implements UserListRepository {
     private remote: UserListRemoteDataSource,
   ) {}
 
-  getUsers(params: UserListParams): Observable<UserListItemEntity[]> {
+  getUsers(params: UserListParams): Observable<UserListPageEntity> {
     const source = environment.useMock ? this.local.getUsers(params) : this.remote.getUsers(params);
-    return source.pipe(map((rows) => rows.map((row) => UserListMapper.toEntity(row))));
+    return source.pipe(
+      map((page) => ({
+        ...page,
+        items: page.items.map((row) => UserListMapper.toEntity(row)),
+      })),
+    );
   }
 
   getUser(id: number): Observable<UserDetailEntity> {

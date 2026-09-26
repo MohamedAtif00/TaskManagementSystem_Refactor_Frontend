@@ -95,6 +95,7 @@
     </table>
   </div>
 </div>
+  <app-pager [page]="page()" [pageSize]="pageSize" [totalCount]="totalCount()" (pageChange)="onPageChange($event)" />
 }
 
 @if (showForm()) {

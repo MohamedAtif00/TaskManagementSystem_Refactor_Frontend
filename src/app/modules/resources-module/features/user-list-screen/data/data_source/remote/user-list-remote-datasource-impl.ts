@@ -1,6 +1,8 @@
+import { HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, forkJoin } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { ListPageResponse } from '@core/models/list-page.model';
 import { mapApiRole } from '@core/models/role-map';
 import { API, apiPath } from '@core/network/api/api.const';
 import { mapHttpError } from '@core/network/http-error';
@@ -27,6 +29,16 @@ interface UserDetailDto {
   teamName?: string;
 }
 
+interface UserListItemDto {
+  id: number;
+  code: string;
+  name: string;
+  roleId: number;
+  roleName: string;
+  teamId?: number | null;
+  teamName?: string | null;
+}
+
 @Injectable()
 export class UserListRemoteDataSourceImpl extends UserListRemoteDataSource {
   constructor(
@@ -38,21 +50,22 @@ export class UserListRemoteDataSourceImpl extends UserListRemoteDataSource {
     super();
   }
 
-  getUsers(params: UserListParams): Observable<UserListItemModel[]> {
-    const search = params.search.trim().toLowerCase();
-    return this.users.refresh().pipe(
-      map((rows) =>
-        rows
-          .map((row) => ({
-            id: row.id,
-            name: row.name,
-            group: row.teamName ?? '',
-            role: mapApiRole(row.roleId, row.roleName),
-            roleName: row.roleName,
-            hrCode: row.hrCode || row.code,
-          }))
-          .filter((row) => !search || `${row.name} ${row.hrCode} ${row.group} ${row.roleName}`.toLowerCase().includes(search)),
-      ),
+  getUsers(params: UserListParams): Observable<ListPageResponse<UserListItemModel>> {
+    let httpParams = new HttpParams()
+      .set('page', String(params.page))
+      .set('pageSize', String(params.pageSize));
+    if (params.search.trim()) {
+      httpParams = httpParams.set('search', params.search.trim());
+    }
+
+    return this.network.get<ListPageResponse<UserListItemDto>>(API.Users.List, httpParams).pipe(
+      map((page) => ({
+        items: (page.items ?? []).map((row) => this.toListItem(row)),
+        page: page.page,
+        pageSize: page.pageSize,
+        totalCount: page.totalCount,
+      })),
+      catchError(mapHttpError),
     );
   }
 
@@ -100,6 +113,17 @@ export class UserListRemoteDataSourceImpl extends UserListRemoteDataSource {
         teams: teams.map((row) => ({ id: row.id, name: row.name })),
       })),
     );
+  }
+
+  private toListItem(row: UserListItemDto): UserListItemModel {
+    return {
+      id: row.id,
+      name: row.name,
+      group: row.teamName ?? '',
+      role: mapApiRole(row.roleId, row.roleName),
+      roleName: row.roleName,
+      hrCode: row.code,
+    };
   }
 
   private toDetail(row: UserDetailDto): UserDetailModel {

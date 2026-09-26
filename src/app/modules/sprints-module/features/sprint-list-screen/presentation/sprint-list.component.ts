@@ -11,10 +11,12 @@ import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { LoCodeDisplayToggleComponent } from '@shared/component/lo-code-display-toggle/lo-code-display-toggle.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { PagerComponent } from '@shared/component/pager/pager.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import { LoCodeLabelPipe } from '@shared/pipes/lo-code-label.pipe';
 import {
   SprintEntity,
+  SPRINT_LIST_PAGE_SIZE,
   SprintFormPayload,
   SprintLoOption,
   SprintSubjectOption,
@@ -27,12 +29,15 @@ import { SprintSubjectsUseCase } from '../domain/usecase/sprint-subjects.usecase
 
 @Component({
   selector: 'app-sprint-list',
-  imports: [FormsModule, RouterLink, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, TableSkeletonComponent, LoCodeLabelPipe],
+  imports: [FormsModule, RouterLink, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, PagerComponent, TableSkeletonComponent, LoCodeLabelPipe],
   templateUrl: './sprint-list.component.html',
 })
 export class SprintListComponent implements OnInit {
   readonly loDisplay = inject(LoCodeDisplayService);
   archived = false;
+  readonly page = signal(1);
+  readonly pageSize = SPRINT_LIST_PAGE_SIZE;
+  readonly totalCount = signal(0);
   readonly loading = signal(true);
   readonly rows = signal<SprintEntity[]>([]);
   readonly subjects = signal<SprintSubjectOption[]>([]);
@@ -70,9 +75,10 @@ export class SprintListComponent implements OnInit {
 
   load(): void {
     this.loading.set(true);
-    this.listUseCase.execute({ archived: this.archived }).subscribe({
-      next: (rows) => {
-        this.rows.set(rows);
+    this.listUseCase.execute({ archived: this.archived, page: this.page(), pageSize: this.pageSize }).subscribe({
+      next: (page) => {
+        this.rows.set(page.items);
+        this.totalCount.set(page.totalCount);
         this.loading.set(false);
       },
       error: (err: Error) => {
@@ -84,6 +90,12 @@ export class SprintListComponent implements OnInit {
 
   setTab(archived: boolean): void {
     this.archived = archived;
+    this.page.set(1);
+    this.load();
+  }
+
+  onPageChange(page: number): void {
+    this.page.set(page);
     this.load();
   }
 

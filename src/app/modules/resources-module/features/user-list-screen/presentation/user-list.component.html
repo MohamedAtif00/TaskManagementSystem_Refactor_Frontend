@@ -10,7 +10,7 @@
     class="max-w-sm"
     placeholder="Search users"
     [(ngModel)]="search"
-    (ngModelChange)="load()" />
+    (ngModelChange)="onSearchChange()" />
 </div>
 
 @if (loading()) {
@@ -57,6 +57,7 @@
     </table>
   </div>
 </div>
+  <app-pager [page]="page()" [pageSize]="pageSize" [totalCount]="totalCount()" (pageChange)="onPageChange($event)" />
 }
 
 @if (showForm()) {
