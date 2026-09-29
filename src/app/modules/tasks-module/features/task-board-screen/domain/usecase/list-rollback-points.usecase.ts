@@ -1,14 +1,14 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { BaseUseCase } from '@core/base/usecase/base-usecase';
-import { RollbackTaskPayload, TaskCardEntity } from '../entity/task-board.entity';
+import { JumpPoint } from '../entity/task-board.entity';
 import { TaskBoardRepository } from '../repository/task-board.repository';
 
 @Injectable()
-export class RollbackTaskUseCase implements BaseUseCase<RollbackTaskPayload, TaskCardEntity> {
+export class ListRollbackPointsUseCase implements BaseUseCase<number, JumpPoint[]> {
   constructor(private repository: TaskBoardRepository) {}
 
-  execute(payload: RollbackTaskPayload): Observable<TaskCardEntity> {
-    return this.repository.rollback(payload);
+  execute(ticketId: number): Observable<JumpPoint[]> {
+    return this.repository.listRollbackPoints(ticketId);
   }
 }

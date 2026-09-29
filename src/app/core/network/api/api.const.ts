@@ -107,6 +107,7 @@ export const API = {
     Assign: '/tickets/{id}/assign',
     Flag: '/tickets/{id}/flag',
     Rollback: '/tickets/{id}/rollback',
+    RollbackPoints: '/tickets/{id}/rollback-points',
     Skip: '/tickets/{id}/skip',
     JumpPoints: '/tickets/{id}/jump-points',
     Jump: '/tickets/{id}/jump',

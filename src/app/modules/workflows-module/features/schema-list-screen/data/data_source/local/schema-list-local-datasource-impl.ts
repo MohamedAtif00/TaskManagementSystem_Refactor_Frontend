@@ -27,6 +27,7 @@ export class SchemaListLocalDataSourceImpl extends SchemaListLocalDataSource {
       isStart: true,
       isEnd: false,
       schemaId: 1,
+      predecessorIds: [],
       steps: [{ id: 1, order: 1, duration: 30, priority: 2, nodeId: 1, taskBankId: 1, taskBankName: 'Create ticket' }],
     },
   ];
@@ -88,6 +89,7 @@ export class SchemaListLocalDataSourceImpl extends SchemaListLocalDataSource {
         found.name = payload.name;
         found.isStart = payload.isStart;
         found.isEnd = payload.isEnd;
+        found.predecessorIds = payload.predecessorIds.filter((id) => id !== found.id);
       }
       return of(undefined).pipe(delay(80));
     }
@@ -98,6 +100,7 @@ export class SchemaListLocalDataSourceImpl extends SchemaListLocalDataSource {
       isStart: payload.isStart,
       isEnd: payload.isEnd,
       schemaId: payload.schemaId,
+      predecessorIds: payload.predecessorIds,
       steps: [],
     });
     return of(undefined).pipe(delay(80));

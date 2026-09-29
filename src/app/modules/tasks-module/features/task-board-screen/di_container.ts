@@ -27,6 +27,7 @@ import { SkipTaskUseCase } from './domain/usecase/skip-task.usecase';
 import { JumpTaskUseCase } from './domain/usecase/jump-task.usecase';
 import { ChangePriorityUseCase } from './domain/usecase/change-priority.usecase';
 import { ListJumpPointsUseCase } from './domain/usecase/list-jump-points.usecase';
+import { ListRollbackPointsUseCase } from './domain/usecase/list-rollback-points.usecase';
 import { ListActivityUseCase } from './domain/usecase/list-activity.usecase';
 
 export const TASK_BOARD_DI_CONTAINER: Provider[] = [
@@ -55,5 +56,6 @@ export const TASK_BOARD_DI_CONTAINER: Provider[] = [
   JumpTaskUseCase,
   ChangePriorityUseCase,
   ListJumpPointsUseCase,
+  ListRollbackPointsUseCase,
   ListActivityUseCase,
 ];

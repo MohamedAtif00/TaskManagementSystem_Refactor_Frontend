@@ -22,6 +22,7 @@ interface NodeDto {
   isStart: boolean;
   isEnd: boolean;
   schemaId: number;
+  predecessorIds?: number[];
 }
 
 interface StepDto {
@@ -134,7 +135,12 @@ export class SchemaListRemoteDataSourceImpl extends SchemaListRemoteDataSource {
   }
 
   saveNode(payload: NodeFormPayload): Observable<void> {
-    const body = { name: payload.name, isStart: payload.isStart, isEnd: payload.isEnd };
+    const body = {
+      name: payload.name,
+      isStart: payload.isStart,
+      isEnd: payload.isEnd,
+      predecessorIds: payload.predecessorIds,
+    };
     const request$ =
       payload.id != null
         ? this.network.put(apiPath(API.WorkflowNodes.ById, { id: payload.id }), body)
@@ -202,6 +208,7 @@ export class SchemaListRemoteDataSourceImpl extends SchemaListRemoteDataSource {
       isStart: node.isStart,
       isEnd: node.isEnd,
       schemaId: node.schemaId,
+      predecessorIds: node.predecessorIds ?? [],
       steps: steps.map((step) => ({
         id: step.id,
         order: step.order,

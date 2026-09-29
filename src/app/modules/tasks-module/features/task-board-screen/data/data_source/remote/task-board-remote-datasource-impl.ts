@@ -14,6 +14,7 @@ import {
   CreateTaskPayload,
   JumpPoint,
   JumpTaskPayload,
+  RollbackTaskPayload,
   TaskActivity,
   TaskBoardPageParams,
   TaskBoardParams,
@@ -298,11 +299,17 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
     );
   }
 
-  rollback(id: number): Observable<TaskCardModel> {
-    return this.network.patch<TicketDto>(apiPath(API.Tickets.Rollback, { id })).pipe(
-      switchMap((ticket) => this.cardFromTicket(ticket)),
-      catchError(mapHttpError),
-    );
+  rollback(payload: RollbackTaskPayload): Observable<TaskCardModel> {
+    return this.network
+      .patch<TicketDto>(apiPath(API.Tickets.Rollback, { id: payload.taskId }), {
+        stepId: payload.stepId,
+        clarification: payload.clarification,
+        issueNotes: payload.issueNotes,
+      })
+      .pipe(
+        switchMap((ticket) => this.cardFromTicket(ticket)),
+        catchError(mapHttpError),
+      );
   }
 
   skip(id: number): Observable<TaskCardModel> {
@@ -313,7 +320,7 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   }
 
   jump(payload: JumpTaskPayload): Observable<TaskCardModel> {
-    return this.network.patch<TicketDto>(apiPath(API.Tickets.Jump, { id: payload.taskId }), { stepId: payload.stepId }).pipe(
+    return this.network.patch<TicketDto>(apiPath(API.Tickets.Jump, { id: payload.taskId }), { stepIds: payload.stepIds }).pipe(
       switchMap((ticket) => this.cardFromTicket(ticket)),
       catchError(mapHttpError),
     );
@@ -330,6 +337,13 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
 
   listJumpPoints(ticketId: number): Observable<JumpPoint[]> {
     return this.network.get<unknown>(apiPath(API.Tickets.JumpPoints, { id: ticketId })).pipe(
+      map((response) => this.normalizeJumpPoints(response)),
+      catchError(mapHttpError),
+    );
+  }
+
+  listRollbackPoints(ticketId: number): Observable<JumpPoint[]> {
+    return this.network.get<unknown>(apiPath(API.Tickets.RollbackPoints, { id: ticketId })).pipe(
       map((response) => this.normalizeJumpPoints(response)),
       catchError(mapHttpError),
     );

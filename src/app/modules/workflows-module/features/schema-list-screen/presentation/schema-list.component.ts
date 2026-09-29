@@ -274,6 +274,7 @@ export class SchemaListComponent implements OnInit {
       name: node.name,
       isStart: node.isStart,
       isEnd: node.isEnd,
+      predecessorIds: [...node.predecessorIds],
     };
     this.formError = '';
     this.showNodeForm.set(true);
@@ -386,8 +387,33 @@ export class SchemaListComponent implements OnInit {
     return { name: '', description: '', typeId: this.types()[0]?.id ?? null };
   }
 
+  otherNodes(): SchemaNode[] {
+    return this.nodes().filter((node) => node.id !== this.nodeForm.id);
+  }
+
+  isPredecessor(nodeId: number): boolean {
+    return this.nodeForm.predecessorIds.includes(nodeId);
+  }
+
+  togglePredecessor(nodeId: number): void {
+    const ids = this.nodeForm.predecessorIds;
+    const index = ids.indexOf(nodeId);
+    if (index >= 0) {
+      ids.splice(index, 1);
+    } else {
+      ids.push(nodeId);
+    }
+  }
+
+  predecessorNames(node: SchemaNode): string {
+    const names = node.predecessorIds
+      .map((id) => this.nodes().find((item) => item.id === id)?.name)
+      .filter((name): name is string => !!name);
+    return names.join(', ');
+  }
+
   private emptyNode(schemaId: number): NodeFormPayload {
-    return { schemaId, name: '', isStart: false, isEnd: false };
+    return { schemaId, name: '', isStart: false, isEnd: false, predecessorIds: [] };
   }
 
   private emptyStep(nodeId: number): StepFormPayload {

@@ -10,6 +10,7 @@ import {
   CreateTaskPayload,
   JumpPoint,
   JumpTaskPayload,
+  RollbackTaskPayload,
   TaskAccess,
   TaskActivity,
   TaskBoardEntity,
@@ -88,8 +89,8 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
     return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
   }
 
-  rollback(id: number): Observable<TaskCardEntity> {
-    const source = environment.useMock ? this.local.rollback(id) : this.remote.rollback(id);
+  rollback(payload: RollbackTaskPayload): Observable<TaskCardEntity> {
+    const source = environment.useMock ? this.local.rollback(payload) : this.remote.rollback(payload);
     return source.pipe(map((row) => TaskBoardMapper.toCard(row)));
   }
 
@@ -110,6 +111,10 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
 
   listJumpPoints(ticketId: number): Observable<JumpPoint[]> {
     return environment.useMock ? this.local.listJumpPoints(ticketId) : this.remote.listJumpPoints(ticketId);
+  }
+
+  listRollbackPoints(ticketId: number): Observable<JumpPoint[]> {
+    return environment.useMock ? this.local.listRollbackPoints(ticketId) : this.remote.listRollbackPoints(ticketId);
   }
 
   listActivity(ticketId: number): Observable<TaskActivity[]> {

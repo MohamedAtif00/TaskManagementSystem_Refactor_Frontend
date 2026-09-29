@@ -71,6 +71,9 @@
             </button>
           </span>
         </div>
+        @if (predecessorNames(node)) {
+          <p class="text-muted-foreground mb-2 text-xs">After {{ predecessorNames(node) }}</p>
+        }
         @if (node.steps.length) {
           <table class="text-muted-foreground table w-full table-auto text-left text-sm">
             <thead class="text-xs">
@@ -244,6 +247,17 @@
           <input type="checkbox" [(ngModel)]="nodeForm.isEnd" name="isEnd" />
           <span>End node</span>
         </label>
+        @if (otherNodes().length) {
+          <fieldset class="space-y-2">
+            <legend class="text-muted-foreground mb-1 text-xs font-medium">Comes after</legend>
+            @for (other of otherNodes(); track other.id) {
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" [checked]="isPredecessor(other.id)" (change)="togglePredecessor(other.id)" />
+                <span>{{ other.name }}</span>
+              </label>
+            }
+          </fieldset>
+        }
         @if (formError) {
           <p class="text-destructive text-xs">{{ formError }}</p>
         }

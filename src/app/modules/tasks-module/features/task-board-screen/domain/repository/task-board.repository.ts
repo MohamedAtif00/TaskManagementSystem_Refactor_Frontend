@@ -5,6 +5,7 @@ import {
   CreateTaskPayload,
   JumpPoint,
   JumpTaskPayload,
+  RollbackTaskPayload,
   TaskActivity,
   TaskBoardEntity,
   TaskBoardPageEntity,
@@ -28,11 +29,12 @@ export abstract class TaskBoardRepository {
   abstract assign(payload: AssignTaskPayload): Observable<TaskCardEntity>;
   abstract flag(id: number): Observable<TaskCardEntity>;
   abstract pause(id: number): Observable<TaskCardEntity>;
-  abstract rollback(id: number): Observable<TaskCardEntity>;
+  abstract rollback(payload: RollbackTaskPayload): Observable<TaskCardEntity>;
   abstract skip(id: number): Observable<TaskCardEntity>;
   abstract jump(payload: JumpTaskPayload): Observable<TaskCardEntity>;
   abstract changePriority(payload: ChangePriorityPayload): Observable<TaskCardEntity>;
   abstract listJumpPoints(ticketId: number): Observable<JumpPoint[]>;
+  abstract listRollbackPoints(ticketId: number): Observable<JumpPoint[]>;
   abstract listActivity(ticketId: number): Observable<TaskActivity[]>;
   abstract createTask(payload: CreateTaskPayload): Observable<TaskCardEntity>;
   abstract listTaskBank(): Observable<{ id: number; name: string }[]>;

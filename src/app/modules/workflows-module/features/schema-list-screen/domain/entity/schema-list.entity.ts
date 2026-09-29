@@ -47,6 +47,7 @@ export interface SchemaNode {
   isStart: boolean;
   isEnd: boolean;
   schemaId: number;
+  predecessorIds: number[];
   steps: SchemaStep[];
 }
 
@@ -56,6 +57,7 @@ export interface NodeFormPayload {
   name: string;
   isStart: boolean;
   isEnd: boolean;
+  predecessorIds: number[];
 }
 
 export interface StepFormPayload {

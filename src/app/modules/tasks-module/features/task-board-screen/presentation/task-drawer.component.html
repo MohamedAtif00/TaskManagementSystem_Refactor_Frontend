@@ -132,6 +132,8 @@
                     Skip
                   </span>
                 </app-button>
+              }
+              @if (canJump) {
                 <app-button impact="light" tone="primary" size="small" type="button" (buttonClick)="openJumpPanel()">
                   <span [class]="actionLabelClass">
                     <svg-icon src="assets/icons/heroicons/outline/arrow-long-right.svg" [svgClass]="actionIconClass"></svg-icon>
@@ -173,7 +175,7 @@
                 </app-button>
               }
               @if (canRollback) {
-                <app-button impact="light" tone="danger" size="small" type="button" (buttonClick)="rollback()">
+                <app-button impact="light" tone="danger" size="small" type="button" (buttonClick)="openRollbackPanel()">
                   <span [class]="actionLabelClass">
                     <svg-icon src="assets/icons/heroicons/outline/refresh.svg" [svgClass]="actionIconClass"></svg-icon>
                     Rollback
@@ -240,22 +242,62 @@
               </div>
             }
 
-            @if (showJumpPanel && canSkipOrJump) {
+            @if (showRollbackPanel && canRollback) {
+              <div class="border-border mt-3 rounded-lg border p-3">
+                @if (rollbackPointsBusy) {
+                  <p class="text-muted-foreground text-sm">Loading earlier steps…</p>
+                } @else if (!rollbackPoints.length) {
+                  <p class="text-muted-foreground text-sm">No earlier steps available.</p>
+                } @else {
+                  <label class="block">
+                    <span class="text-muted-foreground mb-1 block text-xs font-medium">Roll back to</span>
+                    <select [(ngModel)]="rollbackStepId" name="rollbackStepId">
+                      <option [ngValue]="0">Select a step</option>
+                      @for (point of rollbackPoints; track point.stepId) {
+                        <option [ngValue]="point.stepId">{{ point.label || ('Step ' + point.stepId) }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="mt-2 block">
+                    <span class="text-muted-foreground mb-1 block text-xs font-medium">Clarification</span>
+                    <textarea rows="2" [(ngModel)]="rollbackClarification" name="rollbackClarification"></textarea>
+                  </label>
+                  <label class="mt-2 block">
+                    <span class="text-muted-foreground mb-1 block text-xs font-medium">Issue notes</span>
+                    <textarea rows="2" [(ngModel)]="rollbackIssueNotes" name="rollbackIssueNotes"></textarea>
+                  </label>
+                  <div class="mt-2">
+                    <app-button impact="bold" tone="danger" size="small" type="button" (buttonClick)="rollback()">
+                      <span [class]="actionLabelClass">
+                        <svg-icon src="assets/icons/heroicons/outline/refresh.svg" [svgClass]="actionIconClass"></svg-icon>
+                        Confirm rollback
+                      </span>
+                    </app-button>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (showJumpPanel && canJump) {
               <div class="border-border mt-3 rounded-lg border p-3">
                 @if (jumpPointsBusy) {
                   <p class="text-muted-foreground text-sm">Loading jump points…</p>
                 } @else if (!jumpPoints.length) {
                   <p class="text-muted-foreground text-sm">No jump points available.</p>
                 } @else {
-                  <label class="block">
-                    <span class="text-muted-foreground mb-1 block text-xs font-medium">Jump to step</span>
-                    <select [(ngModel)]="jumpStepId" name="jumpStepId">
-                      <option [ngValue]="0">Select a step</option>
-                      @for (point of jumpPoints; track point.stepId) {
-                        <option [ngValue]="point.stepId">{{ point.label || ('Step ' + point.stepId) }}</option>
-                      }
-                    </select>
-                  </label>
+                  <fieldset class="space-y-2">
+                    <legend class="text-muted-foreground mb-1 text-xs font-medium">Jump to steps</legend>
+                    @for (point of jumpPoints; track point.stepId) {
+                      <label class="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          [checked]="isJumpDestination(point.stepId)"
+                          (change)="toggleJumpDestination(point.stepId)"
+                        />
+                        <span>{{ point.label || ('Step ' + point.stepId) }}</span>
+                      </label>
+                    }
+                  </fieldset>
                   <div class="mt-2">
                     <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="jump()">
                       <span [class]="actionLabelClass">

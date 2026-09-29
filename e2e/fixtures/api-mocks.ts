@@ -897,6 +897,16 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
 
 
+    if (method === 'GET' && /^\/tickets\/\d+\/rollback-points$/.test(pathname)) {
+
+      await json(route, [{ stepId: 1, nodeId: 1, label: 'Earlier step' }]);
+
+      return;
+
+    }
+
+
+
     if (method === 'PATCH' && /^\/tickets\/\d+\/proceed$/.test(pathname)) {
 
       const id = Number(pathname.split('/')[2]);
@@ -969,11 +979,7 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
         ticket.rollbackCount = (ticket.rollbackCount ?? 0) + 1;
 
-        if (ticket.status > 0) {
-
-          ticket.status -= 1;
-
-        }
+        ticket.status = 4;
 
       }
 
@@ -1035,7 +1041,7 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
       if (ticket) {
 
-        ticket.status = 2;
+        ticket.status = 3;
 
       }
 

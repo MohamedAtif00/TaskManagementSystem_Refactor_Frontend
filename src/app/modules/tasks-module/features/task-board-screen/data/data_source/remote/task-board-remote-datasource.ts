@@ -5,6 +5,7 @@ import {
   CreateTaskPayload,
   JumpPoint,
   JumpTaskPayload,
+  RollbackTaskPayload,
   TaskActivity,
   TaskBoardPageParams,
   TaskBoardParams,
@@ -30,11 +31,12 @@ export abstract class TaskBoardRemoteDataSource {
   abstract assign(payload: AssignTaskPayload): Observable<TaskCardModel>;
   abstract flag(id: number): Observable<TaskCardModel>;
   abstract pause(id: number): Observable<TaskCardModel>;
-  abstract rollback(id: number): Observable<TaskCardModel>;
+  abstract rollback(payload: RollbackTaskPayload): Observable<TaskCardModel>;
   abstract skip(id: number): Observable<TaskCardModel>;
   abstract jump(payload: JumpTaskPayload): Observable<TaskCardModel>;
   abstract changePriority(payload: ChangePriorityPayload): Observable<TaskCardModel>;
   abstract listJumpPoints(ticketId: number): Observable<JumpPoint[]>;
+  abstract listRollbackPoints(ticketId: number): Observable<JumpPoint[]>;
   abstract listActivity(ticketId: number): Observable<TaskActivity[]>;
   abstract createTask(payload: CreateTaskPayload): Observable<TaskCardModel>;
   abstract listTaskBank(): Observable<{ id: number; name: string }[]>;

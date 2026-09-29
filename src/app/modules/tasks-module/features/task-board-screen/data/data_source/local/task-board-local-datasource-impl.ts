@@ -9,6 +9,7 @@ import {
   CreateTaskPayload,
   JumpPoint,
   JumpTaskPayload,
+  RollbackTaskPayload,
   TaskActivity,
   TaskBoardPageParams,
   TaskBoardParams,
@@ -164,12 +165,19 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
     return task ? of(this.toCard(task)).pipe(delay(80)) : throwError(() => new Error('Task not found'));
   }
 
-  rollback(id: number): Observable<TaskCardModel> {
-    const task = this.store.rollback(id);
+  rollback(payload: RollbackTaskPayload): Observable<TaskCardModel> {
+    if (!payload.stepId || !payload.clarification.trim() || !payload.issueNotes.trim()) {
+      return throwError(() => new Error('Choose a step and enter the clarification and issue notes'));
+    }
+    const task = this.store.rollback(payload.taskId);
     if (!task) {
       return throwError(() => new Error('Task cannot be rolled back'));
     }
-    this.pushActivity(task.id, 7, `${task.name} was rolled back.`);
+    this.pushActivity(
+      task.id,
+      7,
+      `${task.name} was rolled back to step ${payload.stepId}. Clarification: ${payload.clarification.trim()} Issue notes: ${payload.issueNotes.trim()}`,
+    );
     return of(this.toCard(task)).pipe(delay(80));
   }
 
@@ -183,11 +191,14 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
   }
 
   jump(payload: JumpTaskPayload): Observable<TaskCardModel> {
-    const task = this.store.proceed(payload.taskId) ?? this.store.getTask(payload.taskId);
+    if (!payload.stepIds.length) {
+      return throwError(() => new Error('Pick at least one step'));
+    }
+    const task = this.store.complete(payload.taskId);
     if (!task) {
       return throwError(() => new Error('Task not found'));
     }
-    this.pushActivity(payload.taskId, 11, `${task.name} jumped to step ${payload.stepId}.`);
+    this.pushActivity(payload.taskId, 11, `${task.name} jumped to steps ${payload.stepIds.join(', ')}.`);
     return of(this.toCard(task)).pipe(delay(80));
   }
 
@@ -206,6 +217,10 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
       { stepId: 2, nodeId: 1, label: 'Review step' },
       { stepId: 3, nodeId: 2, label: 'Final step' },
     ]).pipe(delay(40));
+  }
+
+  listRollbackPoints(_ticketId: number): Observable<JumpPoint[]> {
+    return of([{ stepId: 1, nodeId: 1, label: 'Earlier step' }]).pipe(delay(40));
   }
 
   listActivity(ticketId: number): Observable<TaskActivity[]> {

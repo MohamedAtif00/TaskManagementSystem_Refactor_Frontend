@@ -15,6 +15,7 @@ import {
   TASK_STATUS_LABELS,
 } from '../domain/entity/task-board.entity';
 import { PermissionCodes } from '@core/models/permission-codes';
+import { UserRole } from '@core/models/user-role';
 import { AuthService } from '@core/services/auth.service';
 import { AddCommentUseCase } from '../domain/usecase/add-comment.usecase';
 import { DeleteCommentUseCase } from '../domain/usecase/delete-comment.usecase';
@@ -27,6 +28,7 @@ import { FlagTaskUseCase } from '../domain/usecase/flag-task.usecase';
 import { JumpTaskUseCase } from '../domain/usecase/jump-task.usecase';
 import { ListActivityUseCase } from '../domain/usecase/list-activity.usecase';
 import { ListJumpPointsUseCase } from '../domain/usecase/list-jump-points.usecase';
+import { ListRollbackPointsUseCase } from '../domain/usecase/list-rollback-points.usecase';
 import { RollbackTaskUseCase } from '../domain/usecase/rollback-task.usecase';
 import { ListCommentsUseCase } from '../domain/usecase/list-comments.usecase';
 import { ProceedTaskUseCase } from '../domain/usecase/proceed-task.usecase';
@@ -87,20 +89,26 @@ export class TaskDrawerComponent implements OnChanges {
 
   assignUserId = '';
   priorityChoice: TaskPriority = 0;
-  jumpStepId = 0;
+  jumpStepIds: number[] = [];
+  rollbackStepId = 0;
+  rollbackClarification = '';
+  rollbackIssueNotes = '';
   confirmComplete = false;
   showAssignPanel = false;
   showPriorityPanel = false;
   showJumpPanel = false;
+  showRollbackPanel = false;
   comments: TaskComment[] = [];
   activities: TaskActivity[] = [];
   jumpPoints: JumpPoint[] = [];
+  rollbackPoints: JumpPoint[] = [];
   draft = '';
   editingCommentId: number | null = null;
   editingDraft = '';
   commentsBusy = false;
   activityBusy = false;
   jumpPointsBusy = false;
+  rollbackPointsBusy = false;
   timerBusy = false;
   timerRunning = false;
   lastWork: TaskWorkTime | null = null;
@@ -116,6 +124,7 @@ export class TaskDrawerComponent implements OnChanges {
     private jumpUseCase: JumpTaskUseCase,
     private changePriorityUseCase: ChangePriorityUseCase,
     private listJumpPointsUseCase: ListJumpPointsUseCase,
+    private listRollbackPointsUseCase: ListRollbackPointsUseCase,
     private listActivityUseCase: ListActivityUseCase,
     private listCommentsUseCase: ListCommentsUseCase,
     private addCommentUseCase: AddCommentUseCase,
@@ -176,6 +185,10 @@ export class TaskDrawerComponent implements OnChanges {
 
   get canSkipOrJump(): boolean {
     return this.showActions && this.auth.hasPermission(PermissionCodes.Tickets.Manage);
+  }
+
+  get canJump(): boolean {
+    return this.canSkipOrJump && this.auth.hasRole([UserRole.Owner, UserRole.ProjectManager]);
   }
 
   get canFlag(): boolean {
@@ -332,15 +345,56 @@ export class TaskDrawerComponent implements OnChanges {
     });
   }
 
-  rollback(): void {
-    this.rollbackUseCase.execute(this.task.id).subscribe({
-      next: () => {
-        toast.success('Rolled back');
-        this.loadActivity();
-        this.changed.emit();
+  openRollbackPanel(): void {
+    const opening = !this.showRollbackPanel;
+    this.showRollbackPanel = opening;
+    if (!opening) {
+      return;
+    }
+    this.loadRollbackPoints();
+  }
+
+  private loadRollbackPoints(): void {
+    if (this.rollbackPointsBusy || this.rollbackPoints.length) {
+      return;
+    }
+    this.rollbackPointsBusy = true;
+    this.listRollbackPointsUseCase.execute(this.task.id).subscribe({
+      next: (points) => {
+        this.rollbackPoints = points;
+        this.rollbackStepId = points[0]?.stepId ?? 0;
+        this.rollbackPointsBusy = false;
+        this.cdr.markForCheck();
       },
-      error: (err: Error) => toast.error(err.message),
+      error: (err: Error) => {
+        this.rollbackPointsBusy = false;
+        this.cdr.markForCheck();
+        toast.error(err.message);
+      },
     });
+  }
+
+  rollback(): void {
+    if (!this.rollbackStepId || !this.rollbackClarification.trim() || !this.rollbackIssueNotes.trim()) {
+      toast.error('Choose a step and enter the clarification and issue notes');
+      return;
+    }
+    this.rollbackUseCase
+      .execute({
+        taskId: this.task.id,
+        stepId: this.rollbackStepId,
+        clarification: this.rollbackClarification.trim(),
+        issueNotes: this.rollbackIssueNotes.trim(),
+      })
+      .subscribe({
+        next: () => {
+          toast.success('Rolled back');
+          this.showRollbackPanel = false;
+          this.loadActivity();
+          this.changed.emit();
+        },
+        error: (err: Error) => toast.error(err.message),
+      });
   }
 
   skip(): void {
@@ -371,7 +425,7 @@ export class TaskDrawerComponent implements OnChanges {
     this.listJumpPointsUseCase.execute(this.task.id).subscribe({
       next: (points) => {
         this.jumpPoints = points;
-        this.jumpStepId = points[0]?.stepId ?? 0;
+        this.jumpStepIds = [];
         this.jumpPointsBusy = false;
         this.cdr.markForCheck();
       },
@@ -383,12 +437,25 @@ export class TaskDrawerComponent implements OnChanges {
     });
   }
 
+  isJumpDestination(stepId: number): boolean {
+    return this.jumpStepIds.includes(stepId);
+  }
+
+  toggleJumpDestination(stepId: number): void {
+    const index = this.jumpStepIds.indexOf(stepId);
+    if (index >= 0) {
+      this.jumpStepIds.splice(index, 1);
+    } else {
+      this.jumpStepIds.push(stepId);
+    }
+  }
+
   jump(): void {
-    if (!this.jumpStepId) {
-      toast.error('Pick a step');
+    if (!this.jumpStepIds.length) {
+      toast.error('Pick at least one step');
       return;
     }
-    this.jumpUseCase.execute({ taskId: this.task.id, stepId: this.jumpStepId }).subscribe({
+    this.jumpUseCase.execute({ taskId: this.task.id, stepIds: [...this.jumpStepIds] }).subscribe({
       next: () => {
         toast.success('Jumped');
         this.showJumpPanel = false;
@@ -560,13 +627,18 @@ export class TaskDrawerComponent implements OnChanges {
     this.editingCommentId = null;
     this.editingDraft = '';
     this.assignUserId = '';
-    this.jumpStepId = 0;
+    this.jumpStepIds = [];
+    this.rollbackStepId = 0;
+    this.rollbackClarification = '';
+    this.rollbackIssueNotes = '';
     this.showAssignPanel = false;
     this.showPriorityPanel = false;
     this.showJumpPanel = false;
+    this.showRollbackPanel = false;
     this.timerRunning = false;
     this.lastWork = null;
     this.jumpPoints = [];
+    this.rollbackPoints = [];
     this.comments = [];
     this.activities = [];
     this.commentsBusy = false;

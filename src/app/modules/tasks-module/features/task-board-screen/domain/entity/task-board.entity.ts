@@ -70,7 +70,14 @@ export interface ChangePriorityPayload {
 
 export interface JumpTaskPayload {
   taskId: number;
+  stepIds: number[];
+}
+
+export interface RollbackTaskPayload {
+  taskId: number;
   stepId: number;
+  clarification: string;
+  issueNotes: string;
 }
 
 export interface TaskBoardParams {
