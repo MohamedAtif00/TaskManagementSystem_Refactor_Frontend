@@ -10,7 +10,6 @@ import {
 } from 'ng-apexcharts';
 import { environment } from '@environments/environment';
 import { AuthService } from '@core/services/auth.service';
-import { UserRole } from '@core/models/user-role';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { StatCardComponent } from '@shared/component/stat-card/stat-card.component';
 import { ChartCardComponent } from '@shared/component/chart-card/chart-card.component';
@@ -32,7 +31,6 @@ import { DashboardUseCase } from '../domain/usecase/dashboard.usecase';
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit {
-  readonly UserRole = UserRole;
   readonly showOverdue = environment.useMock;
   readonly loading = signal(true);
   readonly data = signal<DashboardEntity | null>(null);
@@ -63,13 +61,18 @@ export class DashboardComponent implements OnInit {
 
   load(): void {
     const user = this.authService.user();
-    if (!user || user.role === undefined) {
+    if (!user) {
       this.loading.set(false);
       return;
     }
 
     this.loading.set(true);
-    this.dashboardUseCase.execute({ role: user.role, userId: user.id }).subscribe({
+    this.dashboardUseCase.execute({
+      permissions: user.permissions,
+      userId: user.id,
+      teamId: user.teamId,
+      headedTeamIds: user.headedTeamIds,
+    }).subscribe({
       next: (result) => {
         this.data.set(result);
         this.buildCharts(result);

@@ -37,6 +37,7 @@ test.describe('Navigation', () => {
   test('member sees My Leaves instead of Projects', async ({ page }) => {
     await loginAsMember(page);
     const sidebar = page.locator('app-sidebar');
+    await sidebar.getByText('Leaves', { exact: true }).click();
     await expect(sidebar.getByText('My Leaves', { exact: true })).toBeVisible();
     await expect(sidebar.getByText('Projects', { exact: true })).toHaveCount(0);
     await expect(sidebar.getByText('Resources', { exact: true })).toHaveCount(0);

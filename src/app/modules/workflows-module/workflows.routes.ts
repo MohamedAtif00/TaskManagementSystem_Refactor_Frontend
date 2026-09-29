@@ -1,12 +1,10 @@
 import { Routes } from '@angular/router';
 import { roleGuard } from '@core/guards/role.guard';
 import { PermissionCodes } from '@core/models/permission-codes';
-import { UserRole } from '@core/models/user-role';
 import { SCHEMA_LIST_DI_CONTAINER } from './features/schema-list-screen/di_container';
 import { TASK_BANK_LIST_DI_CONTAINER } from './features/task-bank-list-screen/di_container';
 
 const ADMIN_DATA = {
-  roles: [UserRole.ProjectManager, UserRole.Owner],
   permissions: [PermissionCodes.Workflows.Read],
 };
 

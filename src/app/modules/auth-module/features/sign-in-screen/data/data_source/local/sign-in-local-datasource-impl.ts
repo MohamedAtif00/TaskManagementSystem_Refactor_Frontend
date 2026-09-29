@@ -7,7 +7,7 @@ import {
   OWNER_PERMISSIONS,
   PROJECT_MANAGER_PERMISSIONS,
 } from '@core/models/permission-codes';
-import { UserRole } from '@core/models/user-role';
+import { ROLE_LABELS, UserRole } from '@core/models/user-role';
 import { SignInModel } from '../../model/sign-in.model';
 import { SignInLocalDataSource } from './sign-in-local-datasource';
 
@@ -19,6 +19,7 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
       name: 'Omar Owner',
       code: 'OWN001',
       role: UserRole.Owner,
+      roleName: ROLE_LABELS[UserRole.Owner],
       group: 'Leadership',
       token: 'fake.jwt.own001',
       permissions: OWNER_PERMISSIONS,
@@ -29,6 +30,7 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
       name: 'Paula Manager',
       code: 'PM001',
       role: UserRole.ProjectManager,
+      roleName: ROLE_LABELS[UserRole.ProjectManager],
       group: 'PMO',
       token: 'fake.jwt.pm001',
       permissions: PROJECT_MANAGER_PERMISSIONS,
@@ -39,7 +41,9 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
       name: 'Tarek Leader',
       code: 'TL001',
       role: UserRole.TeamLeader,
+      roleName: ROLE_LABELS[UserRole.TeamLeader],
       group: 'Math Team',
+      teamId: 3,
       token: 'fake.jwt.tl001',
       permissions: APPROVER_PERMISSIONS,
       notifications: 1,
@@ -49,7 +53,10 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
       name: 'Sara Head',
       code: 'SH001',
       role: UserRole.SectionHead,
+      roleName: ROLE_LABELS[UserRole.SectionHead],
       group: 'Science Section',
+      teamId: 2,
+      headedTeamIds: [3, 2],
       token: 'fake.jwt.sh001',
       permissions: APPROVER_PERMISSIONS,
       notifications: 0,
@@ -59,7 +66,9 @@ export class SignInLocalDataSourceImpl extends SignInLocalDataSource {
       name: 'Mona Member',
       code: 'MEM001',
       role: UserRole.Member,
+      roleName: ROLE_LABELS[UserRole.Member],
       group: 'Math Team',
+      teamId: 3,
       token: 'fake.jwt.mem001',
       permissions: MEMBER_PERMISSIONS,
       notifications: 0,

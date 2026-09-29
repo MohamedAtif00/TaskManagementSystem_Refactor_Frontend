@@ -15,7 +15,6 @@ export class MenuService implements OnDestroy {
   private _pagesMenu = signal<MenuItem[]>([]);
   private _navbarMenu = signal<MenuItem[]>([]);
   private _subscription = new Subscription();
-  private currentRole: UserRole | null = null;
   private currentPermissions: string[] = [];
 
   constructor(private router: Router) {
@@ -51,10 +50,9 @@ export class MenuService implements OnDestroy {
     this.applyAccess(role, this.currentPermissions);
   }
 
-  public applyAccess(role: UserRole | null, permissions: string[] = []): void {
-    this.currentRole = role;
+  public applyAccess(_role: UserRole | null, permissions: string[] = []): void {
     this.currentPermissions = permissions;
-    const accessible = this.filterByAccess(Menu.pages, role, permissions);
+    const accessible = this.filterByAccess(Menu.pages, permissions);
     this._pagesMenu.set(this.filterBySurface(accessible, 'sidebar'));
     this._navbarMenu.set(this.filterBySurface(accessible, 'navbar'));
     this.markActive();
@@ -103,34 +101,41 @@ export class MenuService implements OnDestroy {
       .filter((group) => group.items.length > 0);
   }
 
-  private filterByAccess(pages: MenuItem[], role: UserRole | null, permissions: string[]): MenuItem[] {
+  private filterByAccess(pages: MenuItem[], permissions: string[]): MenuItem[] {
     return pages
       .map((group) => ({
         ...group,
         items: group.items
-          .filter((item) => this.canSee(item, role, permissions))
-          .map((item) => ({
-            ...item,
-            children: item.children?.filter((child) => this.canSee(child, role, permissions)),
-          })),
+          .filter((item) => this.canSee(item, permissions))
+          .map((item) => this.presentItem(item, permissions))
+          .filter((item) => item.children === undefined || item.children.length > 0),
       }))
       .filter((group) => group.items.length > 0);
   }
 
-  private canSee(item: SubMenuItem, role: UserRole | null, permissions: string[]): boolean {
-    const roleOk = !item.roles?.length || (role !== null && item.roles.includes(role));
-    const hasPermissionCatalog = permissions.length > 0;
-    const permOk =
-      !item.permissions?.length ||
-      (hasPermissionCatalog ? hasAnyPermission(permissions, item.permissions) : roleOk);
+  private presentItem(item: SubMenuItem, permissions: string[]): SubMenuItem {
+    if (!item.children) {
+      return item;
+    }
 
-    if (item.permissions?.length && item.roles?.length && hasPermissionCatalog) {
-      return permOk && roleOk;
+    const children = item.children.filter((child) => this.canSee(child, permissions));
+    if (item.label === 'Leaves' && children.length === 1 && children[0].label === 'My Leaves') {
+      return {
+        ...item,
+        label: 'My Leaves',
+        route: children[0].route,
+        children: undefined,
+      };
     }
-    if (item.permissions?.length && hasPermissionCatalog) {
-      return permOk;
+
+    return { ...item, children };
+  }
+
+  private canSee(item: SubMenuItem, permissions: string[]): boolean {
+    if (!item.permissions?.length) {
+      return true;
     }
-    return roleOk;
+    return hasAnyPermission(permissions, item.permissions);
   }
 
   private markActive() {

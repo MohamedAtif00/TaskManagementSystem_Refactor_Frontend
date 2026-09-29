@@ -1,22 +1,21 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { delay } from 'rxjs/operators';
-import { UserRole } from '@core/models/user-role';
-import { DashboardParams } from '../../../domain/entity/dashboard-params.entity';
+import { dashboardView, DashboardParams } from '../../../domain/entity/dashboard-params.entity';
 import { DashboardModel } from '../../model/dashboard.model';
 import { DashboardLocalDataSource } from './dashboard-local-datasource';
 
 @Injectable()
 export class DashboardLocalDataSourceImpl extends DashboardLocalDataSource {
   getDashboard(params: DashboardParams): Observable<DashboardModel> {
-    const role = params.role;
-    if (role === UserRole.ProjectManager || role === UserRole.Owner) {
+    const view = dashboardView(params);
+    if (view === 'projectManager') {
       return of(this.pmDashboard()).pipe(delay(150));
     }
-    if (role === UserRole.TeamLeader) {
+    if (view === 'teamLeader') {
       return of(this.tlDashboard()).pipe(delay(150));
     }
-    if (role === UserRole.SectionHead) {
+    if (view === 'sectionHead') {
       return of(this.sectionHeadDashboard()).pipe(delay(150));
     }
     return of(this.memberDashboard()).pipe(delay(150));

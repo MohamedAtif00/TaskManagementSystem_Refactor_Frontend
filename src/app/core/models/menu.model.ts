@@ -1,5 +1,3 @@
-import { UserRole } from './user-role';
-
 export interface MenuItem {
   group: string;
   separator?: boolean;
@@ -15,7 +13,6 @@ export interface SubMenuItem {
   expanded?: boolean;
   active?: boolean;
   children?: Array<SubMenuItem>;
-  roles?: UserRole[];
   permissions?: string[];
   /** When false, hidden from top navbar Overview/Work dropdowns. Default true. */
   showInNavbar?: boolean;

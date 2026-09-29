@@ -5,6 +5,7 @@ export interface AuthUser {
   name: string;
   code: string;
   role: UserRole;
+  roleName?: string;
   group: string;
   teamId?: number | null;
   headedTeamIds?: number[];

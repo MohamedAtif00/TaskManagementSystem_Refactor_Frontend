@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 import { roleGuard } from '@core/guards/role.guard';
 import { PermissionCodes } from '@core/models/permission-codes';
-import { LEAVE_APPROVER_ROLES, UserRole } from '@core/models/user-role';
 import { HOLIDAYS_DI_CONTAINER } from './features/holidays-screen/di_container';
 import { LEAVE_CALENDAR_DI_CONTAINER } from './features/leave-calendar-screen/di_container';
 import { MEMBERS_LEAVES_DI_CONTAINER } from './features/members-leaves-screen/di_container';
@@ -22,10 +21,7 @@ export const LEAVES_ROUTES: Routes = [
   {
     path: 'calendar',
     canActivate: [roleGuard],
-    data: {
-      roles: LEAVE_APPROVER_ROLES,
-      permissions: [PermissionCodes.HrLeave.Update, PermissionCodes.HrLeave.Manage],
-    },
+    data: { permissions: [PermissionCodes.HrLeave.Update, PermissionCodes.HrLeave.Manage] },
     providers: LEAVE_CALENDAR_DI_CONTAINER,
     loadComponent: () =>
       import('./features/leave-calendar-screen/presentation/leave-calendar.component').then(
@@ -35,7 +31,7 @@ export const LEAVES_ROUTES: Routes = [
   {
     path: 'members',
     canActivate: [roleGuard],
-    data: { roles: [UserRole.Owner], permissions: [PermissionCodes.HrLeave.Manage] },
+    data: { permissions: [PermissionCodes.HrLeave.Manage] },
     providers: MEMBERS_LEAVES_DI_CONTAINER,
     loadComponent: () =>
       import('./features/members-leaves-screen/presentation/members-leaves.component').then(
@@ -45,7 +41,7 @@ export const LEAVES_ROUTES: Routes = [
   {
     path: 'members/:userId',
     canActivate: [roleGuard],
-    data: { roles: [UserRole.Owner], permissions: [PermissionCodes.HrLeave.Manage] },
+    data: { permissions: [PermissionCodes.HrLeave.Manage] },
     providers: MEMBERS_LEAVES_DI_CONTAINER,
     loadComponent: () =>
       import('./features/members-leaves-screen/presentation/member-leave-history.component').then(
@@ -55,10 +51,7 @@ export const LEAVES_ROUTES: Routes = [
   {
     path: 'settings',
     canActivate: [roleGuard],
-    data: {
-      roles: LEAVE_APPROVER_ROLES,
-      permissions: [PermissionCodes.HrLeave.Read, PermissionCodes.HrLeave.Manage],
-    },
+    data: { permissions: [PermissionCodes.HrLeave.Read, PermissionCodes.HrLeave.Manage] },
     loadComponent: () =>
       import('./features/leave-settings-screen/presentation/leave-settings.component').then(
         (m) => m.LeaveSettingsComponent,

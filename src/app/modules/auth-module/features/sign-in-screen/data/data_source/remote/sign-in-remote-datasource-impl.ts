@@ -27,6 +27,7 @@ export class SignInRemoteDataSourceImpl extends SignInRemoteDataSource {
             name: me.name,
             code: code.trim().toUpperCase(),
             role: mapApiRole(me.role, me.roleName),
+            roleName: me.roleName,
             group: typeof me.group === 'string' ? me.group : '',
             teamId: me.teamId ?? null,
             headedTeamIds: me.headedTeamIds ?? [],

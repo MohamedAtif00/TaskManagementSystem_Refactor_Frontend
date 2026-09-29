@@ -1,6 +1,5 @@
 import { MenuItem } from '../models/menu.model';
 import { PermissionCodes } from '../models/permission-codes';
-import { UserRole } from '../models/user-role';
 import { ROUTE_PATHS } from '../navigation/route-paths.const';
 
 export class Menu {
@@ -31,13 +30,13 @@ export class Menu {
           icon: 'assets/icons/heroicons/outline/folder.svg',
           label: 'Projects',
           route: ROUTE_PATHS.projects,
-          roles: [UserRole.ProjectManager, UserRole.Owner],
           permissions: [PermissionCodes.Curriculum.Read],
         },
         {
           icon: 'assets/icons/heroicons/outline/view-grid.svg',
           label: 'Kanban',
           route: ROUTE_PATHS.tasks,
+          permissions: [PermissionCodes.Tickets.Read],
         },
         {
           icon: 'assets/icons/heroicons/outline/users.svg',
@@ -55,20 +54,27 @@ export class Menu {
           icon: 'assets/icons/heroicons/outline/shield-check.svg',
           label: 'Leaves',
           route: '/leaves',
-          roles: [
-            UserRole.ProjectManager,
-            UserRole.SectionHead,
-            UserRole.TeamLeader,
-            UserRole.Owner,
+          permissions: [
+            PermissionCodes.HrLeave.Read,
+            PermissionCodes.HrLeave.Create,
+            PermissionCodes.HrLeave.Update,
+            PermissionCodes.HrLeave.Manage,
+            PermissionCodes.HrHolidays.Read,
           ],
-          permissions: [PermissionCodes.HrLeave.Update, PermissionCodes.HrLeave.Manage],
           children: [
-            { label: 'Approvals', route: ROUTE_PATHS.leaveCalendar },
-            { label: 'My Leaves', route: ROUTE_PATHS.myLeaves },
+            {
+              label: 'Approvals',
+              route: ROUTE_PATHS.leaveCalendar,
+              permissions: [PermissionCodes.HrLeave.Update, PermissionCodes.HrLeave.Manage],
+            },
+            {
+              label: 'My Leaves',
+              route: ROUTE_PATHS.myLeaves,
+              permissions: [PermissionCodes.HrLeave.Create],
+            },
             {
               label: 'Members Leaves',
               route: ROUTE_PATHS.membersLeaves,
-              roles: [UserRole.Owner],
               permissions: [PermissionCodes.HrLeave.Manage],
             },
             {
@@ -79,17 +85,9 @@ export class Menu {
             {
               label: 'Leave settings',
               route: ROUTE_PATHS.leaveSettings,
-              roles: [UserRole.Owner],
-              permissions: [PermissionCodes.HrLeave.Manage],
+              permissions: [PermissionCodes.HrLeave.Read, PermissionCodes.HrLeave.Manage],
             },
           ],
-        },
-        {
-          icon: 'assets/icons/heroicons/outline/shield-check.svg',
-          label: 'My Leaves',
-          route: ROUTE_PATHS.myLeaves,
-          roles: [UserRole.Member],
-          permissions: [PermissionCodes.HrLeave.Create],
         },
       ],
     },
@@ -101,21 +99,18 @@ export class Menu {
           icon: 'assets/icons/heroicons/outline/document-report.svg',
           label: 'Project overview',
           route: `${ROUTE_PATHS.reports}/project-overview`,
-          roles: [UserRole.ProjectManager, UserRole.Owner],
           permissions: [PermissionCodes.Curriculum.Read],
         },
         {
           icon: 'assets/icons/heroicons/outline/document-report.svg',
           label: 'Summaries',
           route: `${ROUTE_PATHS.reports}/summaries`,
-          roles: [UserRole.ProjectManager, UserRole.Owner],
           permissions: [PermissionCodes.Tickets.Read],
         },
         {
           icon: 'assets/icons/heroicons/outline/view-grid.svg',
           label: 'Kanban analytics',
           route: ROUTE_PATHS.kanbanAnalytics,
-          roles: [UserRole.ProjectManager, UserRole.Owner],
           permissions: [PermissionCodes.Tickets.Read],
         },
         {
@@ -134,8 +129,11 @@ export class Menu {
           icon: 'assets/icons/heroicons/outline/users.svg',
           label: 'Resources',
           route: '/resources',
-          roles: [UserRole.ProjectManager, UserRole.Owner],
-          permissions: [PermissionCodes.IdentityUsers.Read, PermissionCodes.Organization.Read],
+          permissions: [
+            PermissionCodes.IdentityUsers.Read,
+            PermissionCodes.IdentityRoles.Read,
+            PermissionCodes.Organization.Read,
+          ],
           children: [
             { label: 'Users', route: ROUTE_PATHS.users, permissions: [PermissionCodes.IdentityUsers.Read] },
             { label: 'Roles', route: ROUTE_PATHS.roles, permissions: [PermissionCodes.IdentityRoles.Read] },
@@ -147,21 +145,18 @@ export class Menu {
           icon: 'assets/icons/heroicons/outline/folder.svg',
           label: 'Curriculum',
           route: ROUTE_PATHS.curriculum,
-          roles: [UserRole.ProjectManager, UserRole.Owner],
           permissions: [PermissionCodes.Curriculum.Read],
         },
         {
           icon: 'assets/icons/heroicons/outline/bookmark.svg',
           label: 'Sprint management',
           route: ROUTE_PATHS.sprintManage,
-          roles: [UserRole.ProjectManager, UserRole.Owner],
           permissions: [PermissionCodes.Sprints.Manage],
         },
         {
           icon: 'assets/icons/heroicons/outline/bookmark.svg',
           label: 'Workflows',
           route: '/workflows',
-          roles: [UserRole.ProjectManager, UserRole.Owner],
           permissions: [PermissionCodes.Workflows.Read],
           children: [
             { label: 'Schemas', route: ROUTE_PATHS.schemas },

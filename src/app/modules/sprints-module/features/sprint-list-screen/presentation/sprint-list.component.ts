@@ -4,7 +4,6 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toast } from 'ngx-sonner';
 import { environment } from '@environments/environment';
 import { PermissionCodes } from '@core/models/permission-codes';
-import { ADMIN_ROLES } from '@core/models/user-role';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { AuthService } from '@core/services/auth.service';
 import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
@@ -64,7 +63,7 @@ export class SprintListComponent implements OnInit {
     private subjectsUseCase: SprintSubjectsUseCase,
     private losUseCase: SprintLosUseCase,
   ) {
-    this.isAdmin = this.auth.hasRole(ADMIN_ROLES) || this.auth.hasPermission(PermissionCodes.Sprints.Manage);
+    this.isAdmin = this.auth.hasPermission(PermissionCodes.Sprints.Manage);
     this.isManage = !!this.route.snapshot.data['manage'] && this.isAdmin;
   }
 

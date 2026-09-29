@@ -318,6 +318,10 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
         group: user.group,
 
+        teamId: user.teamId ?? null,
+
+        headedTeamIds: user.headedTeamIds ?? [],
+
         permissions: permissionsForRole(user.role),
 
         notifications: unreadNotificationCount(),

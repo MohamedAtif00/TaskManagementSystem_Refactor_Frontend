@@ -22,7 +22,10 @@ export class AuthService {
   readonly user = this._user.asReadonly();
   readonly roleLabel = computed(() => {
     const user = this._user();
-    return user ? ROLE_LABELS[user.role] : '';
+    if (!user) {
+      return '';
+    }
+    return user.roleName || ROLE_LABELS[user.role] || '';
   });
   readonly unreadNotifications = computed(() => this._user()?.notifications ?? 0);
 

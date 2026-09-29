@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import { UserRole } from '@core/models/user-role';
 import { API } from '@core/network/api/api.const';
 import { CurriculumCatalogService, YearTree, YearTreeProject } from '@core/network/curriculum-catalog.service';
 import { mapHttpError } from '@core/network/http-error';
@@ -9,7 +8,7 @@ import { NetworkService } from '@core/network/network.service';
 import { OrganizationCatalogService } from '@core/network/organization-catalog.service';
 import { AggregatedTicketStats, TicketStatsService } from '@core/network/ticket-stats.service';
 import { DirectoryUser, UserDirectoryService } from '@core/network/user-directory.service';
-import { DashboardParams } from '../../../domain/entity/dashboard-params.entity';
+import { dashboardView, DashboardParams } from '../../../domain/entity/dashboard-params.entity';
 import { DashboardModel } from '../../model/dashboard.model';
 import { DashboardRemoteDataSource } from './dashboard-remote-datasource';
 
@@ -43,14 +42,14 @@ export class DashboardRemoteDataSourceImpl extends DashboardRemoteDataSource {
         const subjectIds = subjects.map((subject) => subject.id);
         return this.ticketStats.aggregateForSubjects(subjectIds, params.userId).pipe(
           switchMap((stats) => {
-            const role = params.role;
-            if (role === UserRole.ProjectManager || role === UserRole.Owner) {
+            const view = dashboardView(params);
+            if (view === 'projectManager') {
               return of(this.buildPmDashboard(trees, users, schemas, teams, stats));
             }
-            if (role === UserRole.TeamLeader) {
+            if (view === 'teamLeader') {
               return of(this.buildTlDashboard(trees, users, params.userId, subjects, stats));
             }
-            if (role === UserRole.SectionHead) {
+            if (view === 'sectionHead') {
               return this.buildSectionHeadDashboard(params.userId, users, teams, stats);
             }
             return of(this.buildMemberDashboard(stats));
