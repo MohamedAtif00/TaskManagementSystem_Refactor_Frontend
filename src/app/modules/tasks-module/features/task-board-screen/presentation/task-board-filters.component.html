@@ -1,0 +1,121 @@
+<div class="mb-4 flex flex-col gap-3">
+  <div class="flex flex-wrap items-center gap-2">
+    <button type="button" class="rounded-full border px-3 py-1 text-xs font-semibold" [class.bg-primary]="shortcutActive('all')" [class.text-primary-foreground]="shortcutActive('all')" [class.border-primary]="shortcutActive('all')" [class.border-border]="!shortcutActive('all')" [class.text-muted-foreground]="!shortcutActive('all')" (click)="onShortcut('all')">All tasks</button>
+    <button type="button" class="rounded-full border px-3 py-1 text-xs font-semibold" [class.bg-primary]="shortcutActive('mine')" [class.text-primary-foreground]="shortcutActive('mine')" [class.border-primary]="shortcutActive('mine')" [class.border-border]="!shortcutActive('mine')" [class.text-muted-foreground]="!shortcutActive('mine')" (click)="onShortcut('mine')">My tasks</button>
+    <button type="button" class="rounded-full border px-3 py-1 text-xs font-semibold" [class.bg-primary]="shortcutActive('unassigned')" [class.text-primary-foreground]="shortcutActive('unassigned')" [class.border-primary]="shortcutActive('unassigned')" [class.border-border]="!shortcutActive('unassigned')" [class.text-muted-foreground]="!shortcutActive('unassigned')" (click)="onShortcut('unassigned')">Unassigned</button>
+    <button type="button" class="rounded-full border px-3 py-1 text-xs font-semibold" [class.bg-primary]="shortcutActive('high')" [class.text-primary-foreground]="shortcutActive('high')" [class.border-primary]="shortcutActive('high')" [class.border-border]="!shortcutActive('high')" [class.text-muted-foreground]="!shortcutActive('high')" (click)="onShortcut('high')">High priority</button>
+    <button type="button" class="rounded-full border px-3 py-1 text-xs font-semibold" [class.bg-primary]="shortcutActive('flagged')" [class.text-primary-foreground]="shortcutActive('flagged')" [class.border-primary]="shortcutActive('flagged')" [class.border-border]="!shortcutActive('flagged')" [class.text-muted-foreground]="!shortcutActive('flagged')" (click)="onShortcut('flagged')">Flagged</button>
+    <button type="button" class="rounded-full border px-3 py-1 text-xs font-semibold" [class.bg-primary]="shortcutActive('paused')" [class.text-primary-foreground]="shortcutActive('paused')" [class.border-primary]="shortcutActive('paused')" [class.border-border]="!shortcutActive('paused')" [class.text-muted-foreground]="!shortcutActive('paused')" (click)="onShortcut('paused')">Paused</button>
+    <button type="button" class="text-foreground rounded-md border border-border px-3 py-1 text-xs font-semibold" (click)="panelOpen = !panelOpen">All filters</button>
+    <span class="text-muted-foreground text-sm">{{ taskCount }} tasks</span>
+  </div>
+
+  <label class="block max-w-md">
+    <span class="text-muted-foreground mb-1 block text-xs font-medium">Search</span>
+    <input type="search" [ngModel]="query" (ngModelChange)="onQuery($event)" name="taskSearch" placeholder="Task name or task ID" />
+  </label>
+
+  @if (chips().length) {
+    <div class="flex flex-wrap items-center gap-2">
+      @for (chip of chips(); track chip.key) {
+        <button type="button" class="bg-muted text-foreground rounded-full px-2 py-1 text-xs" (click)="removeChip(chip)">{{ chip.label }} ×</button>
+      }
+      <button type="button" class="text-primary text-xs font-semibold" (click)="clearAll()">Clear all</button>
+    </div>
+  }
+
+  @if (panelOpen) {
+    <div class="border-border grid gap-4 rounded-lg border p-4 md:grid-cols-2 xl:grid-cols-3">
+      <fieldset class="flex flex-col gap-2">
+        <legend class="text-foreground mb-1 text-xs font-semibold">Assignment</legend>
+        <div class="relative" clickOutside (clickOutside)="assignmentOpen = false">
+          <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="assignmentOpen = !assignmentOpen">
+            <span class="truncate">{{ assignmentLabel() }}</span>
+            <span class="text-muted-foreground text-xs">▾</span>
+          </button>
+          @if (assignmentOpen) {
+            <div class="border-border bg-card absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border p-2 shadow">
+              <label class="text-muted-foreground flex items-center gap-2 px-1 py-1 text-sm">
+                <input type="checkbox" [checked]="filters.assignedToMe" (change)="toggleAssignedToMe()" />
+                Assigned to me
+              </label>
+              <label class="text-muted-foreground flex items-center gap-2 px-1 py-1 text-sm">
+                <input type="checkbox" [checked]="filters.unassigned" (change)="toggleUnassigned()" />
+                Unassigned
+              </label>
+              @for (user of users; track user.id) {
+                <label class="text-muted-foreground flex items-center gap-2 px-1 py-1 text-sm">
+                  <input type="checkbox" [checked]="filters.userIds.includes(user.id)" (change)="toggleUser(user.id)" />
+                  {{ user.name }}
+                </label>
+              }
+            </div>
+          }
+        </div>
+      </fieldset>
+
+      <fieldset class="flex flex-col gap-2">
+        <legend class="text-foreground mb-1 text-xs font-semibold">Status</legend>
+        @for (status of statusOptions; track status) {
+          <label class="text-muted-foreground flex items-center gap-2 text-sm">
+            <input type="checkbox" [checked]="filters.statuses.includes(status)" (change)="toggleStatus(status)" />
+            {{ statusLabels[status] }}
+          </label>
+        }
+      </fieldset>
+
+      <fieldset class="flex flex-col gap-2">
+        <legend class="text-foreground mb-1 text-xs font-semibold">Priority</legend>
+        @for (priority of priorityOptions; track priority) {
+          <label class="text-muted-foreground flex items-center gap-2 text-sm">
+            <input type="checkbox" [checked]="filters.priorities.includes(priority)" (change)="togglePriority(priority)" />
+            {{ priorityLabels[priority] }}
+          </label>
+        }
+      </fieldset>
+
+      <fieldset class="flex max-h-48 flex-col gap-2 overflow-y-auto">
+        <legend class="text-foreground mb-1 text-xs font-semibold">Learning objective</legend>
+        @if (!learningObjectives.length) {
+          <p class="text-muted-foreground text-sm">No learning objectives for this selection.</p>
+        }
+        @for (objective of learningObjectives; track objective.id) {
+          <label class="text-muted-foreground flex items-center gap-2 text-sm">
+            <input type="checkbox" [checked]="filters.learningObjectiveIds.includes(objective.id)" (change)="toggleObjective(objective.id)" />
+            {{ objective.name | loCodeLabel: loDisplay.view().showMapped : loDisplay.view().direction }}
+          </label>
+        }
+      </fieldset>
+
+      <fieldset class="flex flex-col gap-2">
+        <legend class="text-foreground mb-1 text-xs font-semibold">Special states</legend>
+        <label class="text-muted-foreground flex items-center gap-2 text-sm">
+          <input type="checkbox" [checked]="filters.flagged" (change)="toggleFlagged()" />
+          Flagged
+        </label>
+        <label class="text-muted-foreground flex items-center gap-2 text-sm">
+          <input type="checkbox" [checked]="filters.paused" (change)="togglePaused()" />
+          Paused
+        </label>
+        <label class="text-muted-foreground flex items-center gap-2 text-sm">
+          <input type="checkbox" [checked]="filters.rolledBack" (change)="toggleRolledBack()" />
+          Rolled back
+        </label>
+      </fieldset>
+
+      <fieldset class="flex flex-col gap-2">
+        <legend class="text-foreground mb-1 text-xs font-semibold">Saved views</legend>
+        <div class="flex gap-2">
+          <input type="text" [(ngModel)]="viewName" name="viewName" placeholder="My active tasks" />
+          <button type="button" class="text-primary shrink-0 text-xs font-semibold disabled:opacity-50" [disabled]="!canSaveView()" (click)="saveView()">Save</button>
+        </div>
+        @for (view of savedViews; track view.id) {
+          <div class="flex items-center justify-between gap-2">
+            <button type="button" class="text-foreground truncate text-sm font-medium" (click)="applyView(view)">{{ view.name }}</button>
+            <button type="button" class="text-muted-foreground text-xs" (click)="deleteView(view.id)">Delete</button>
+          </div>
+        }
+      </fieldset>
+    </div>
+  }
+</div>

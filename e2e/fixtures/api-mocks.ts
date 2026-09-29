@@ -128,6 +128,21 @@ function cloneTickets() {
 
 
 
+function assignmentLinks(tickets: Array<{ userId?: number | null; learningObjectiveId: number }>) {
+  const seen = new Set<string>();
+  const links: Array<{ userId: number | null; learningObjectiveId: number }> = [];
+  for (const ticket of tickets) {
+    const userId = ticket.userId ?? null;
+    const key = `${userId ?? 'none'}:${ticket.learningObjectiveId}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    links.push({ userId, learningObjectiveId: ticket.learningObjectiveId });
+  }
+  return links;
+}
+
 function pagedTickets(tickets: typeof data.subjectTickets, url: URL) {
 
   const statuses = url.searchParams.getAll('status').map(Number).filter((value) => Number.isFinite(value));
@@ -630,6 +645,11 @@ export async function setupApiMocks(page: Page): Promise<void> {
 
 
 
+    if (method === 'GET' && /^\/sprints\/\d+\/tickets\/assignments$/.test(pathname)) {
+      await json(route, assignmentLinks(data.sprintTickets));
+      return;
+    }
+
     if (method === 'GET' && /^\/sprints\/\d+\/tickets$/.test(pathname)) {
 
       await json(route, pagedTickets(data.sprintTickets, url));
@@ -679,6 +699,11 @@ export async function setupApiMocks(page: Page): Promise<void> {
     }
 
 
+
+    if (method === 'GET' && /^\/subjects\/\d+\/tickets\/assignments$/.test(pathname)) {
+      await json(route, assignmentLinks(data.subjectTickets));
+      return;
+    }
 
     if (method === 'GET' && /^\/subjects\/\d+\/tickets$/.test(pathname)) {
 

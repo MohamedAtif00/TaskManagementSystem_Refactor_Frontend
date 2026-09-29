@@ -33,3 +33,14 @@ export function mapApiPriority(api: number): 0 | 1 | 2 | 3 {
   }
   return (api === 2 ? 2 : 0) as 0 | 1 | 2 | 3;
 }
+
+/** UI: None=0 Low=1 Medium=2 High=3 → API: None=0 High=1 Medium=2 Low=3 */
+export function mapUiPriority(ui: 0 | 1 | 2 | 3): 0 | 1 | 2 | 3 {
+  if (ui === 3) {
+    return 1;
+  }
+  if (ui === 1) {
+    return 3;
+  }
+  return ui;
+}

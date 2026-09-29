@@ -10,31 +10,13 @@
     }
   </app-page-header>
 
-  <div class="mb-4 flex flex-wrap items-end gap-3">
-    <label class="block max-w-40">
-      <span class="text-muted-foreground mb-1 block text-xs font-medium">Search type</span>
-      <select [ngModel]="searchType()" (ngModelChange)="onSearchTypeChange($event)" name="searchType">
-        <option value="lo">Learning objective</option>
-        <option value="task">Task name</option>
-      </select>
-    </label>
-    @if (searchType() === 'lo') {
-      <label class="block max-w-64">
-        <span class="text-muted-foreground mb-1 block text-xs font-medium">Learning objective</span>
-        <select [ngModel]="selectedLoId()" (ngModelChange)="onLoChange($event)" name="selectedLoId">
-          <option [ngValue]="0">All</option>
-          @for (lo of current.learningObjectives; track lo.id) {
-            <option [ngValue]="lo.id">{{ lo.name | loCodeLabel: loDisplay.view().showMapped : loDisplay.view().direction }}</option>
-          }
-        </select>
-      </label>
-    } @else {
-      <label class="block max-w-64">
-        <span class="text-muted-foreground mb-1 block text-xs font-medium">Task name</span>
-        <input type="search" [ngModel]="taskQuery()" (ngModelChange)="onTaskQueryChange($event)" name="taskQuery" placeholder="Filter cards" />
-      </label>
-    }
-  </div>
+  <app-task-board-filters
+    [filters]="filters()"
+    [users]="current.users"
+    [learningObjectives]="scopedObjectives()"
+    [userId]="currentUserId()"
+    [taskCount]="taskCount()"
+    (filtersChange)="onFiltersChange($event)" />
 
   <div class="flex gap-4 pb-4 max-lg:overflow-x-auto lg:overflow-x-visible">
     @for (column of columns; track column.key) {
@@ -44,6 +26,7 @@
         [cards]="cardsFor(column)"
         [connectedTo]="connectedColumns(column.key)"
         [totalCount]="totalFor(column)"
+        [movingIds]="movingIds()"
         (openCard)="openCard($event)"
         (dropped)="onCardDropped($event, column)" />
     }

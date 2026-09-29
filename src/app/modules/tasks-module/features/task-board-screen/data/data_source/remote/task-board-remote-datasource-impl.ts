@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpParams } from '@angular/common/http';
 import { Observable, forkJoin, of, throwError } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import { mapApiPriority } from '@core/models/role-map';
+import { mapApiPriority, mapUiPriority } from '@core/models/role-map';
 import { TicketListPageResponse } from '@core/api/tms-contracts';
 import { API, apiPath } from '@core/network/api/api.const';
 import { mapHttpError } from '@core/network/http-error';
@@ -135,16 +135,38 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
             })),
           );
 
-    return meta$.pipe(
-      map((meta) => ({
+    return forkJoin({
+      meta: meta$,
+      links: this.assignmentLinks(params),
+    }).pipe(
+      map(({ meta, links }) => ({
         source: params.source,
         id: params.id,
         name: meta.name,
         cards: [],
         learningObjectives: meta.learningObjectives,
         users: meta.users,
+        assignmentLinks: links,
       })),
       catchError(mapHttpError),
+    );
+  }
+
+  private assignmentLinks(params: TaskBoardParams): Observable<{ userId: number | null; learningObjectiveId: number }[] | null> {
+    const path =
+      params.source === 'sprint'
+        ? apiPath(API.Tickets.AssignmentLinksBySprint, { id: params.id })
+        : apiPath(API.Tickets.AssignmentLinksBySubject, { id: params.id });
+    return this.network.get<{ userId?: number | null; learningObjectiveId?: number }[]>(path).pipe(
+      map((rows) =>
+        (Array.isArray(rows) ? rows : [])
+          .filter((row) => Number.isFinite(row.learningObjectiveId))
+          .map((row) => ({
+            userId: row.userId ?? null,
+            learningObjectiveId: row.learningObjectiveId as number,
+          })),
+      ),
+      catchError(() => of(null)),
     );
   }
 
@@ -182,12 +204,7 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
     for (const status of params.statuses) {
       httpParams = httpParams.append('status', String(status));
     }
-    if (params.learningObjectiveId) {
-      httpParams = httpParams.set('learningObjectiveId', String(params.learningObjectiveId));
-    }
-    if (params.name?.trim()) {
-      httpParams = httpParams.set('name', params.name.trim());
-    }
+    httpParams = this.appendBoardFilters(httpParams, params);
 
     const users = params.users ?? [];
     return this.network.get<TicketListPageResponse>(path, httpParams).pipe(
@@ -199,6 +216,36 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
       })),
       catchError(mapHttpError),
     );
+  }
+
+  private appendBoardFilters(httpParams: HttpParams, params: TaskColumnPageParams): HttpParams {
+    const filters = params.filters;
+    const query = filters.query.trim();
+    if (query) {
+      httpParams = httpParams.set('name', query);
+    }
+    for (const id of filters.learningObjectiveIds) {
+      httpParams = httpParams.append('learningObjectiveId', String(id));
+    }
+    for (const id of params.assigneeIds) {
+      httpParams = httpParams.append('userId', String(id));
+    }
+    if (filters.unassigned) {
+      httpParams = httpParams.set('unassigned', 'true');
+    }
+    for (const priority of filters.priorities) {
+      httpParams = httpParams.append('priority', String(mapUiPriority(priority)));
+    }
+    if (filters.flagged) {
+      httpParams = httpParams.set('flagged', 'true');
+    }
+    if (filters.paused) {
+      httpParams = httpParams.set('paused', 'true');
+    }
+    if (filters.rolledBack) {
+      httpParams = httpParams.set('rolledBack', 'true');
+    }
+    return httpParams;
   }
 
   getTask(id: number): Observable<TaskDetailsModel> {

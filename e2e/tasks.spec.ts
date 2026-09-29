@@ -92,7 +92,7 @@ test.describe('Tasks / Kanban', () => {
     const ticketRequests: string[] = [];
     page.on('request', (request) => {
       const url = request.url();
-      if (url.includes('/subjects/11/tickets')) {
+      if (url.includes('/subjects/11/tickets') && !url.includes('/assignments')) {
         ticketRequests.push(url);
       }
     });

@@ -14,7 +14,7 @@ import {
   TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
 } from '../domain/entity/task-board.entity';
-import { UserRole } from '@core/models/user-role';
+import { PermissionCodes } from '@core/models/permission-codes';
 import { AuthService } from '@core/services/auth.service';
 import { AddCommentUseCase } from '../domain/usecase/add-comment.usecase';
 import { DeleteCommentUseCase } from '../domain/usecase/delete-comment.usecase';
@@ -175,8 +175,7 @@ export class TaskDrawerComponent implements OnChanges {
   }
 
   get canSkipOrJump(): boolean {
-    const role = this.auth.user()?.role;
-    return this.showActions && (role === UserRole.ProjectManager || role === UserRole.Owner);
+    return this.showActions && this.auth.hasPermission(PermissionCodes.Tickets.Manage);
   }
 
   get canFlag(): boolean {
@@ -200,8 +199,7 @@ export class TaskDrawerComponent implements OnChanges {
   }
 
   get assignableUsers(): TaskIdName[] {
-    const role = this.auth.user()?.role;
-    if (role === UserRole.ProjectManager || role === UserRole.Owner || this.task.teamId == null) {
+    if (this.auth.hasPermission(PermissionCodes.Tickets.Manage) || this.task.teamId == null) {
       return this.users;
     }
     const knowsTeams = this.users.some((user) => user.teamId != null);
@@ -471,7 +469,7 @@ export class TaskDrawerComponent implements OnChanges {
     if (!user) {
       return false;
     }
-    return comment.userId === user.id || user.role === UserRole.ProjectManager || user.role === UserRole.Owner;
+    return comment.userId === user.id || this.auth.hasPermission(PermissionCodes.Tickets.Manage);
   }
 
   startEditComment(comment: TaskComment): void {

@@ -1,3 +1,5 @@
+import { AssignmentLink } from '../board-assignment-scope';
+
 export type TaskStatus = 0 | 1 | 2 | 3 | 4;
 export type TaskPriority = 0 | 1 | 2 | 3;
 export type TaskAccess = 'WorkOn' | 'Manage' | 'WorkOnAndManage' | 'None';
@@ -29,6 +31,7 @@ export interface TaskBoardEntity {
   cards: TaskCardEntity[];
   learningObjectives: TaskIdName[];
   users: TaskIdName[];
+  assignmentLinks: AssignmentLink[] | null;
 }
 
 export interface TaskDetailsEntity extends TaskCardEntity {
@@ -75,12 +78,63 @@ export interface TaskBoardParams {
   id: number;
 }
 
+export interface TaskBoardFilters {
+  query: string;
+  assignedToMe: boolean;
+  userIds: number[];
+  unassigned: boolean;
+  statuses: TaskStatus[];
+  priorities: TaskPriority[];
+  learningObjectiveIds: number[];
+  flagged: boolean;
+  paused: boolean;
+  rolledBack: boolean;
+}
+
+export interface SavedBoardView {
+  id: string;
+  name: string;
+  filters: TaskBoardFilters;
+}
+
+export function emptyTaskBoardFilters(): TaskBoardFilters {
+  return {
+    query: '',
+    assignedToMe: false,
+    userIds: [],
+    unassigned: false,
+    statuses: [],
+    priorities: [],
+    learningObjectiveIds: [],
+    flagged: false,
+    paused: false,
+    rolledBack: false,
+  };
+}
+
+export function taskBoardFiltersActive(filters: TaskBoardFilters): boolean {
+  return (
+    filters.query.trim().length > 0 ||
+    filters.assignedToMe ||
+    filters.userIds.length > 0 ||
+    filters.unassigned ||
+    filters.statuses.length > 0 ||
+    filters.priorities.length > 0 ||
+    filters.learningObjectiveIds.length > 0 ||
+    filters.flagged ||
+    filters.paused ||
+    filters.rolledBack
+  );
+}
+
 export interface TaskColumnPageParams {
   source: BoardSource;
   id: number;
   statuses: TaskStatus[];
   page: number;
   pageSize: number;
+  filters: TaskBoardFilters;
+  assigneeIds: number[];
   learningObjectiveId?: number;
   name?: string;
   users?: TaskIdName[];

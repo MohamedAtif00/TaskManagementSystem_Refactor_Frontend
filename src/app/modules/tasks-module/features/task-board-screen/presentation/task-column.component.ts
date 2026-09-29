@@ -17,6 +17,7 @@ export class TaskColumnComponent implements OnChanges {
   @Input() cards: TaskCardEntity[] = [];
   @Input() connectedTo: string[] = [];
   @Input() totalCount = 0;
+  @Input() movingIds: ReadonlySet<number> = new Set();
   @Output() openCard = new EventEmitter<TaskCardEntity>();
   @Output() dropped = new EventEmitter<CdkDragDrop<TaskCardEntity[]>>();
 

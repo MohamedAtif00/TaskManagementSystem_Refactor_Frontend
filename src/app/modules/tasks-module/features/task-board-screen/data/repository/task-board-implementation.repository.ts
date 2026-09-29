@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '@environments/environment';
-import { UserRole } from '@core/models/user-role';
+import { PermissionCodes } from '@core/models/permission-codes';
 import { AuthService } from '@core/services/auth.service';
 import {
   AssignTaskPayload,
@@ -161,26 +161,20 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
     const canTake = assignedToSelf || unassigned || backlog;
     const sameTeam = task.teamId != null && user.teamId != null && task.teamId === user.teamId;
     const inHeadedSection = task.teamId != null && (user.headedTeamIds ?? []).includes(task.teamId);
+    const hasOrgScope = user.teamId != null || (user.headedTeamIds?.length ?? 0) > 0;
 
-    if (user.role === UserRole.Owner || user.role === UserRole.ProjectManager) {
+    if (this.auth.hasPermission(PermissionCodes.Tickets.Manage)) {
       return canTake ? 'WorkOnAndManage' : 'Manage';
     }
 
-    if (user.role === UserRole.SectionHead) {
-      if (!sameTeam && !inHeadedSection) {
+    if (this.auth.hasPermission(PermissionCodes.Tickets.Update)) {
+      if (hasOrgScope && !sameTeam && !inHeadedSection) {
         return 'None';
       }
       return canTake ? 'WorkOnAndManage' : 'Manage';
     }
 
-    if (user.role === UserRole.TeamLeader) {
-      if (!sameTeam) {
-        return 'None';
-      }
-      return canTake ? 'WorkOnAndManage' : 'Manage';
-    }
-
-    if (user.role === UserRole.Member && sameTeam && (assignedToSelf || backlog)) {
+    if (this.auth.hasPermission(PermissionCodes.Tickets.Read) && sameTeam && (assignedToSelf || backlog)) {
       return 'WorkOn';
     }
 

@@ -94,7 +94,9 @@ export const API = {
   },
   Tickets: {
     ListBySubject: '/subjects/{id}/tickets',
+    AssignmentLinksBySubject: '/subjects/{id}/tickets/assignments',
     ListBySprint: '/sprints/{id}/tickets',
+    AssignmentLinksBySprint: '/sprints/{id}/tickets/assignments',
     ListByLo: '/learning-objectives/{id}/tickets',
     Stats: '/tickets/stats',
     Summary: '/tickets/summary',

@@ -24,6 +24,7 @@ import {
   TaskColumnPageModel,
   TaskDetailsModel,
 } from '../../model/task-board.model';
+import { taskMatchesAssignment } from '../../../domain/board-assignment-scope';
 import { TaskBoardLocalDataSource } from './task-board-local-datasource';
 
 @Injectable()
@@ -65,7 +66,23 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
       cards: [],
       learningObjectives,
       users: this.store.users.map((user) => ({ id: user.id, name: user.name })),
+      assignmentLinks: this.assignmentLinks(params),
     }).pipe(delay(120));
+  }
+
+  private assignmentLinks(params: TaskBoardParams): { userId: number | null; learningObjectiveId: number }[] {
+    const seen = new Set<string>();
+    const links: { userId: number | null; learningObjectiveId: number }[] = [];
+    for (const card of this.store.cardsFor(params.source, params.id)) {
+      const userId = card.user?.id ?? null;
+      const key = `${userId ?? 'none'}:${card.learningObjective.id}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      links.push({ userId, learningObjectiveId: card.learningObjective.id });
+    }
+    return links;
   }
 
   getBoardPage(params: TaskBoardPageParams): Observable<TaskBoardPageModel> {
@@ -87,20 +104,13 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
   }
 
   getColumnPage(params: TaskColumnPageParams): Observable<TaskColumnPageModel> {
-    let cards = this.store.cardsFor(params.source, params.id);
-    if (params.statuses.length) {
-      cards = cards.filter((card) => params.statuses.includes(card.status));
-    }
-    if (params.learningObjectiveId) {
-      cards = cards.filter((card) => card.learningObjective.id === params.learningObjectiveId);
-    }
-    const query = params.name?.trim().toLowerCase() ?? '';
-    if (query) {
-      cards = cards.filter((card) => card.name.toLowerCase().includes(query));
-    }
+    const cards = this.applyColumnFilters(
+      this.store.cardsFor(params.source, params.id).map((task) => this.toCard(task)),
+      params,
+    );
     const start = Math.max(0, (params.page - 1) * params.pageSize);
     return of({
-      items: cards.slice(start, start + params.pageSize).map((task) => this.toCard(task)),
+      items: cards.slice(start, start + params.pageSize),
       page: params.page,
       pageSize: params.pageSize,
       totalCount: cards.length,
@@ -325,6 +335,39 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
       userName: userId ? this.store.users.find((user) => user.id === userId)?.name : undefined,
     });
     this.activities.set(taskId, list);
+  }
+
+  private applyColumnFilters(cards: TaskCardModel[], params: TaskColumnPageParams): TaskCardModel[] {
+    const filters = params.filters;
+    let next = cards;
+    if (params.statuses.length) {
+      next = next.filter((card) => params.statuses.includes(card.status));
+    }
+    if (filters.learningObjectiveIds.length) {
+      next = next.filter((card) => filters.learningObjectiveIds.includes(card.learningObjective.id));
+    }
+    const query = filters.query.trim().toLowerCase();
+    if (query) {
+      const id = /^\d+$/.test(query) ? Number(query) : null;
+      next = next.filter((card) => card.name.toLowerCase().includes(query) || (id !== null && card.id === id));
+    }
+    if (params.assigneeIds.length || filters.unassigned) {
+      next = next.filter((card) =>
+        taskMatchesAssignment({ userId: card.user?.id ?? null }, params.assigneeIds, filters.unassigned),
+      );
+    }
+    if (filters.priorities.length) {
+      next = next.filter((card) => filters.priorities.includes(card.priority));
+    }
+    if (filters.flagged || filters.paused || filters.rolledBack) {
+      next = next.filter(
+        (card) =>
+          (filters.flagged && card.flagged) ||
+          (filters.paused && card.paused) ||
+          (filters.rolledBack && card.isRollback),
+      );
+    }
+    return next;
   }
 
   private toCard(task: {

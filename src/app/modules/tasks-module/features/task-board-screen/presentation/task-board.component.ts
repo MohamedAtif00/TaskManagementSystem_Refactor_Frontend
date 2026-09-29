@@ -1,28 +1,29 @@
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toast } from 'ngx-sonner';
-import { forkJoin, Subscription } from 'rxjs';
-import { UserRole } from '@core/models/user-role';
+import { forkJoin, of, Subscription } from 'rxjs';
+import { PermissionCodes } from '@core/models/permission-codes';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { CurriculumCatalogService } from '@core/network/curriculum-catalog.service';
 import { AuthService } from '@core/services/auth.service';
 import { RealtimeService } from '@core/services/realtime.service';
 import { AnalyticsOverviewService } from '@core/network/analytics-overview.service';
 import { TicketSummaryService } from '@core/network/ticket-summary.service';
-import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { LoCodeDisplayToggleComponent } from '@shared/component/lo-code-display-toggle/lo-code-display-toggle.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
-import { LoCodeLabelPipe } from '@shared/pipes/lo-code-label.pipe';
 import {
   BoardSource,
+  emptyTaskBoardFilters,
   TaskBoardEntity,
+  TaskBoardFilters,
   TaskCardEntity,
+  TaskColumnPageParams,
   TaskDetailsEntity,
   TaskStatus,
 } from '../domain/entity/task-board.entity';
+import { learningObjectivesForAssignment, pruneLearningObjectiveIds } from '../domain/board-assignment-scope';
 import { CompleteTaskUseCase } from '../domain/usecase/complete-task.usecase';
 import { GetTaskBoardUseCase } from '../domain/usecase/get-task-board.usecase';
 import { GetTaskColumnPageUseCase } from '../domain/usecase/get-task-column-page.usecase';
@@ -30,6 +31,7 @@ import { GetTaskDetailsUseCase } from '../domain/usecase/get-task-details.usecas
 import { PauseTaskUseCase } from '../domain/usecase/pause-task.usecase';
 import { ProceedTaskUseCase } from '../domain/usecase/proceed-task.usecase';
 import { KanbanSkeletonComponent } from '@shared/component/skeleton/kanban-skeleton.component';
+import { TaskBoardFiltersComponent } from './task-board-filters.component';
 import { NewTaskModalComponent } from './new-task-modal.component';
 import { TaskColumnComponent } from './task-column.component';
 import { TaskDrawerComponent } from './task-drawer.component';
@@ -40,17 +42,27 @@ interface BoardColumn {
   statuses: TaskStatus[];
 }
 
+type MoveAction = 'proceed' | 'pause' | 'complete';
+
+interface InflightMove {
+  sourceKey: string;
+  targetKey: string;
+  queuedKey: string | null;
+  originCard: TaskCardEntity;
+  card: TaskCardEntity;
+  message: string;
+}
+
 const COLUMN_PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-task-board',
   imports: [
-    FormsModule,
     RouterLink,
     PageHeaderComponent,
     LoCodeDisplayToggleComponent,
     ButtonComponent,
-    LoCodeLabelPipe,
+    TaskBoardFiltersComponent,
     TaskColumnComponent,
     TaskDrawerComponent,
     NewTaskModalComponent,
@@ -59,7 +71,6 @@ const COLUMN_PAGE_SIZE = 10;
   templateUrl: './task-board.component.html',
 })
 export class TaskBoardComponent implements OnInit, OnDestroy {
-  readonly loDisplay = inject(LoCodeDisplayService);
   readonly columns: BoardColumn[] = [
     { label: 'Backlog', key: 'backlog', statuses: [0] },
     { label: 'To Do', key: 'todo', statuses: [1] },
@@ -71,23 +82,23 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   readonly board = signal<TaskBoardEntity | null>(null);
   readonly selected = signal<TaskDetailsEntity | null>(null);
   readonly showCreate = signal(false);
-  readonly searchType = signal<'lo' | 'task'>('lo');
-  readonly selectedLoId = signal(0);
-  readonly taskQuery = signal('');
+  readonly filters = signal<TaskBoardFilters>(emptyTaskBoardFilters());
   readonly boardPage = signal(1);
   readonly columnTotalCounts = signal<Record<string, number>>(this.emptyColumnTotals());
   readonly cardsByColumn = signal<Record<string, TaskCardEntity[]>>(this.emptyCardsByColumn());
+  readonly movingIds = signal<ReadonlySet<number>>(new Set());
   source: BoardSource = 'project';
   entityId = 0;
   private ticketUpdates?: Subscription;
   private boardPageSub?: Subscription;
-  private queryDebounce?: ReturnType<typeof setTimeout>;
   private refreshDebounce?: ReturnType<typeof setTimeout>;
   private losLoading = false;
+  private readonly moves = new Map<number, InflightMove>();
+  private readonly moveSubs = new Map<number, Subscription>();
 
   readonly backLink = computed(() => (this.source === 'project' ? ROUTE_PATHS.tasks : ROUTE_PATHS.sprints));
   readonly canCreate = computed(
-    () => this.source === 'project' && this.auth.user()?.role !== UserRole.Member,
+    () => this.source === 'project' && this.auth.hasPermission(PermissionCodes.Tickets.Create),
   );
   readonly boardTotalPages = computed(() => {
     const totals = Object.values(this.columnTotalCounts());
@@ -98,6 +109,9 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   });
   readonly showBoardPager = computed(() =>
     Object.values(this.columnTotalCounts()).some((count) => count > this.columnPageSize),
+  );
+  readonly taskCount = computed(() =>
+    Object.values(this.columnTotalCounts()).reduce((sum, count) => sum + count, 0),
   );
 
   constructor(
@@ -133,8 +147,8 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.ticketUpdates?.unsubscribe();
     this.boardPageSub?.unsubscribe();
-    if (this.queryDebounce) {
-      clearTimeout(this.queryDebounce);
+    for (const sub of this.moveSubs.values()) {
+      sub.unsubscribe();
     }
     if (this.refreshDebounce) {
       clearTimeout(this.refreshDebounce);
@@ -161,6 +175,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     this.boardUseCase.execute({ source: this.source, id: this.entityId }).subscribe({
       next: (board) => {
         this.board.set(board);
+        this.ensureLearningObjectives();
         this.loadBoardPage();
       },
       error: (err: Error) => {
@@ -182,30 +197,22 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     return this.columnTotalCounts()[column.key] ?? this.cardsFor(column).length;
   }
 
-  onSearchTypeChange(value: 'lo' | 'task'): void {
-    this.searchType.set(value);
-    this.boardPage.set(1);
-    if (value === 'lo') {
-      this.ensureLearningObjectives();
-    }
-    this.loadBoardPage();
+  currentUserId(): number | null {
+    return this.auth.user()?.id ?? null;
   }
 
-  onLoChange(value: number): void {
-    this.selectedLoId.set(value);
-    this.boardPage.set(1);
-    this.loadBoardPage();
+  scopedObjectives() {
+    return this.objectivesFor(this.filters());
   }
 
-  onTaskQueryChange(value: string): void {
-    this.taskQuery.set(value);
-    if (this.queryDebounce) {
-      clearTimeout(this.queryDebounce);
-    }
-    this.queryDebounce = setTimeout(() => {
-      this.boardPage.set(1);
-      this.loadBoardPage();
-    }, 300);
+  onFiltersChange(filters: TaskBoardFilters): void {
+    const visible = this.objectivesFor(filters);
+    this.filters.set({
+      ...filters,
+      learningObjectiveIds: pruneLearningObjectiveIds(filters.learningObjectiveIds, visible),
+    });
+    this.boardPage.set(1);
+    this.loadBoardPage();
   }
 
   onBoardPage(page: number): void {
@@ -221,43 +228,44 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     const card = event.item.data as TaskCardEntity;
     const sourceKey = event.previousContainer.id;
     const targetKey = targetColumn.key;
-    const move =
-      sourceKey === 'backlog' && targetKey === 'todo'
-        ? { action: 'proceed' as const, message: 'Moved to To Do' }
-        : sourceKey === 'todo' && targetKey === 'doing'
-          ? { action: 'proceed' as const, message: card.paused ? 'Resumed' : 'Started' }
-          : sourceKey === 'doing' && targetKey === 'done'
-            ? { action: 'complete' as const, message: 'Task completed' }
-            : sourceKey === 'doing' && targetKey === 'todo'
-              ? { action: 'pause' as const, message: 'Moved to To Do' }
-              : null;
+    const existing = this.moves.get(card.id);
+    if (existing && (existing.queuedKey ?? existing.targetKey) === targetKey) {
+      return;
+    }
 
-    if (!move) {
-      this.loadBoardPage();
+    const stepSource = existing ? (existing.queuedKey ?? existing.targetKey) : sourceKey;
+    const step = this.legalMove(existing ? stepSource : sourceKey, targetKey, existing?.card ?? card);
+    if (!step) {
       toast.error('That column move is not allowed');
       return;
     }
 
-    const request =
-      move.action === 'complete'
-        ? this.completeUseCase.execute(card.id)
-        : move.action === 'pause'
-          ? this.pauseUseCase.execute(card.id)
-          : this.proceedUseCase.execute(card.id);
+    const nextCard = { ...(existing?.card ?? card), ...step.patch };
+    this.placeCard(nextCard, targetKey);
+    if (existing) {
+      existing.queuedKey = targetKey;
+      existing.card = nextCard;
+      this.moves.set(card.id, existing);
+      this.markMoving(card.id, true);
+      return;
+    }
 
-    request.subscribe({
-      next: () => {
-        toast.success(move.message);
-        this.loadBoardPage();
-      },
-      error: (err: Error) => {
-        toast.error(err.message);
-        this.loadBoardPage();
-      },
+    this.moves.set(card.id, {
+      sourceKey,
+      targetKey,
+      queuedKey: null,
+      originCard: card,
+      card: nextCard,
+      message: step.message,
     });
+    this.markMoving(card.id, true);
+    this.sendMove(card.id, step.action);
   }
 
   openCard(card: TaskCardEntity): void {
+    if (this.movingIds().has(card.id)) {
+      return;
+    }
     this.detailsUseCase.execute(card.id).subscribe({
       next: (task) => {
         const board = this.board();
@@ -312,9 +320,18 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   private loadBoardPage(): void {
     this.boardPageSub?.unsubscribe();
-    const requests = this.columns.map((column) =>
-      this.columnPageUseCase.execute(this.columnPageParams(column)),
-    );
+    const requests = this.columns.map((column) => {
+      const params = this.columnPageParams(column);
+      if (!params.statuses.length) {
+        return of({
+          items: [] as TaskCardEntity[],
+          page: this.boardPage(),
+          pageSize: this.columnPageSize,
+          totalCount: 0,
+        });
+      }
+      return this.columnPageUseCase.execute(params);
+    });
     this.boardPageSub = forkJoin(requests).subscribe({
       next: (pages) => {
         const totals = this.emptyColumnTotals();
@@ -331,6 +348,9 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
           }
           maxTotal = Math.max(maxTotal, page.totalCount);
         });
+
+        this.retainMovingCards(cardsByColumn, totals);
+        hasAnyCards = this.columns.some((column) => cardsByColumn[column.key].length > 0);
 
         const currentPage = this.boardPage();
         const lastPage = Math.max(1, Math.ceil(maxTotal / this.columnPageSize));
@@ -360,20 +380,40 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     });
   }
 
-  private columnPageParams(column: BoardColumn) {
-    const searchType = this.searchType();
-    const learningObjectiveId = searchType === 'lo' ? this.selectedLoId() : 0;
-    const name = searchType === 'task' ? this.taskQuery().trim() : '';
+  private columnPageParams(column: BoardColumn): TaskColumnPageParams {
+    const filters = this.filters();
+    const statuses = filters.statuses.length
+      ? column.statuses.filter((status) => filters.statuses.includes(status))
+      : column.statuses;
+    const assigneeIds = this.assigneeIdsFor(filters);
     return {
       source: this.source,
       id: this.entityId,
-      statuses: column.statuses,
+      statuses,
       page: this.boardPage(),
       pageSize: this.columnPageSize,
-      learningObjectiveId: learningObjectiveId || undefined,
-      name: name || undefined,
+      filters,
+      assigneeIds,
       users: this.board()?.users ?? [],
     };
+  }
+
+  private assigneeIdsFor(filters: TaskBoardFilters): number[] {
+    const me = this.auth.user()?.id;
+    const assigneeIds = new Set(filters.userIds);
+    if (filters.assignedToMe && me) {
+      assigneeIds.add(me);
+    }
+    return [...assigneeIds];
+  }
+
+  private objectivesFor(filters: TaskBoardFilters) {
+    return learningObjectivesForAssignment(
+      this.board()?.learningObjectives ?? [],
+      this.board()?.assignmentLinks ?? null,
+      this.assigneeIdsFor(filters),
+      filters.unassigned,
+    );
   }
 
   private withLoNames(cards: TaskCardEntity[]): TaskCardEntity[] {
@@ -422,5 +462,143 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   private emptyColumnTotals(): Record<string, number> {
     return Object.fromEntries(this.columns.map((column) => [column.key, 0]));
+  }
+
+  private legalMove(
+    sourceKey: string,
+    targetKey: string,
+    card: TaskCardEntity,
+  ): { action: MoveAction; message: string; patch: Partial<TaskCardEntity> } | null {
+    if (sourceKey === 'backlog' && targetKey === 'todo') {
+      return { action: 'proceed', message: 'Moved to To Do', patch: { status: 1 } };
+    }
+    if (sourceKey === 'todo' && targetKey === 'doing') {
+      return { action: 'proceed', message: card.paused ? 'Resumed' : 'Started', patch: { status: 2, paused: false } };
+    }
+    if (sourceKey === 'doing' && targetKey === 'done') {
+      return { action: 'complete', message: 'Task completed', patch: { status: 3 } };
+    }
+    if (sourceKey === 'doing' && targetKey === 'todo') {
+      return { action: 'pause', message: 'Moved to To Do', patch: { status: 1, paused: true } };
+    }
+    return null;
+  }
+
+  private sendMove(cardId: number, action: MoveAction): void {
+    const request =
+      action === 'complete'
+        ? this.completeUseCase.execute(cardId)
+        : action === 'pause'
+          ? this.pauseUseCase.execute(cardId)
+          : this.proceedUseCase.execute(cardId);
+    this.moveSubs.set(
+      cardId,
+      request.subscribe({
+        next: (updated) => this.onMoveSucceeded(cardId, updated),
+        error: (err: Error) => this.onMoveFailed(cardId, err),
+      }),
+    );
+  }
+
+  private onMoveSucceeded(cardId: number, updated: TaskCardEntity): void {
+    const move = this.moves.get(cardId);
+    if (!move) {
+      return;
+    }
+    toast.success(move.message);
+    const arrived = move.targetKey;
+    const queued = move.queuedKey;
+    const patch = this.legalMove(move.sourceKey, arrived, move.originCard)?.patch;
+    const arrivedCard: TaskCardEntity = {
+      ...move.originCard,
+      ...updated,
+      learningObjective: move.originCard.learningObjective,
+      ...(patch ?? {}),
+    };
+    if (!queued || queued === arrived) {
+      this.finishMove(cardId);
+      return;
+    }
+    const step = this.legalMove(arrived, queued, arrivedCard);
+    if (!step) {
+      toast.error('That column move is not allowed');
+      this.placeCard(arrivedCard, arrived);
+      this.finishMove(cardId);
+      return;
+    }
+    const nextCard = { ...arrivedCard, ...step.patch };
+    this.moves.set(cardId, {
+      sourceKey: arrived,
+      targetKey: queued,
+      queuedKey: null,
+      originCard: arrivedCard,
+      card: nextCard,
+      message: step.message,
+    });
+    this.placeCard(nextCard, queued);
+    this.sendMove(cardId, step.action);
+  }
+
+  private onMoveFailed(cardId: number, err: Error): void {
+    const move = this.moves.get(cardId);
+    if (move) {
+      this.placeCard(move.originCard, move.sourceKey);
+    }
+    this.finishMove(cardId);
+    toast.error(err.message);
+  }
+
+  private finishMove(cardId: number): void {
+    this.moves.delete(cardId);
+    this.moveSubs.delete(cardId);
+    this.markMoving(cardId, false);
+    this.loadBoardPage();
+  }
+
+  private placeCard(card: TaskCardEntity, columnKey: string): void {
+    const columns = { ...this.cardsByColumn() };
+    let fromKey: string | null = null;
+    for (const column of this.columns) {
+      const items = columns[column.key] ?? [];
+      if (items.some((item) => item.id === card.id)) {
+        fromKey = column.key;
+        columns[column.key] = items.filter((item) => item.id !== card.id);
+      }
+    }
+    columns[columnKey] = [card, ...(columns[columnKey] ?? []).filter((item) => item.id !== card.id)];
+    this.cardsByColumn.set(columns);
+    if (fromKey && fromKey !== columnKey) {
+      this.columnTotalCounts.update((totals) => ({
+        ...totals,
+        [fromKey]: Math.max(0, (totals[fromKey] ?? 0) - 1),
+        [columnKey]: (totals[columnKey] ?? 0) + 1,
+      }));
+    }
+  }
+
+  private retainMovingCards(cardsByColumn: Record<string, TaskCardEntity[]>, totals: Record<string, number>): void {
+    for (const move of this.moves.values()) {
+      const destination = move.queuedKey ?? move.targetKey;
+      for (const column of this.columns) {
+        const next = cardsByColumn[column.key].filter((card) => card.id !== move.card.id);
+        if (next.length !== cardsByColumn[column.key].length) {
+          totals[column.key] = Math.max(0, (totals[column.key] ?? 0) - 1);
+          cardsByColumn[column.key] = next;
+        }
+      }
+      const [named] = this.withLoNames([move.card]);
+      cardsByColumn[destination] = [named, ...cardsByColumn[destination].filter((card) => card.id !== named.id)];
+      totals[destination] = (totals[destination] ?? 0) + 1;
+    }
+  }
+
+  private markMoving(cardId: number, moving: boolean): void {
+    const next = new Set(this.movingIds());
+    if (moving) {
+      next.add(cardId);
+    } else {
+      next.delete(cardId);
+    }
+    this.movingIds.set(next);
   }
 }

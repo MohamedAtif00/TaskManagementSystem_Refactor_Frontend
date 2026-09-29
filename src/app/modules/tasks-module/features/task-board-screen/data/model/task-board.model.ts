@@ -21,6 +21,7 @@ export class TaskBoardMapper {
       cards: model.cards.map((card) => ({ ...card, learningObjective: { ...card.learningObjective }, user: card.user ? { ...card.user } : undefined })),
       learningObjectives: model.learningObjectives.map((lo) => ({ ...lo })),
       users: model.users.map((user) => ({ ...user })),
+      assignmentLinks: model.assignmentLinks?.map((link) => ({ ...link })) ?? null,
     };
   }
 

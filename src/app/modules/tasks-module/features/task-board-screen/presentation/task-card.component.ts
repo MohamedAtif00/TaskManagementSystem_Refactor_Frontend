@@ -10,8 +10,16 @@ import { TaskCardEntity, TASK_PRIORITY_LABELS } from '../domain/entity/task-boar
 })
 export class TaskCardComponent {
   @Input({ required: true }) card!: TaskCardEntity;
+  @Input() moving = false;
   @Output() open = new EventEmitter<TaskCardEntity>();
 
   readonly loDisplay = inject(LoCodeDisplayService);
   readonly priorityLabels = TASK_PRIORITY_LABELS;
+
+  onOpen(): void {
+    if (this.moving) {
+      return;
+    }
+    this.open.emit(this.card);
+  }
 }
