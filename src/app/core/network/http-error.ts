@@ -12,12 +12,42 @@ export class ApiError extends Error {
   }
 }
 
+export function apiErrorFromFailureBody(body: unknown): ApiError | null {
+  if (!body || typeof body !== 'object') {
+    return null;
+  }
+  const failure = body as {
+    success?: boolean;
+    message?: string;
+    code?: string;
+    errors?: Record<string, string[] | string>;
+  };
+  if (failure.success !== false || !failure.message?.trim()) {
+    return null;
+  }
+  const fieldErrors = normalizeFieldErrors(failure.errors);
+  const fieldMessage = fieldErrors
+    ? Object.entries(fieldErrors)
+        .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+        .join('; ')
+    : '';
+  const message = fieldMessage || failure.message;
+  return new ApiError(message, failure.code, fieldErrors);
+}
+
 export function mapHttpError(err: unknown): Observable<never> {
+  if (err instanceof ApiError) {
+    return throwError(() => err);
+  }
   if (!(err instanceof HttpErrorResponse)) {
     return throwError(() => (err instanceof Error ? err : new Error('Request failed')));
   }
 
   const body = err.error;
+  const okFailure = apiErrorFromFailureBody(body);
+  if (okFailure) {
+    return throwError(() => okFailure);
+  }
   if (typeof body === 'string' && body.trim()) {
     return throwError(() => new ApiError(body));
   }
