@@ -1,3 +1,4 @@
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { toast } from 'ngx-sonner';
@@ -9,6 +10,7 @@ import {
   SchemaEntity,
   SchemaFormPayload,
   SchemaNode,
+  SchemaStep,
   SchemaTaskBankOption,
   SchemaTypeOption,
   STEP_PRIORITY_LABELS,
@@ -23,11 +25,13 @@ import { SaveStepUseCase } from '../domain/usecase/save-step.usecase';
 import { SchemaGraphUseCase } from '../domain/usecase/schema-graph.usecase';
 import { SchemaListUseCase } from '../domain/usecase/schema-list.usecase';
 import { SchemaTaskBankUseCase } from '../domain/usecase/schema-task-bank.usecase';
+import { ReorderNodesUseCase } from '../domain/usecase/reorder-nodes.usecase';
+import { ReorderStepsUseCase } from '../domain/usecase/reorder-steps.usecase';
 import { SchemaTypesUseCase } from '../domain/usecase/schema-types.usecase';
 
 @Component({
   selector: 'app-schema-list',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
+  imports: [FormsModule, DragDropModule, PageHeaderComponent, ButtonComponent, TableSkeletonComponent],
   templateUrl: './schema-list.component.html',
 })
 export class SchemaListComponent implements OnInit {
@@ -47,6 +51,7 @@ export class SchemaListComponent implements OnInit {
   readonly showNodeForm = signal(false);
   readonly showStepForm = signal(false);
   readonly confirm = signal<{ kind: 'schema' | 'node' | 'step'; id: number; name: string } | null>(null);
+  readonly reordering = signal(false);
   formError = '';
   schemaForm: SchemaFormPayload = this.emptySchema();
   nodeForm: NodeFormPayload = this.emptyNode(0);
@@ -63,6 +68,8 @@ export class SchemaListComponent implements OnInit {
     private archiveNodeUseCase: ArchiveNodeUseCase,
     private saveStepUseCase: SaveStepUseCase,
     private archiveStepUseCase: ArchiveStepUseCase,
+    private reorderNodesUseCase: ReorderNodesUseCase,
+    private reorderStepsUseCase: ReorderStepsUseCase,
   ) {}
 
   ngOnInit(): void {
@@ -98,6 +105,103 @@ export class SchemaListComponent implements OnInit {
 
   priorityLabel(priority: number): string {
     return STEP_PRIORITY_LABELS[priority] ?? String(priority);
+  }
+
+  onNodeDrop(event: CdkDragDrop<SchemaNode[]>): void {
+    if (event.previousIndex === event.currentIndex || this.reordering()) {
+      return;
+    }
+    const schema = this.designing();
+    if (!schema) {
+      return;
+    }
+    const next = [...this.nodes()];
+    moveItemInArray(next, event.previousIndex, event.currentIndex);
+    this.persistNodeOrder(schema.id, next);
+  }
+
+  moveNode(index: number, delta: number): void {
+    if (this.reordering()) {
+      return;
+    }
+    const target = index + delta;
+    const list = this.nodes();
+    if (target < 0 || target >= list.length) {
+      return;
+    }
+    const schema = this.designing();
+    if (!schema) {
+      return;
+    }
+    const next = [...list];
+    moveItemInArray(next, index, target);
+    this.persistNodeOrder(schema.id, next);
+  }
+
+  onStepDrop(node: SchemaNode, event: CdkDragDrop<SchemaStep[]>): void {
+    if (event.previousIndex === event.currentIndex || this.reordering()) {
+      return;
+    }
+    const steps = [...node.steps];
+    moveItemInArray(steps, event.previousIndex, event.currentIndex);
+    this.persistStepOrder(node.id, steps);
+  }
+
+  moveStep(node: SchemaNode, index: number, delta: number): void {
+    if (this.reordering()) {
+      return;
+    }
+    const target = index + delta;
+    if (target < 0 || target >= node.steps.length) {
+      return;
+    }
+    const steps = [...node.steps];
+    moveItemInArray(steps, index, target);
+    this.persistStepOrder(node.id, steps);
+  }
+
+  private persistNodeOrder(schemaId: number, nodes: SchemaNode[]): void {
+    const ordered = this.withSequentialNodeOrders(nodes);
+    this.nodes.set(ordered);
+    this.reordering.set(true);
+    this.reorderNodesUseCase.execute({ schemaId, orderedNodeIds: ordered.map((node) => node.id) }).subscribe({
+      next: () => {
+        this.reordering.set(false);
+        toast.success('Node order updated');
+      },
+      error: (err: Error) => {
+        this.reordering.set(false);
+        toast.error(err.message);
+        this.loadGraph();
+      },
+    });
+  }
+
+  private persistStepOrder(nodeId: number, steps: SchemaStep[]): void {
+    const ordered = this.withSequentialStepOrders(steps);
+    this.nodes.update((nodes) =>
+      nodes.map((node) => (node.id === nodeId ? { ...node, steps: ordered } : node)),
+    );
+    this.reordering.set(true);
+    this.reorderStepsUseCase.execute({ nodeId, orderedStepIds: ordered.map((step) => step.id) }).subscribe({
+      next: () => {
+        this.reordering.set(false);
+        toast.success('Step order updated');
+      },
+      error: (err: Error) => {
+        this.reordering.set(false);
+        toast.error(err.message);
+        this.loadGraph();
+      },
+    });
+  }
+
+  private withSequentialNodeOrders(nodes: SchemaNode[]): SchemaNode[] {
+    return nodes.map((node, index) => ({ ...node, order: index + 1 }));
+  }
+
+  private withSequentialStepOrders(steps: SchemaStep[]): SchemaStep[] {
+    return steps.map((step, index) => ({ ...step, order: index + 1 }));
   }
 
   openCreate(): void {

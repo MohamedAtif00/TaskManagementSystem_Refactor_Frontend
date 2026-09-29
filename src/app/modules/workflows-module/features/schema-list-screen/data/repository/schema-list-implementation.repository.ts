@@ -65,4 +65,16 @@ export class SchemaListImplementationRepository implements SchemaListRepository 
   archiveStep(id: number): Observable<void> {
     return environment.useMock ? this.local.archiveStep(id) : this.remote.archiveStep(id);
   }
+
+  reorderNodes(schemaId: number, orderedNodeIds: number[]): Observable<void> {
+    return environment.useMock
+      ? this.local.reorderNodes(schemaId, orderedNodeIds)
+      : this.remote.reorderNodes(schemaId, orderedNodeIds);
+  }
+
+  reorderSteps(nodeId: number, orderedStepIds: number[]): Observable<void> {
+    return environment.useMock
+      ? this.local.reorderSteps(nodeId, orderedStepIds)
+      : this.remote.reorderSteps(nodeId, orderedStepIds);
+  }
 }

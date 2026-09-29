@@ -15,6 +15,8 @@ import { SaveNodeUseCase } from './domain/usecase/save-node.usecase';
 import { ArchiveNodeUseCase } from './domain/usecase/archive-node.usecase';
 import { SaveStepUseCase } from './domain/usecase/save-step.usecase';
 import { ArchiveStepUseCase } from './domain/usecase/archive-step.usecase';
+import { ReorderNodesUseCase } from './domain/usecase/reorder-nodes.usecase';
+import { ReorderStepsUseCase } from './domain/usecase/reorder-steps.usecase';
 
 export const SCHEMA_LIST_DI_CONTAINER: Provider[] = [
   { provide: SchemaListRepository, useClass: SchemaListImplementationRepository },
@@ -30,4 +32,6 @@ export const SCHEMA_LIST_DI_CONTAINER: Provider[] = [
   ArchiveNodeUseCase,
   SaveStepUseCase,
   ArchiveStepUseCase,
+  ReorderNodesUseCase,
+  ReorderStepsUseCase,
 ];

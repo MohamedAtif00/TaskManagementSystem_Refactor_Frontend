@@ -19,4 +19,6 @@ export abstract class SchemaListLocalDataSource {
   abstract archiveNode(id: number): Observable<void>;
   abstract saveStep(payload: StepFormPayload): Observable<void>;
   abstract archiveStep(id: number): Observable<void>;
+  abstract reorderNodes(schemaId: number, orderedNodeIds: number[]): Observable<void>;
+  abstract reorderSteps(nodeId: number, orderedStepIds: number[]): Observable<void>;
 }

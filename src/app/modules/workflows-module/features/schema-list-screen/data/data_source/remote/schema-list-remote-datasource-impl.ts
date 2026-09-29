@@ -107,12 +107,30 @@ export class SchemaListRemoteDataSourceImpl extends SchemaListRemoteDataSource {
                   map((steps) => this.toNode(node, steps, bank)),
                 ),
               ),
-            );
+            ).pipe(map((rows) => this.sortGraph(rows)));
           }),
           catchError(mapHttpError),
         ),
       ),
     );
+  }
+
+  reorderNodes(schemaId: number, orderedNodeIds: number[]): Observable<void> {
+    return this.network
+      .put(apiPath(API.Schemas.NodesReorder, { schemaId }), { orderedNodeIds })
+      .pipe(
+        map(() => undefined),
+        catchError(mapHttpError),
+      );
+  }
+
+  reorderSteps(nodeId: number, orderedStepIds: number[]): Observable<void> {
+    return this.network
+      .put(apiPath(API.WorkflowNodes.StepsReorder, { nodeId }), { orderedStepIds })
+      .pipe(
+        map(() => undefined),
+        catchError(mapHttpError),
+      );
   }
 
   saveNode(payload: NodeFormPayload): Observable<void> {
@@ -161,6 +179,15 @@ export class SchemaListRemoteDataSourceImpl extends SchemaListRemoteDataSource {
       typeId: row.typeId,
       typeName: types.find((type) => type.id === row.typeId)?.name ?? '',
     };
+  }
+
+  private sortGraph(nodes: SchemaNodeModel[]): SchemaNodeModel[] {
+    return nodes
+      .map((node) => ({
+        ...node,
+        steps: [...node.steps].sort((a, b) => a.order - b.order || a.id - b.id),
+      }))
+      .sort((a, b) => a.order - b.order || a.id - b.id);
   }
 
   private toNode(

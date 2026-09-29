@@ -16,10 +16,24 @@
     </div>
     <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openAddNode()">Add node</app-button>
   </div>
-  <div class="space-y-3">
-    @for (node of nodes(); track node.id) {
-      <div class="border-border/60 bg-card shadow-sm rounded-xl border p-4">
+  <div
+    class="space-y-3"
+    cdkDropList
+    [cdkDropListDisabled]="reordering()"
+    (cdkDropListDropped)="onNodeDrop($event)"
+  >
+    @for (node of nodes(); track node.id; let nodeIndex = $index) {
+      <div class="border-border/60 bg-card shadow-sm rounded-xl border p-4" cdkDrag [cdkDragDisabled]="reordering()">
         <div class="mb-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="text-muted-foreground hover:text-foreground cursor-grab px-1 text-xs active:cursor-grabbing"
+            cdkDragHandle
+            aria-label="Drag node"
+          >
+            ⋮⋮
+          </button>
+          <span class="text-muted-foreground text-xs font-medium">#{{ node.order }}</span>
           <span class="text-foreground text-sm font-semibold">{{ node.name }}</span>
           @if (node.isStart) {
             <span class="text-muted-foreground text-xs">Start</span>
@@ -27,7 +41,25 @@
           @if (node.isEnd) {
             <span class="text-muted-foreground text-xs">End</span>
           }
-          <span class="ml-auto flex items-center gap-3">
+          <span class="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
+              [disabled]="reordering() || nodeIndex === 0"
+              (click)="moveNode(nodeIndex, -1)"
+              aria-label="Move node up"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
+              [disabled]="reordering() || nodeIndex === nodes().length - 1"
+              (click)="moveNode(nodeIndex, 1)"
+              aria-label="Move node down"
+            >
+              ↓
+            </button>
             <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openAddStep(node)">
               Add step
             </button>
@@ -43,20 +75,55 @@
           <table class="text-muted-foreground table w-full table-auto text-left text-sm">
             <thead class="text-xs">
               <tr>
+                <th class="py-1 w-16"></th>
+                <th class="py-1 w-10">#</th>
                 <th class="py-1">Task bank</th>
                 <th class="py-1">Duration</th>
                 <th class="py-1">Priority</th>
                 <th class="py-1"></th>
               </tr>
             </thead>
-            <tbody>
-              @for (step of node.steps; track step.id) {
-                <tr>
+            <tbody
+              cdkDropList
+              [cdkDropListDisabled]="reordering()"
+              (cdkDropListDropped)="onStepDrop(node, $event)"
+            >
+              @for (step of node.steps; track step.id; let stepIndex = $index) {
+                <tr cdkDrag [cdkDragDisabled]="reordering()">
+                  <td class="py-1">
+                    <button
+                      type="button"
+                      class="text-muted-foreground hover:text-foreground cursor-grab text-xs active:cursor-grabbing"
+                      cdkDragHandle
+                      aria-label="Drag step"
+                    >
+                      ⋮⋮
+                    </button>
+                  </td>
+                  <td class="py-1 text-xs">{{ step.order }}</td>
                   <td class="py-1">{{ step.taskBankName }}</td>
                   <td class="py-1">{{ step.duration }}</td>
                   <td class="py-1">{{ priorityLabel(step.priority) }}</td>
                   <td class="py-1">
-                    <div class="flex justify-end gap-3">
+                    <div class="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
+                        [disabled]="reordering() || stepIndex === 0"
+                        (click)="moveStep(node, stepIndex, -1)"
+                        aria-label="Move step up"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
+                        [disabled]="reordering() || stepIndex === node.steps.length - 1"
+                        (click)="moveStep(node, stepIndex, 1)"
+                        aria-label="Move step down"
+                      >
+                        ↓
+                      </button>
                       <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEditStep(step)">
                         Edit
                       </button>

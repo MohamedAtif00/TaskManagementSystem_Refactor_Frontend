@@ -74,6 +74,7 @@ export const API = {
     Update: '/workflows/schemas/{id}',
     Archive: '/workflows/schemas/{id}',
     Nodes: '/workflows/schemas/{schemaId}/nodes',
+    NodesReorder: '/workflows/schemas/{schemaId}/nodes/reorder',
   },
   SchemaTypes: {
     List: '/workflows/schema-types',
@@ -81,6 +82,7 @@ export const API = {
   WorkflowNodes: {
     ById: '/workflows/nodes/{id}',
     Steps: '/workflows/nodes/{nodeId}/steps',
+    StepsReorder: '/workflows/nodes/{nodeId}/steps/reorder',
   },
   WorkflowSteps: {
     ById: '/workflows/steps/{id}',

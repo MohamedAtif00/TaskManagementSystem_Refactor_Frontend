@@ -142,4 +142,35 @@ export class SchemaListLocalDataSourceImpl extends SchemaListLocalDataSource {
     }
     return of(undefined).pipe(delay(80));
   }
+
+  reorderNodes(schemaId: number, orderedNodeIds: number[]): Observable<void> {
+    const schemaNodes = this.nodes.filter((node) => node.schemaId === schemaId);
+    if (schemaNodes.length !== orderedNodeIds.length) {
+      return throwError(() => new Error('Invalid reorder'));
+    }
+    const byId = new Map(schemaNodes.map((node) => [node.id, node]));
+    orderedNodeIds.forEach((id, index) => {
+      const node = byId.get(id);
+      if (node) {
+        node.order = index + 1;
+      }
+    });
+    return of(undefined).pipe(delay(80));
+  }
+
+  reorderSteps(nodeId: number, orderedStepIds: number[]): Observable<void> {
+    const node = this.nodes.find((item) => item.id === nodeId);
+    if (!node || node.steps.length !== orderedStepIds.length) {
+      return throwError(() => new Error('Invalid reorder'));
+    }
+    const byId = new Map(node.steps.map((step) => [step.id, step]));
+    orderedStepIds.forEach((id, index) => {
+      const step = byId.get(id);
+      if (step) {
+        step.order = index + 1;
+      }
+    });
+    node.steps.sort((a, b) => a.order - b.order);
+    return of(undefined).pipe(delay(80));
+  }
 }
