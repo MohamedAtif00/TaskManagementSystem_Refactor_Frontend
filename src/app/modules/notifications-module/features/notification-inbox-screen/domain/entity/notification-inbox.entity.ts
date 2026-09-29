@@ -1,3 +1,7 @@
+import { DEFAULT_PAGE_SIZE } from '@core/models/list-page.model';
+
+export const NOTIFICATION_INBOX_PAGE_SIZE = DEFAULT_PAGE_SIZE;
+
 export interface NotificationEntity {
   id: number;
   title: string;
