@@ -6,7 +6,7 @@
     <button type="button" class="rounded-full border px-3 py-1 text-xs font-semibold" [class.bg-primary]="shortcutActive('high')" [class.text-primary-foreground]="shortcutActive('high')" [class.border-primary]="shortcutActive('high')" [class.border-border]="!shortcutActive('high')" [class.text-muted-foreground]="!shortcutActive('high')" (click)="onShortcut('high')">High priority</button>
     <button type="button" class="rounded-full border px-3 py-1 text-xs font-semibold" [class.bg-primary]="shortcutActive('flagged')" [class.text-primary-foreground]="shortcutActive('flagged')" [class.border-primary]="shortcutActive('flagged')" [class.border-border]="!shortcutActive('flagged')" [class.text-muted-foreground]="!shortcutActive('flagged')" (click)="onShortcut('flagged')">Flagged</button>
     <button type="button" class="rounded-full border px-3 py-1 text-xs font-semibold" [class.bg-primary]="shortcutActive('paused')" [class.text-primary-foreground]="shortcutActive('paused')" [class.border-primary]="shortcutActive('paused')" [class.border-border]="!shortcutActive('paused')" [class.text-muted-foreground]="!shortcutActive('paused')" (click)="onShortcut('paused')">Paused</button>
-    <button type="button" class="text-foreground rounded-md border border-border px-3 py-1 text-xs font-semibold" (click)="panelOpen = !panelOpen">All filters</button>
+    <button type="button" class="text-foreground rounded-md border border-border px-3 py-1 text-xs font-semibold" (click)="toggleFiltersPanel()">All filters</button>
     <span class="text-muted-foreground text-sm">{{ taskCount }} tasks</span>
   </div>
 
@@ -28,8 +28,8 @@
     <div class="border-border grid gap-4 rounded-lg border p-4 md:grid-cols-2 xl:grid-cols-3">
       <fieldset class="flex flex-col gap-2">
         <legend class="text-foreground mb-1 text-xs font-semibold">Assignment</legend>
-        <div class="relative" clickOutside (clickOutside)="assignmentOpen = false">
-          <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="assignmentOpen = !assignmentOpen">
+        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()">
+          <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="toggleFilterDropdown('assignment')">
             <span class="truncate">{{ assignmentLabel() }}</span>
             <span class="text-muted-foreground text-xs">▾</span>
           </button>
@@ -56,51 +56,99 @@
 
       <fieldset class="flex flex-col gap-2">
         <legend class="text-foreground mb-1 text-xs font-semibold">Status</legend>
-        @for (status of statusOptions; track status) {
-          <label class="text-muted-foreground flex items-center gap-2 text-sm">
-            <input type="checkbox" [checked]="filters.statuses.includes(status)" (change)="toggleStatus(status)" />
-            {{ statusLabels[status] }}
-          </label>
-        }
+        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()">
+          <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="toggleFilterDropdown('status')">
+            <span class="truncate">{{ statusLabel() }}</span>
+            <span class="text-muted-foreground text-xs">▾</span>
+          </button>
+          @if (statusOpen) {
+            <div class="border-border bg-card absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border p-2 shadow">
+              @for (status of statusOptions; track status) {
+                <label class="text-muted-foreground flex items-center gap-2 px-1 py-1 text-sm">
+                  <input type="checkbox" [checked]="filters.statuses.includes(status)" (change)="toggleStatus(status)" />
+                  {{ statusLabels[status] }}
+                </label>
+              }
+            </div>
+          }
+        </div>
       </fieldset>
 
       <fieldset class="flex flex-col gap-2">
         <legend class="text-foreground mb-1 text-xs font-semibold">Priority</legend>
-        @for (priority of priorityOptions; track priority) {
-          <label class="text-muted-foreground flex items-center gap-2 text-sm">
-            <input type="checkbox" [checked]="filters.priorities.includes(priority)" (change)="togglePriority(priority)" />
-            {{ priorityLabels[priority] }}
-          </label>
-        }
+        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()">
+          <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="toggleFilterDropdown('priority')">
+            <span class="truncate">{{ priorityLabel() }}</span>
+            <span class="text-muted-foreground text-xs">▾</span>
+          </button>
+          @if (priorityOpen) {
+            <div class="border-border bg-card absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border p-2 shadow">
+              @for (priority of priorityOptions; track priority) {
+                <label class="text-muted-foreground flex items-center gap-2 px-1 py-1 text-sm">
+                  <input type="checkbox" [checked]="filters.priorities.includes(priority)" (change)="togglePriority(priority)" />
+                  {{ priorityLabels[priority] }}
+                </label>
+              }
+            </div>
+          }
+        </div>
       </fieldset>
 
-      <fieldset class="flex max-h-48 flex-col gap-2 overflow-y-auto">
+      <fieldset class="flex flex-col gap-2">
         <legend class="text-foreground mb-1 text-xs font-semibold">Learning objective</legend>
-        @if (!learningObjectives.length) {
+        @if (learningObjectivesLoading) {
+          <p class="text-muted-foreground text-sm">Loading objectives…</p>
+        } @else if (!learningObjectives.length) {
           <p class="text-muted-foreground text-sm">No learning objectives for this selection.</p>
-        }
-        @for (objective of learningObjectives; track objective.id) {
-          <label class="text-muted-foreground flex items-center gap-2 text-sm">
-            <input type="checkbox" [checked]="filters.learningObjectiveIds.includes(objective.id)" (change)="toggleObjective(objective.id)" />
-            {{ objective.name | loCodeLabel: loDisplay.view().showMapped : loDisplay.view().direction }}
-          </label>
+        } @else {
+          <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()">
+            <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="toggleFilterDropdown('learningObjective')">
+              <span class="truncate">{{ objectiveLabel() }}</span>
+              <span class="text-muted-foreground text-xs">▾</span>
+            </button>
+            @if (learningObjectiveOpen) {
+              <div class="border-border bg-card absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border p-2 shadow">
+                <input type="search" class="mb-2 w-full" [(ngModel)]="loSearchQuery" name="loSearch" placeholder="Search objectives" (click)="$event.stopPropagation()" />
+                @if (!filteredLearningObjectives().length) {
+                  <p class="text-muted-foreground px-1 py-1 text-sm">No matching learning objectives.</p>
+                } @else {
+                  @for (objective of filteredLearningObjectives(); track objective.id) {
+                    <label class="text-muted-foreground flex items-center gap-2 px-1 py-1 text-sm">
+                      <input type="checkbox" [checked]="filters.learningObjectiveIds.includes(objective.id)" (change)="toggleObjective(objective.id)" />
+                      {{ objectiveDisplayLabel(objective) }}
+                    </label>
+                  }
+                }
+              </div>
+            }
+          </div>
         }
       </fieldset>
 
       <fieldset class="flex flex-col gap-2">
         <legend class="text-foreground mb-1 text-xs font-semibold">Special states</legend>
-        <label class="text-muted-foreground flex items-center gap-2 text-sm">
-          <input type="checkbox" [checked]="filters.flagged" (change)="toggleFlagged()" />
-          Flagged
-        </label>
-        <label class="text-muted-foreground flex items-center gap-2 text-sm">
-          <input type="checkbox" [checked]="filters.paused" (change)="togglePaused()" />
-          Paused
-        </label>
-        <label class="text-muted-foreground flex items-center gap-2 text-sm">
-          <input type="checkbox" [checked]="filters.rolledBack" (change)="toggleRolledBack()" />
-          Rolled back
-        </label>
+        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()">
+          <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="toggleFilterDropdown('specialStates')">
+            <span class="truncate">{{ specialStatesLabel() }}</span>
+            <span class="text-muted-foreground text-xs">▾</span>
+          </button>
+          @if (specialStatesOpen) {
+            <div class="border-border bg-card absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border p-2 shadow">
+              <label class="text-muted-foreground flex items-center gap-2 px-1 py-1 text-sm">
+                <input type="checkbox" [checked]="filters.flagged" (change)="toggleFlagged()" />
+                Flagged
+              </label>
+              <label class="text-muted-foreground flex items-center gap-2 px-1 py-1 text-sm">
+                <input type="checkbox" [checked]="filters.paused" (change)="togglePaused()" />
+                Paused
+              </label>
+              <label class="text-muted-foreground flex items-center gap-2 px-1 py-1 text-sm">
+                <input type="checkbox" [checked]="filters.rolledBack" (change)="toggleRolledBack()" />
+                Rolled back
+              </label>
+            </div>
+          }
+        </div>
       </fieldset>
 
       <fieldset class="flex flex-col gap-2">

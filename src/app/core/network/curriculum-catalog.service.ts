@@ -93,6 +93,7 @@ export class CurriculumCatalogService {
   private readonly lessonLosCache = new Map<number, Observable<LoItem[]>>();
   private readonly subjectSheetCache = new Map<number, Observable<{ units: { id: number; name: string; lessons: { id: number; name: string; learningObjectives: LoItem[] }[] }[] }>>();
   private readonly losForSubjectCache = new Map<number, Observable<{ id: number; name: string; unitName: string; lessonName: string }[]>>();
+  private readonly loByIdCache = new Map<number, Observable<{ id: number; name: string }>>();
 
   constructor(private network: NetworkService) {}
 
@@ -131,6 +132,29 @@ export class CurriculumCatalogService {
     this.lessonLosCache.clear();
     this.subjectSheetCache.clear();
     this.losForSubjectCache.clear();
+    this.loByIdCache.clear();
+  }
+
+  getLearningObjectiveById(id: number): Observable<{ id: number; name: string }> {
+    if (!this.loByIdCache.has(id)) {
+      this.loByIdCache.set(
+        id,
+        this.network.get<{ id: number; name: string }>(apiPath(API.Curriculum.LearningObjective, { id })).pipe(
+          map((lo) => ({ id: lo.id, name: lo.name })),
+          catchError(() => of({ id, name: `LO ${id}` })),
+          shareReplay(1),
+        ),
+      );
+    }
+    return this.loByIdCache.get(id)!;
+  }
+
+  resolveLearningObjectives(ids: number[]): Observable<{ id: number; name: string }[]> {
+    const unique = [...new Set(ids.filter((id) => Number.isFinite(id) && id > 0))];
+    if (!unique.length) {
+      return of([]);
+    }
+    return forkJoin(unique.map((id) => this.getLearningObjectiveById(id)));
   }
 
   flattenProjects(trees: YearTree[]): FlatProject[] {

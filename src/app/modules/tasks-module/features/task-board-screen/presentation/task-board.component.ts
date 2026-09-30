@@ -21,6 +21,7 @@ import {
   TaskCardEntity,
   TaskColumnPageParams,
   TaskDetailsEntity,
+  TaskIdName,
   TaskStatus,
 } from '../domain/entity/task-board.entity';
 import { learningObjectivesForAssignment, pruneLearningObjectiveIds } from '../domain/board-assignment-scope';
@@ -87,12 +88,15 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   readonly columnTotalCounts = signal<Record<string, number>>(this.emptyColumnTotals());
   readonly cardsByColumn = signal<Record<string, TaskCardEntity[]>>(this.emptyCardsByColumn());
   readonly movingIds = signal<ReadonlySet<number>>(new Set());
+  readonly learningObjectivesLoading = signal(false);
   source: BoardSource = 'project';
   entityId = 0;
   private ticketUpdates?: Subscription;
   private boardPageSub?: Subscription;
+  private pageLoSub?: Subscription;
   private refreshDebounce?: ReturnType<typeof setTimeout>;
-  private losLoading = false;
+  private fullLosLoading = false;
+  private fullLosLoaded = false;
   private readonly moves = new Map<number, InflightMove>();
   private readonly moveSubs = new Map<number, Subscription>();
 
@@ -147,6 +151,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.ticketUpdates?.unsubscribe();
     this.boardPageSub?.unsubscribe();
+    this.pageLoSub?.unsubscribe();
     for (const sub of this.moveSubs.values()) {
       sub.unsubscribe();
     }
@@ -175,7 +180,6 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     this.boardUseCase.execute({ source: this.source, id: this.entityId }).subscribe({
       next: (board) => {
         this.board.set(board);
-        this.ensureLearningObjectives();
         this.loadBoardPage();
       },
       error: (err: Error) => {
@@ -299,8 +303,30 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     this.selected.set(null);
   }
 
+  loadFullLearningObjectives(): void {
+    const board = this.board();
+    if (!board || this.source !== 'project' || this.fullLosLoaded || this.fullLosLoading) {
+      return;
+    }
+    this.fullLosLoading = true;
+    this.learningObjectivesLoading.set(true);
+    this.catalog.getLosForSubject(this.entityId).subscribe({
+      next: (los) => {
+        this.mergeLearningObjectives(los.map((lo) => ({ id: lo.id, name: lo.name })));
+        this.fullLosLoaded = true;
+        this.fullLosLoading = false;
+        this.learningObjectivesLoading.set(false);
+      },
+      error: (err: Error) => {
+        this.fullLosLoading = false;
+        this.learningObjectivesLoading.set(false);
+        toast.error(err.message);
+      },
+    });
+  }
+
   openCreate(): void {
-    this.ensureLearningObjectives();
+    this.loadFullLearningObjectives();
     this.showCreate.set(true);
   }
 
@@ -370,6 +396,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
         ];
         if (loIds.length) {
           this.realtime.joinTicketBoard(loIds);
+          this.resolvePageLearningObjectives(loIds);
         }
         this.loading.set(false);
       },
@@ -424,35 +451,47 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     }));
   }
 
-  private ensureLearningObjectives(): void {
+  private resolvePageLearningObjectives(ids: number[]): void {
     const board = this.board();
-    if (!board || board.learningObjectives.length > 0 || this.source !== 'project' || this.losLoading) {
+    if (!board) {
       return;
     }
-    this.losLoading = true;
-    this.catalog.getLosForSubject(this.entityId).subscribe({
+    const resolvedIds = new Set(
+      board.learningObjectives.filter((lo) => lo.name !== `LO ${lo.id}`).map((lo) => lo.id),
+    );
+    const missing = [...new Set(ids)].filter((id) => !resolvedIds.has(id));
+    if (!missing.length) {
+      return;
+    }
+    this.pageLoSub?.unsubscribe();
+    this.pageLoSub = this.catalog.resolveLearningObjectives(missing).subscribe({
       next: (los) => {
-        this.board.update((current) =>
-          current
-            ? {
-                ...current,
-                learningObjectives: los.map((lo) => ({ id: lo.id, name: lo.name })),
-              }
-            : current,
-        );
-        this.cardsByColumn.update((columns) => {
-          const next = { ...columns };
-          for (const key of Object.keys(next)) {
-            next[key] = this.withLoNames(next[key]);
-          }
-          return next;
-        });
-        this.losLoading = false;
+        this.mergeLearningObjectives(los);
       },
-      error: (err: Error) => {
-        this.losLoading = false;
-        toast.error(err.message);
-      },
+      error: (err: Error) => toast.error(err.message),
+    });
+  }
+
+  private mergeLearningObjectives(incoming: TaskIdName[]): void {
+    if (!incoming.length) {
+      return;
+    }
+    this.board.update((current) => {
+      if (!current) {
+        return current;
+      }
+      const byId = new Map(current.learningObjectives.map((lo) => [lo.id, lo]));
+      for (const lo of incoming) {
+        byId.set(lo.id, lo);
+      }
+      return { ...current, learningObjectives: [...byId.values()] };
+    });
+    this.cardsByColumn.update((columns) => {
+      const next = { ...columns };
+      for (const key of Object.keys(next)) {
+        next[key] = this.withLoNames(next[key]);
+      }
+      return next;
     });
   }
 

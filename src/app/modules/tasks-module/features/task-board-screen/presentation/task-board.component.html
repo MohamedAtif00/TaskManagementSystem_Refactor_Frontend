@@ -14,9 +14,11 @@
     [filters]="filters()"
     [users]="current.users"
     [learningObjectives]="scopedObjectives()"
+    [learningObjectivesLoading]="learningObjectivesLoading()"
     [userId]="currentUserId()"
     [taskCount]="taskCount()"
-    (filtersChange)="onFiltersChange($event)" />
+    (filtersChange)="onFiltersChange($event)"
+    (filtersPanelOpened)="loadFullLearningObjectives()" />
 
   <div class="flex gap-4 pb-4 max-lg:overflow-x-auto lg:overflow-x-visible">
     @for (column of columns; track column.key) {

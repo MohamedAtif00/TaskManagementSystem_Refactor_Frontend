@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { formatLoCode } from '@core/lo-code/lo-code.formatter';
 import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
-import { LoCodeLabelPipe } from '@shared/pipes/lo-code-label.pipe';
 import { ClickOutsideDirective } from '@shared/directives/click-outside.directive';
 import {
   SavedBoardView,
@@ -27,7 +27,7 @@ const HIGH_PRIORITY: TaskPriority = 3;
 
 @Component({
   selector: 'app-task-board-filters',
-  imports: [FormsModule, LoCodeLabelPipe, ClickOutsideDirective],
+  imports: [FormsModule, ClickOutsideDirective],
   templateUrl: './task-board-filters.component.html',
 })
 export class TaskBoardFiltersComponent implements OnChanges, OnDestroy {
@@ -40,13 +40,20 @@ export class TaskBoardFiltersComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) filters!: TaskBoardFilters;
   @Input() users: TaskIdName[] = [];
   @Input() learningObjectives: TaskIdName[] = [];
+  @Input() learningObjectivesLoading = false;
   @Input() userId: number | null = null;
   @Input() taskCount = 0;
   @Output() filtersChange = new EventEmitter<TaskBoardFilters>();
+  @Output() filtersPanelOpened = new EventEmitter<void>();
 
   query = '';
   panelOpen = false;
   assignmentOpen = false;
+  statusOpen = false;
+  priorityOpen = false;
+  learningObjectiveOpen = false;
+  specialStatesOpen = false;
+  loSearchQuery = '';
   viewName = '';
   savedViews: SavedBoardView[] = [];
   private queryPending = false;
@@ -64,6 +71,14 @@ export class TaskBoardFiltersComponent implements OnChanges, OnDestroy {
   ngOnDestroy(): void {
     if (this.queryTimer) {
       clearTimeout(this.queryTimer);
+    }
+  }
+
+  toggleFiltersPanel(): void {
+    const opening = !this.panelOpen;
+    this.panelOpen = opening;
+    if (opening) {
+      this.filtersPanelOpened.emit();
     }
   }
 
@@ -141,6 +156,45 @@ export class TaskBoardFiltersComponent implements OnChanges, OnDestroy {
     });
   }
 
+  toggleFilterDropdown(
+    key: 'assignment' | 'status' | 'priority' | 'learningObjective' | 'specialStates',
+  ): void {
+    const wasOpen =
+      key === 'assignment'
+        ? this.assignmentOpen
+        : key === 'status'
+          ? this.statusOpen
+          : key === 'priority'
+            ? this.priorityOpen
+            : key === 'learningObjective'
+              ? this.learningObjectiveOpen
+              : this.specialStatesOpen;
+    this.closeAllFilterDropdowns();
+    if (wasOpen) {
+      return;
+    }
+    if (key === 'assignment') {
+      this.assignmentOpen = true;
+    } else if (key === 'status') {
+      this.statusOpen = true;
+    } else if (key === 'priority') {
+      this.priorityOpen = true;
+    } else if (key === 'learningObjective') {
+      this.learningObjectiveOpen = true;
+    } else {
+      this.specialStatesOpen = true;
+    }
+  }
+
+  closeAllFilterDropdowns(): void {
+    this.assignmentOpen = false;
+    this.statusOpen = false;
+    this.priorityOpen = false;
+    this.learningObjectiveOpen = false;
+    this.specialStatesOpen = false;
+    this.loSearchQuery = '';
+  }
+
   assignmentLabel(): string {
     const parts: string[] = [];
     if (this.filters.assignedToMe) {
@@ -153,6 +207,66 @@ export class TaskBoardFiltersComponent implements OnChanges, OnDestroy {
       parts.push(this.users.find((user) => user.id === userId)?.name ?? `User ${userId}`);
     }
     return parts.length ? parts.join(', ') : 'Anyone';
+  }
+
+  statusLabel(): string {
+    if (!this.filters.statuses.length) {
+      return 'Any status';
+    }
+    return this.filters.statuses.map((status) => this.statusLabels[status]).join(', ');
+  }
+
+  priorityLabel(): string {
+    if (!this.filters.priorities.length) {
+      return 'Any priority';
+    }
+    return this.filters.priorities.map((priority) => this.priorityLabels[priority]).join(', ');
+  }
+
+  specialStatesLabel(): string {
+    const parts: string[] = [];
+    if (this.filters.flagged) {
+      parts.push('Flagged');
+    }
+    if (this.filters.paused) {
+      parts.push('Paused');
+    }
+    if (this.filters.rolledBack) {
+      parts.push('Rolled back');
+    }
+    return parts.length ? parts.join(', ') : 'Any state';
+  }
+
+  objectiveLabel(): string {
+    if (!this.filters.learningObjectiveIds.length) {
+      return 'Any objective';
+    }
+    return this.filters.learningObjectiveIds
+      .map((id) => {
+        const objective = this.learningObjectives.find((row) => row.id === id);
+        return objective ? this.objectiveDisplayLabel(objective) : `Objective ${id}`;
+      })
+      .join(', ');
+  }
+
+  objectiveDisplayLabel(objective: TaskIdName): string {
+    const raw = objective.name ?? '';
+    const view = this.loDisplay.view();
+    if (!view.showMapped) {
+      return raw;
+    }
+    const language = view.direction === 'rtl' ? 'ar' : 'en';
+    return formatLoCode(objective.name, language);
+  }
+
+  filteredLearningObjectives(): TaskIdName[] {
+    const query = this.loSearchQuery.trim().toLowerCase();
+    if (!query) {
+      return this.learningObjectives;
+    }
+    return this.learningObjectives.filter((objective) =>
+      this.objectiveDisplayLabel(objective).toLowerCase().includes(query),
+    );
   }
 
   toggleAssignedToMe(): void {
