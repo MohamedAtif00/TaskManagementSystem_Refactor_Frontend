@@ -46,6 +46,7 @@ interface TicketDto {
   tl?: boolean;
   isReview?: boolean;
   learningObjectiveId: number;
+  learningObjective?: { id: number; name: string } | null;
   teamId?: number | null;
   userId?: number | null;
   pause?: boolean;
@@ -456,19 +457,37 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
     users: TaskIdName[] | DirectoryUser[],
   ): TaskCardModel {
     const user = ticket.userId ? users.find((row) => row.id === ticket.userId) : undefined;
-    const lo = los.find((row) => row.id === ticket.learningObjectiveId);
     return {
       id: ticket.id,
       name: ticket.name,
       status: ticket.status as TaskStatus,
       priority: mapApiPriority(ticket.priority),
       user: user ? { id: user.id, name: user.name } : undefined,
-      learningObjective: lo ?? { id: ticket.learningObjectiveId, name: `LO ${ticket.learningObjectiveId}` },
+      learningObjective: this.learningObjectiveFor(ticket, los),
       flagged: !!ticket.flagged,
       paused: !!ticket.pause,
       isRollback: !!ticket.isRollback,
       rollbackCount: ticket.rollbackCount ?? 0,
     };
+  }
+
+  private learningObjectiveFor(
+    ticket: TicketDto,
+    los: { id: number; name: string }[],
+  ): { id: number; name: string } {
+    const embedded = ticket.learningObjective;
+    if (embedded?.name && !this.isPlaceholderLo(embedded)) {
+      return { id: embedded.id || ticket.learningObjectiveId, name: embedded.name };
+    }
+    const match = los.find((row) => row.id === ticket.learningObjectiveId);
+    if (match && !this.isPlaceholderLo(match)) {
+      return match;
+    }
+    return { id: ticket.learningObjectiveId, name: `LO ${ticket.learningObjectiveId}` };
+  }
+
+  private isPlaceholderLo(lo: { id: number; name: string }): boolean {
+    return lo.name === `LO ${lo.id}`;
   }
 
   private toDetails(

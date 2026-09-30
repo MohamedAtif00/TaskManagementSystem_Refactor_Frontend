@@ -93,7 +93,6 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   entityId = 0;
   private ticketUpdates?: Subscription;
   private boardPageSub?: Subscription;
-  private pageLoSub?: Subscription;
   private refreshDebounce?: ReturnType<typeof setTimeout>;
   private fullLosLoading = false;
   private fullLosLoaded = false;
@@ -151,7 +150,6 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.ticketUpdates?.unsubscribe();
     this.boardPageSub?.unsubscribe();
-    this.pageLoSub?.unsubscribe();
     for (const sub of this.moveSubs.values()) {
       sub.unsubscribe();
     }
@@ -389,15 +387,14 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
         this.columnTotalCounts.set(totals);
         this.cardsByColumn.set(cardsByColumn);
 
-        const loIds = [
-          ...new Set(
-            this.columns.flatMap((column) => cardsByColumn[column.key].map((card) => card.learningObjective.id)),
-          ),
-        ];
+        const pageObjectives = this.columns.flatMap((column) =>
+          cardsByColumn[column.key].map((card) => card.learningObjective),
+        );
+        const loIds = [...new Set(pageObjectives.map((objective) => objective.id))];
         if (loIds.length) {
           this.realtime.joinTicketBoard(loIds);
-          this.resolvePageLearningObjectives(loIds);
         }
+        this.mergeLearningObjectives(pageObjectives);
         this.loading.set(false);
       },
       error: (err: Error) => {
@@ -445,31 +442,15 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   private withLoNames(cards: TaskCardEntity[]): TaskCardEntity[] {
     const los = this.board()?.learningObjectives ?? [];
-    return cards.map((card) => ({
-      ...card,
-      learningObjective: los.find((lo) => lo.id === card.learningObjective.id) ?? card.learningObjective,
-    }));
+    return cards.map((card) => {
+      const stored = los.find((lo) => lo.id === card.learningObjective.id);
+      const learningObjective = stored && !this.isPlaceholderLo(stored) ? stored : card.learningObjective;
+      return { ...card, learningObjective };
+    });
   }
 
-  private resolvePageLearningObjectives(ids: number[]): void {
-    const board = this.board();
-    if (!board) {
-      return;
-    }
-    const resolvedIds = new Set(
-      board.learningObjectives.filter((lo) => lo.name !== `LO ${lo.id}`).map((lo) => lo.id),
-    );
-    const missing = [...new Set(ids)].filter((id) => !resolvedIds.has(id));
-    if (!missing.length) {
-      return;
-    }
-    this.pageLoSub?.unsubscribe();
-    this.pageLoSub = this.catalog.resolveLearningObjectives(missing).subscribe({
-      next: (los) => {
-        this.mergeLearningObjectives(los);
-      },
-      error: (err: Error) => toast.error(err.message),
-    });
+  private isPlaceholderLo(lo: TaskIdName): boolean {
+    return lo.name === `LO ${lo.id}`;
   }
 
   private mergeLearningObjectives(incoming: TaskIdName[]): void {
@@ -482,6 +463,10 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
       }
       const byId = new Map(current.learningObjectives.map((lo) => [lo.id, lo]));
       for (const lo of incoming) {
+        const existing = byId.get(lo.id);
+        if (existing && !this.isPlaceholderLo(existing) && this.isPlaceholderLo(lo)) {
+          continue;
+        }
         byId.set(lo.id, lo);
       }
       return { ...current, learningObjectives: [...byId.values()] };

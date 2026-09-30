@@ -85,6 +85,7 @@ export interface TicketListItemResponse {
   duration: number;
   createdAt: string;
   learningObjectiveId: number;
+  learningObjective?: { id: number; name: string } | null;
   stepId?: number | null;
   userId?: number | null;
   teamId?: number | null;
