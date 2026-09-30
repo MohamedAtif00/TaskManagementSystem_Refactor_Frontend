@@ -29,9 +29,8 @@
             <td class="px-3 py-3 text-sm">
               <div class="flex items-center gap-3">
                 <button
-                  class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
+                  class="text-muted-foreground hover:text-primary text-xs font-semibold"
                   type="button"
-                  [disabled]="row.isSystem"
                   (click)="openEdit(row, $event)">
                   Edit
                 </button>
@@ -63,7 +62,10 @@
       <div class="space-y-3">
         <label class="block">
           <span class="text-muted-foreground mb-1 block text-xs font-medium">Name</span>
-          <input type="text" [(ngModel)]="form.name" name="roleName" />
+          <input type="text" [(ngModel)]="form.name" name="roleName" [disabled]="nameLocked()" />
+          @if (nameLocked()) {
+            <span class="text-muted-foreground mt-1 block text-xs">System role names cannot be changed.</span>
+          }
         </label>
         <label class="block">
           <span class="text-muted-foreground mb-1 block text-xs font-medium">Description</span>

@@ -1284,10 +1284,9 @@ export class TmsMockStore {
       if (!role) {
         return undefined;
       }
-      if (role.isSystem) {
-        throw new Error('System roles cannot be edited');
+      if (!role.isSystem) {
+        role.name = payload.name;
       }
-      role.name = payload.name;
       role.description = payload.description;
       role.permissionIds = [...payload.permissionIds];
       return this.listRoles().find((row) => row.id === role.id);

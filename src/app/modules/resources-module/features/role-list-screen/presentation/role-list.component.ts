@@ -35,6 +35,7 @@ export class RoleListComponent implements OnInit {
   readonly rows = signal<RoleEntity[]>([]);
   readonly permissions = signal<RolePermissionOption[]>([]);
   readonly showForm = signal(false);
+  readonly nameLocked = signal(false);
   readonly confirmRole = signal<RoleEntity | null>(null);
   readonly groups = computed(() => groupPermissions(this.permissions()));
   form: RoleFormPayload = this.emptyForm();
@@ -76,16 +77,14 @@ export class RoleListComponent implements OnInit {
 
   openCreate(): void {
     this.form = this.emptyForm();
+    this.nameLocked.set(false);
     this.resetPickerState();
     this.showForm.set(true);
   }
 
   openEdit(row: RoleEntity, event: Event): void {
     event.stopPropagation();
-    if (row.isSystem) {
-      toast.error('System roles cannot be edited');
-      return;
-    }
+    this.nameLocked.set(row.isSystem);
     this.form = {
       id: row.id,
       name: row.name,
