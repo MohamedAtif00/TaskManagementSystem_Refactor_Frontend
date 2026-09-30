@@ -27,9 +27,13 @@
         [columnKey]="column.key"
         [cards]="cardsFor(column)"
         [connectedTo]="connectedColumns(column.key)"
+        [acceptsFrom]="acceptsFrom(column.key)"
+        [dropForbidden]="isDropForbidden(column.key)"
         [totalCount]="totalFor(column)"
         [movingIds]="movingIds()"
         (openCard)="openCard($event)"
+        (dragStarted)="onColumnDragStart(column.key)"
+        (dragEnded)="onColumnDragEnd($event, column.key)"
         (dropped)="onCardDropped($event, column)" />
     }
   </div>

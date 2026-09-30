@@ -1,4 +1,4 @@
-import { CdkDragDrop } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, CdkDragEnd } from '@angular/cdk/drag-drop';
 import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toast } from 'ngx-sonner';
@@ -88,6 +88,7 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   readonly columnTotalCounts = signal<Record<string, number>>(this.emptyColumnTotals());
   readonly cardsByColumn = signal<Record<string, TaskCardEntity[]>>(this.emptyCardsByColumn());
   readonly movingIds = signal<ReadonlySet<number>>(new Set());
+  readonly draggingFrom = signal<string | null>(null);
   readonly learningObjectivesLoading = signal(false);
   source: BoardSource = 'project';
   entityId = 0;
@@ -193,6 +194,27 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   connectedColumns(columnKey: string): string[] {
     return this.columns.map((column) => column.key).filter((key) => key !== columnKey);
+  }
+
+  acceptsFrom(columnKey: string): string[] {
+    return this.columns.map((column) => column.key).filter((sourceKey) => this.canMove(sourceKey, columnKey));
+  }
+
+  isDropForbidden(columnKey: string): boolean {
+    const sourceKey = this.draggingFrom();
+    return !!sourceKey && sourceKey !== columnKey && !this.canMove(sourceKey, columnKey);
+  }
+
+  onColumnDragStart(columnKey: string): void {
+    this.draggingFrom.set(columnKey);
+  }
+
+  onColumnDragEnd(event: CdkDragEnd<TaskCardEntity>, sourceKey: string): void {
+    const targetKey = this.columnKeyAtPoint(event.dropPoint.x, event.dropPoint.y);
+    this.draggingFrom.set(null);
+    if (targetKey && targetKey !== sourceKey && !this.canMove(sourceKey, targetKey)) {
+      toast.error('That column move is not allowed');
+    }
   }
 
   totalFor(column: BoardColumn): number {
@@ -488,11 +510,37 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     return Object.fromEntries(this.columns.map((column) => [column.key, 0]));
   }
 
+  private canMove(sourceKey: string, targetKey: string): boolean {
+    return (
+      (sourceKey === 'backlog' && targetKey === 'todo') ||
+      (sourceKey === 'todo' && targetKey === 'doing') ||
+      (sourceKey === 'doing' && targetKey === 'done') ||
+      (sourceKey === 'doing' && targetKey === 'todo')
+    );
+  }
+
+  private columnKeyAtPoint(x: number, y: number): string | null {
+    for (const column of this.columns) {
+      const element = document.getElementById(column.key);
+      if (!element) {
+        continue;
+      }
+      const rect = element.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        return column.key;
+      }
+    }
+    return null;
+  }
+
   private legalMove(
     sourceKey: string,
     targetKey: string,
     card: TaskCardEntity,
   ): { action: MoveAction; message: string; patch: Partial<TaskCardEntity> } | null {
+    if (!this.canMove(sourceKey, targetKey)) {
+      return null;
+    }
     if (sourceKey === 'backlog' && targetKey === 'todo') {
       return { action: 'proceed', message: 'Moved to To Do', patch: { status: 1 } };
     }

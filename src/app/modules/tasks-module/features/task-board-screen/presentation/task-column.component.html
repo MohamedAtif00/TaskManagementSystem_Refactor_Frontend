@@ -1,17 +1,30 @@
 <section
-  class="bg-muted/40 flex h-full min-h-[28rem] flex-col rounded-xl p-3"
+  class="flex h-full min-h-[28rem] flex-col rounded-xl p-3"
+  [class.bg-muted/40]="!dropForbidden"
+  [class.column-drop-forbidden]="dropForbidden"
   cdkDropList
   [id]="columnKey"
   [cdkDropListData]="sortedCards"
   [cdkDropListConnectedTo]="connectedTo"
+  [cdkDropListEnterPredicate]="canEnter"
   (cdkDropListDropped)="onDrop($event)">
   <div class="mb-3 flex items-center justify-between">
-    <h3 class="text-foreground text-sm font-bold">{{ label }}</h3>
+    <h3 class="text-sm font-bold" [class.text-foreground]="!dropForbidden" [class.text-destructive]="dropForbidden">
+      {{ label }}
+    </h3>
     <span class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs">{{ totalCount }}</span>
   </div>
+  @if (dropForbidden) {
+    <p class="text-destructive mb-2 text-xs font-semibold">Not allowed</p>
+  }
   <div class="flex min-h-24 flex-col gap-3">
     @for (card of sortedCards; track card.id) {
-      <div cdkDrag [cdkDragData]="card" class="cursor-grab active:cursor-grabbing">
+      <div
+        cdkDrag
+        [cdkDragData]="card"
+        class="cursor-grab active:cursor-grabbing"
+        (cdkDragStarted)="dragStarted.emit()"
+        (cdkDragEnded)="dragEnded.emit($event)">
         <app-task-card [card]="card" [moving]="movingIds.has(card.id)" (open)="openCard.emit($event)" />
       </div>
     } @empty {
