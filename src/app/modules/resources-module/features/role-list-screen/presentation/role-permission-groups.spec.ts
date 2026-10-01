@@ -4,6 +4,7 @@ import {
   expandImpliedSelections,
   groupPermissions,
   isVerbChecked,
+  permissionHint,
   toggleManage,
   toggleVerb,
 } from './role-permission-groups.ts';
@@ -23,6 +24,13 @@ describe('role-permission-groups', () => {
   const groups = groupPermissions(catalog);
   const forgotClock = groups.find((group) => group.prefix === 'hr.forgotclock')!;
   const notifications = groups.find((group) => group.prefix === 'notifications')!;
+
+  it('explains leave and task permissions in plain language', () => {
+    assert.match(permissionHint('hr.leave.create'), /My Leaves/);
+    assert.match(permissionHint('hr.leave.update'), /Approvals/);
+    assert.match(permissionHint('tickets.manage'), /Skip/);
+    assert.equal(permissionHint('unknown.code'), '');
+  });
 
   it('groups catalog rows by module prefix', () => {
     assert.equal(forgotClock.label, 'HR Forgotclock');

@@ -12,6 +12,7 @@ export interface PermissionVerbOption {
   name: string;
   verb: string;
   label: string;
+  hint: string;
 }
 
 export interface PermissionGroup {
@@ -60,6 +61,84 @@ export function verbLabel(verb: string): string {
   }
 }
 
+const PERMISSION_HINTS: Record<string, string> = {
+  'hr.leave.read': 'Opens Leave settings and leave lists. Does not open My Leaves or Approvals by itself.',
+  'hr.leave.create': 'Opens My Leaves. Request and track your own leave.',
+  'hr.leave.update':
+    "Opens Approvals and lets you give an opinion. You must still be Owner, that request's team leader or section head, or Project Manager and not the requester.",
+  'hr.leave.delete': 'Not used by any screen.',
+  'hr.leave.manage':
+    'Opens Approvals and Members Leaves. Final approval and bulk decisions. Final approval still requires the Owner role. Also covers read, create, and update.',
+  'hr.timeoff.read': 'View time-off requests.',
+  'hr.timeoff.create': 'Request your own time off from My Leaves.',
+  'hr.timeoff.update': 'Give an opinion on time-off requests in Approvals. Same role rules as leave opinions.',
+  'hr.timeoff.delete': 'Not used by any screen.',
+  'hr.timeoff.manage':
+    'Final approval and bulk decisions for time off in Approvals. Final approval still requires the Owner role. Also covers read, create, and update.',
+  'hr.workfromhome.read': 'View work-from-home requests.',
+  'hr.workfromhome.create': 'Request your own work from home from My Leaves.',
+  'hr.workfromhome.update': 'Give an opinion on work-from-home requests in Approvals. Same role rules as leave opinions.',
+  'hr.workfromhome.delete': 'Not used by any screen.',
+  'hr.workfromhome.manage':
+    'Final approval and bulk decisions for work from home in Approvals. Final approval still requires the Owner role. Also covers read, create, and update.',
+  'hr.forgotclock.read': 'View forgot-clock requests.',
+  'hr.forgotclock.create': 'Submit your own forgot-clock request from My Leaves.',
+  'hr.forgotclock.update': 'Give an opinion on forgot-clock requests in Approvals. Same role rules as leave opinions.',
+  'hr.forgotclock.delete': 'Not used by any screen.',
+  'hr.forgotclock.manage':
+    'Final approval and bulk decisions for forgot clock in Approvals. Final approval still requires the Owner role. Also covers read, create, and update.',
+  'hr.holidays.read': 'Opens the Holidays page.',
+  'hr.holidays.create': 'Not checked on its own. Adding holidays uses full access.',
+  'hr.holidays.update': 'Not checked on its own. Editing holidays uses full access.',
+  'hr.holidays.delete': 'Not checked on its own. Removing holidays uses full access.',
+  'hr.holidays.manage': 'Add, edit, and remove holidays. Also covers read.',
+  'tickets.read':
+    'Opens Kanban and user tasks. On your team, work a task assigned to you or in Backlog: start, complete, pause, flag, timer, and rollback on a review task.',
+  'tickets.create': 'Create tasks, add comments, and start or stop the work timer.',
+  'tickets.update':
+    'Assign people and change priority on tasks you can reach, plus the same work actions as read. The API accepts skip and jump, but only for Owner or Project Manager.',
+  'tickets.delete': 'Not used by any screen.',
+  'tickets.manage':
+    'Shows Skip and Jump on a task. Jump is still limited to Owner and Project Manager. Also covers tasks outside your team, and read, create, and update.',
+  'notifications.read': 'Opens Inbox.',
+  'notifications.update': 'Mark notifications as read.',
+  'notifications.manage': 'Full control of notifications. Also covers read and update.',
+  'organization.read': 'Opens Teams and Sections.',
+  'organization.create': 'Create teams and sections.',
+  'organization.update': 'Edit teams and sections.',
+  'organization.delete': 'Archive teams and sections.',
+  'organization.manage': 'Full control of teams and sections. Also covers read, create, update, and delete.',
+  'identity.users.read': 'Opens the Users page.',
+  'identity.users.create': 'Create users.',
+  'identity.users.update': 'Edit users.',
+  'identity.users.delete': 'Archive users.',
+  'identity.users.manage': 'Full control of users. Also covers read, create, update, and delete.',
+  'identity.roles.read': 'Opens the Roles page.',
+  'identity.roles.create': 'Create roles.',
+  'identity.roles.update': 'Edit role descriptions and permissions. System role names stay fixed.',
+  'identity.roles.delete': 'Delete custom roles. System roles cannot be deleted.',
+  'identity.roles.manage': 'Full control of roles. Also covers read, create, update, and delete.',
+  'curriculum.read': 'Opens Projects, Curriculum, and project overview.',
+  'curriculum.create': 'Create curriculum items.',
+  'curriculum.update': 'Edit curriculum items.',
+  'curriculum.delete': 'Archive curriculum items.',
+  'curriculum.manage': 'Full control of projects and curriculum. Also covers read, create, update, and delete.',
+  'sprints.read': 'Opens Sprints and sprint analytics.',
+  'sprints.create': 'Create sprints and add learning objectives.',
+  'sprints.update': 'Edit sprints.',
+  'sprints.delete': 'Archive sprints and remove learning objectives.',
+  'sprints.manage': 'Opens Sprint management and full control of sprints. Also covers read, create, update, and delete.',
+  'workflows.read': 'Opens Workflows, including schemas and the task bank.',
+  'workflows.create': 'Create workflow schemas, nodes, steps, and task-bank items.',
+  'workflows.update': 'Edit workflow schemas, nodes, steps, and task-bank items.',
+  'workflows.delete': 'Archive workflow schemas, nodes, steps, and task-bank items.',
+  'workflows.manage': 'Full control of workflows. Also covers read, create, update, and delete.',
+};
+
+export function permissionHint(code: string): string {
+  return PERMISSION_HINTS[code] ?? '';
+}
+
 function toVerbOption(item: PermissionCatalogItem): PermissionVerbOption {
   const verb = permissionVerb(item.code);
   return {
@@ -68,6 +147,7 @@ function toVerbOption(item: PermissionCatalogItem): PermissionVerbOption {
     name: item.name,
     verb,
     label: verbLabel(verb),
+    hint: permissionHint(item.code),
   };
 }
 
@@ -178,6 +258,7 @@ function matchesPermission(item: PermissionVerbOption, needle: string): boolean 
   return (
     item.code.toLowerCase().includes(needle) ||
     item.name.toLowerCase().includes(needle) ||
-    item.label.toLowerCase().includes(needle)
+    item.label.toLowerCase().includes(needle) ||
+    item.hint.toLowerCase().includes(needle)
   );
 }
