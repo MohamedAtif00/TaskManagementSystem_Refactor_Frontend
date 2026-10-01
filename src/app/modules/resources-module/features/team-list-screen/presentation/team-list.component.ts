@@ -24,6 +24,7 @@ export class TeamListComponent implements OnInit {
   readonly memberOptions = signal<TeamMemberOption[]>([]);
   readonly leaderOptions = signal<TeamLeaderOption[]>([]);
   readonly showForm = signal(false);
+  readonly showAllMembers = signal(false);
   readonly confirmTeam = signal<TeamEntity | null>(null);
   form: TeamFormPayload = this.emptyForm();
 
@@ -65,6 +66,7 @@ export class TeamListComponent implements OnInit {
   openCreate(): void {
     this.form = this.emptyForm();
     this.formError = '';
+    this.showAllMembers.set(false);
     this.showForm.set(true);
   }
 
@@ -79,6 +81,7 @@ export class TeamListComponent implements OnInit {
           memberIds: team.members.map((member) => member.id),
           teamleaderId: team.teamleaderId ?? null,
         };
+        this.showAllMembers.set(false);
         this.showForm.set(true);
       },
       error: (err: Error) => toast.error(err.message),
@@ -87,6 +90,17 @@ export class TeamListComponent implements OnInit {
 
   closeForm(): void {
     this.showForm.set(false);
+  }
+
+  visibleMemberOptions(): TeamMemberOption[] {
+    const options = this.memberOptions();
+    const teamId = this.form.id;
+    if (!teamId || this.showAllMembers()) {
+      return options;
+    }
+    return options.filter(
+      (option) => option.teamId === teamId || this.form.memberIds.includes(option.id),
+    );
   }
 
   isMemberSelected(userId: number): boolean {
