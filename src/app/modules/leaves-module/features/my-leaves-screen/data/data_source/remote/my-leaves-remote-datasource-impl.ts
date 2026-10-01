@@ -1,13 +1,13 @@
 import { HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { ListPageResponse } from '@core/models/list-page.model';
 import { ForgotClockRequestResponse, LeavePreviewResponse } from '@core/api/tms-contracts';
 import { API, apiPath } from '@core/network/api/api.const';
 import { mapHttpError } from '@core/network/http-error';
 import { NetworkService } from '@core/network/network.service';
-import { UserDirectoryService } from '@core/network/user-directory.service';
+import { AuthService } from '@core/services/auth.service';
 import { BalancesDto, hoursBetween, lastComment, mapBalances } from '@core/network/hr-map';
 import {
   CancelRequestPayload,
@@ -79,7 +79,7 @@ interface WfhDto {
 export class MyLeavesRemoteDataSourceImpl extends MyLeavesRemoteDataSource {
   constructor(
     private network: NetworkService,
-    private users: UserDirectoryService,
+    private auth: AuthService,
   ) {
     super();
   }
@@ -92,31 +92,30 @@ export class MyLeavesRemoteDataSourceImpl extends MyLeavesRemoteDataSource {
   }
 
   getRequests(params: MyLeaveListParams): Observable<ListPageResponse<MyLeaveRequestItem>> {
-    return this.users.list().pipe(
-      switchMap((directory) => {
-        const me = directory.find((row) => row.id === params.userId) ?? { id: params.userId, name: 'Me', code: '' };
-        const user = { id: me.id, name: me.name, code: me.code };
-        const dates = this.segmentDates(params.segment);
-        const httpParams = new HttpParams({
-          fromObject: {
-            page: String(params.page),
-            pageSize: String(params.pageSize),
-            ...(dates.fromDate ? { fromDate: dates.fromDate } : {}),
-            ...(dates.toDate ? { toDate: dates.toDate } : {}),
-          },
-        });
-        const url = this.searchUrl(params.kind);
-        return this.network.get<SearchResult<unknown>>(url, httpParams).pipe(
-          map((result) => {
-            const items = (result.items ?? []).map((row) => this.mapRequest(params.kind, row, user));
-            return {
-              items,
-              page: result.page ?? params.page,
-              pageSize: result.pageSize ?? params.pageSize,
-              totalCount: result.totalCount ?? 0,
-            };
-          }),
-        );
+    const signedIn = this.auth.user();
+    const user = {
+      id: params.userId,
+      name: signedIn?.id === params.userId ? signedIn.name : 'Me',
+      code: signedIn?.id === params.userId ? signedIn.code : '',
+    };
+    const dates = this.segmentDates(params.segment);
+    const httpParams = new HttpParams({
+      fromObject: {
+        page: String(params.page),
+        pageSize: String(params.pageSize),
+        ...(dates.fromDate ? { fromDate: dates.fromDate } : {}),
+        ...(dates.toDate ? { toDate: dates.toDate } : {}),
+      },
+    });
+    return this.network.get<SearchResult<unknown>>(this.searchUrl(params.kind), httpParams).pipe(
+      map((result) => {
+        const items = (result.items ?? []).map((row) => this.mapRequest(params.kind, row, user));
+        return {
+          items,
+          page: result.page ?? params.page,
+          pageSize: result.pageSize ?? params.pageSize,
+          totalCount: result.totalCount ?? 0,
+        };
       }),
       catchError(mapHttpError),
     );
