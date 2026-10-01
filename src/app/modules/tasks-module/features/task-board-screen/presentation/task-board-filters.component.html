@@ -28,7 +28,7 @@
     <div class="border-border grid gap-4 rounded-lg border p-4 md:grid-cols-2 xl:grid-cols-3">
       <fieldset class="flex flex-col gap-2">
         <legend class="text-foreground mb-1 text-xs font-semibold">Assignment</legend>
-        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()">
+        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()" (click)="$event.stopPropagation()">
           <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="toggleFilterDropdown('assignment')">
             <span class="truncate">{{ assignmentLabel() }}</span>
             <span class="text-muted-foreground text-xs">▾</span>
@@ -56,7 +56,7 @@
 
       <fieldset class="flex flex-col gap-2">
         <legend class="text-foreground mb-1 text-xs font-semibold">Status</legend>
-        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()">
+        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()" (click)="$event.stopPropagation()">
           <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="toggleFilterDropdown('status')">
             <span class="truncate">{{ statusLabel() }}</span>
             <span class="text-muted-foreground text-xs">▾</span>
@@ -76,7 +76,7 @@
 
       <fieldset class="flex flex-col gap-2">
         <legend class="text-foreground mb-1 text-xs font-semibold">Priority</legend>
-        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()">
+        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()" (click)="$event.stopPropagation()">
           <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="toggleFilterDropdown('priority')">
             <span class="truncate">{{ priorityLabel() }}</span>
             <span class="text-muted-foreground text-xs">▾</span>
@@ -101,7 +101,7 @@
         } @else if (!learningObjectives.length) {
           <p class="text-muted-foreground text-sm">No learning objectives for this selection.</p>
         } @else {
-          <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()">
+          <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()" (click)="$event.stopPropagation()">
             <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="toggleFilterDropdown('learningObjective')">
               <span class="truncate">{{ objectiveLabel() }}</span>
               <span class="text-muted-foreground text-xs">▾</span>
@@ -127,7 +127,7 @@
 
       <fieldset class="flex flex-col gap-2">
         <legend class="text-foreground mb-1 text-xs font-semibold">Special states</legend>
-        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()">
+        <div class="relative" clickOutside (clickOutside)="closeAllFilterDropdowns()" (click)="$event.stopPropagation()">
           <button type="button" class="border-border bg-card text-foreground flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm" (click)="toggleFilterDropdown('specialStates')">
             <span class="truncate">{{ specialStatesLabel() }}</span>
             <span class="text-muted-foreground text-xs">▾</span>
