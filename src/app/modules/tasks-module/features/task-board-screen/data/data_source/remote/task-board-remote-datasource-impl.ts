@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpParams } from '@angular/common/http';
 import { Observable, forkJoin, of, throwError } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { AuthService } from '@core/services/auth.service';
 import { mapApiPriority, mapUiPriority } from '@core/models/role-map';
 import { TicketListPageResponse } from '@core/api/tms-contracts';
 import { API, apiPath } from '@core/network/api/api.const';
@@ -49,6 +50,7 @@ interface TicketDto {
   learningObjective?: { id: number; name: string } | null;
   teamId?: number | null;
   userId?: number | null;
+  userName?: string | null;
   pause?: boolean;
   attention?: boolean;
   flagged?: boolean;
@@ -104,6 +106,7 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   constructor(
     private network: NetworkService,
     private users: UserDirectoryService,
+    private auth: AuthService,
   ) {
     super();
   }
@@ -185,14 +188,17 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
       httpParams = httpParams.set('name', params.name.trim());
     }
 
-    const users = params.users ?? [];
-    return this.network.get<TicketListPageResponse>(path, httpParams).pipe(
-      map((page) => ({
-        items: (page.items ?? []).map((ticket) => this.toCard(ticket, [], users)),
-        page: page.page,
-        pageSize: page.pageSize,
-        totalCount: page.totalCount,
-      })),
+    return this.assigneeNames(params.users ?? []).pipe(
+      switchMap((users) =>
+        this.network.get<TicketListPageResponse>(path, httpParams).pipe(
+          map((page) => ({
+            items: (page.items ?? []).map((ticket) => this.toCard(ticket, [], users)),
+            page: page.page,
+            pageSize: page.pageSize,
+            totalCount: page.totalCount,
+          })),
+        ),
+      ),
       catchError(mapHttpError),
     );
   }
@@ -208,14 +214,17 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
     }
     httpParams = this.appendBoardFilters(httpParams, params);
 
-    const users = params.users ?? [];
-    return this.network.get<TicketListPageResponse>(path, httpParams).pipe(
-      map((page) => ({
-        items: (page.items ?? []).map((ticket) => this.toCard(ticket, [], users)),
-        page: page.page,
-        pageSize: page.pageSize,
-        totalCount: page.totalCount,
-      })),
+    return this.assigneeNames(params.users ?? []).pipe(
+      switchMap((users) =>
+        this.network.get<TicketListPageResponse>(path, httpParams).pipe(
+          map((page) => ({
+            items: (page.items ?? []).map((ticket) => this.toCard(ticket, [], users)),
+            page: page.page,
+            pageSize: page.pageSize,
+            totalCount: page.totalCount,
+          })),
+        ),
+      ),
       catchError(mapHttpError),
     );
   }
@@ -329,7 +338,9 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
 
   changePriority(payload: ChangePriorityPayload): Observable<TaskCardModel> {
     return this.network
-      .patch<TicketDto>(apiPath(API.Tickets.Priority, { id: payload.taskId }), { priority: payload.priority })
+      .patch<TicketDto>(apiPath(API.Tickets.Priority, { id: payload.taskId }), {
+        priority: mapUiPriority(payload.priority),
+      })
       .pipe(
         switchMap((ticket) => this.cardFromTicket(ticket)),
         catchError(mapHttpError),
@@ -444,11 +455,64 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
   }
 
   private cardFromTicket(ticket: TicketDto): Observable<TaskCardModel> {
-    return this.users.list().pipe(
-      map((directory) =>
-        this.toCard(ticket, [{ id: ticket.learningObjectiveId, name: `LO ${ticket.learningObjectiveId}` }], directory),
+    return this.assigneeNames([]).pipe(
+      map((users) =>
+        this.toCard(ticket, [{ id: ticket.learningObjectiveId, name: `LO ${ticket.learningObjectiveId}` }], users),
       ),
     );
+  }
+
+  private assigneeNames(roster: TaskIdName[]): Observable<TaskIdName[]> {
+    return this.users.list().pipe(
+      catchError(() => of([] as DirectoryUser[])),
+      map((directory) => {
+        const byId = new Map<number, TaskIdName>();
+        for (const user of directory) {
+          byId.set(user.id, { id: user.id, name: user.name, teamId: user.teamId ?? null });
+        }
+        for (const user of roster) {
+          const existing = byId.get(user.id);
+          byId.set(user.id, {
+            id: user.id,
+            name: user.name || existing?.name || '',
+            teamId: user.teamId ?? existing?.teamId ?? null,
+          });
+        }
+        const me = this.auth.user();
+        if (me) {
+          const existing = byId.get(me.id);
+          byId.set(me.id, {
+            id: me.id,
+            name: existing?.name || me.name,
+            teamId: existing?.teamId ?? me.teamId ?? null,
+          });
+        }
+        return [...byId.values()];
+      }),
+    );
+  }
+
+  private assigneeFor(
+    userId: number | null | undefined,
+    userName: string | null | undefined,
+    users: TaskIdName[] | DirectoryUser[],
+  ): { id: number; name: string } | undefined {
+    if (!userId) {
+      return undefined;
+    }
+    const named = userName?.trim();
+    if (named) {
+      return { id: userId, name: named };
+    }
+    const match = users.find((row) => row.id === userId);
+    if (match?.name) {
+      return { id: match.id, name: match.name };
+    }
+    const me = this.auth.user();
+    if (me?.id === userId && me.name) {
+      return { id: me.id, name: me.name };
+    }
+    return { id: userId, name: `User ${userId}` };
   }
 
   private toCard(
@@ -456,13 +520,13 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
     los: { id: number; name: string }[],
     users: TaskIdName[] | DirectoryUser[],
   ): TaskCardModel {
-    const user = ticket.userId ? users.find((row) => row.id === ticket.userId) : undefined;
+    const user = this.assigneeFor(ticket.userId, ticket.userName, users);
     return {
       id: ticket.id,
       name: ticket.name,
       status: ticket.status as TaskStatus,
       priority: mapApiPriority(ticket.priority),
-      user: user ? { id: user.id, name: user.name } : undefined,
+      user,
       learningObjective: this.learningObjectiveFor(ticket, los),
       flagged: !!ticket.flagged,
       paused: !!ticket.pause,

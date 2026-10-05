@@ -1,9 +1,8 @@
 @if (loading()) {
   <app-kanban-skeleton />
 } @else if (board(); as current) {
-  <app-page-header [title]="current.name" [subtitle]="source === 'project' ? 'Project board' : 'Sprint board'">
+  <app-page-header [title]="current.name" [subtitle]="source === 'project' ? 'Project board' : 'Sprint board'" [backLink]="backLink()">
     <app-lo-code-display-toggle />
-    <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="backLink()">Back to list</a>
     <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="goSheet()">Sheet View</app-button>
     @if (canCreate()) {
       <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openCreate()">New Task</app-button>
@@ -61,6 +60,39 @@
       </app-button>
     </div>
   }
+
+  <div class="text-muted-foreground flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pb-4 text-xs">
+    <span class="inline-flex items-center gap-1">
+      <span class="text-red-500 text-[11px] font-bold leading-none">H</span>
+      High
+    </span>
+    <span class="inline-flex items-center gap-1">
+      <span class="text-amber-500 text-[11px] font-bold leading-none">M</span>
+      Medium
+    </span>
+    <span class="inline-flex items-center gap-1">
+      <span class="text-sky-600 text-[11px] font-bold leading-none">L</span>
+      Low
+    </span>
+    <span class="inline-flex items-center gap-1">
+      <svg class="text-red-500 size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054a8.25 8.25 0 0 0 5.58.652l3.109-.732a.75.75 0 0 1 .93.706v11.28a.75.75 0 0 1-.57.726l-3.14.74a9.75 9.75 0 0 1-6.725-.738l-.108-.054a8.25 8.25 0 0 0-5.58-.652l-1.838.46V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
+      </svg>
+      Flagged
+    </span>
+    <span class="inline-flex items-center gap-1">
+      <svg class="size-4 text-yellow-600 dark:text-yellow-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM9 8.25a.75.75 0 0 0-.75.75v6c0 .414.336.75.75.75h.75a.75.75 0 0 0 .75-.75V9a.75.75 0 0 0-.75-.75H9Zm5.25 0a.75.75 0 0 0-.75.75v6c0 .414.336.75.75.75H15a.75.75 0 0 0 .75-.75V9a.75.75 0 0 0-.75-.75h-.75Z" clip-rule="evenodd" />
+      </svg>
+      Paused
+    </span>
+    <span class="inline-flex items-center gap-1">
+      <svg class="text-red-500 size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M9.53 2.47a.75.75 0 0 1 0 1.06L4.81 8.25H15a6.75 6.75 0 0 1 0 13.5h-3a.75.75 0 0 1 0-1.5h3a5.25 5.25 0 1 0 0-10.5H4.81l4.72 4.72a.75.75 0 1 1-1.06 1.06l-6-6a.75.75 0 0 1 0-1.06l6-6a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
+      </svg>
+      Rollback
+    </span>
+  </div>
 
   @if (showCreate()) {
     <app-new-task-modal

@@ -1,5 +1,13 @@
 <div class="mb-4 flex items-center justify-between gap-3">
   <div class="inline-block">
+    @if (backLink(); as link) {
+      <a class="text-muted-foreground hover:text-primary mb-1 inline-flex items-center gap-1 text-sm font-semibold" [routerLink]="link">
+        <svg class="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clip-rule="evenodd" />
+        </svg>
+        {{ backLabel() }}
+      </a>
+    }
     <h3 class="text-foreground font-semibold">{{ title() }}</h3>
     @if (subtitle()) {
       <div class="text-muted-foreground text-xs font-medium">{{ subtitle() }}</div>

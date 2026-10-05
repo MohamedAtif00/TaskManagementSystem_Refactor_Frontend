@@ -1,6 +1,6 @@
 import { CdkDragDrop, CdkDragEnd } from '@angular/cdk/drag-drop';
 import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
 import { forkJoin, of, Subscription } from 'rxjs';
 import { PermissionCodes } from '@core/models/permission-codes';
@@ -59,7 +59,6 @@ const COLUMN_PAGE_SIZE = 10;
 @Component({
   selector: 'app-task-board',
   imports: [
-    RouterLink,
     PageHeaderComponent,
     LoCodeDisplayToggleComponent,
     ButtonComponent,
