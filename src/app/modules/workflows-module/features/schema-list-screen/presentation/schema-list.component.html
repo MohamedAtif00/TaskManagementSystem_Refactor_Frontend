@@ -13,68 +13,153 @@
     <div>
       <h2 class="text-foreground text-lg font-semibold">{{ schema.name }}</h2>
       <p class="text-muted-foreground text-sm">{{ schema.description || 'No description' }}</p>
+      <p class="text-muted-foreground mt-1 text-xs">Start nodes stay at the top and End nodes stay at the bottom. Nodes in a blue group run at the same time.</p>
     </div>
     <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="openAddNode()">Add node</app-button>
   </div>
-  <div
-    class="space-y-3"
-    cdkDropList
-    [cdkDropListDisabled]="reordering()"
-    (cdkDropListDropped)="onNodeDrop($event)"
-  >
-    @for (node of nodes(); track node.id; let nodeIndex = $index) {
-      <div class="border-border/60 bg-card shadow-sm rounded-xl border p-4" cdkDrag [cdkDragDisabled]="reordering()">
+  @if (!nodes().length) {
+    <p class="text-muted-foreground py-8 text-center text-sm">No nodes yet. Add a start node, then attach task-bank steps.</p>
+  } @else {
+  <div class="space-y-3">
+    @for (band of pinnedBands('start'); track band.nodes[0].node.id) {
+      <ng-container *ngTemplateOutlet="nodeBand; context: { band: band, locked: true }" />
+    }
+    <div
+      class="space-y-3"
+      cdkDropList
+      [cdkDropListDisabled]="reordering()"
+      (cdkDropListDropped)="onNodeDrop($event)"
+    >
+      @for (band of middleBands(); track band.nodes[0].node.id) {
+        <div
+          cdkDrag
+          [cdkDragDisabled]="reordering()"
+          [class]="band.parallel ? 'border-sky-500/70 bg-sky-500/10 space-y-3 rounded-xl border-2 p-3' : 'space-y-3'"
+        >
+          <ng-container *ngTemplateOutlet="nodeBandBody; context: { band: band, locked: false }" />
+        </div>
+      }
+    </div>
+    @for (band of pinnedBands('end'); track band.nodes[0].node.id) {
+      <ng-container *ngTemplateOutlet="nodeBand; context: { band: band, locked: true }" />
+    }
+  </div>
+  }
+
+  <ng-template #nodeBand let-band="band" let-locked="locked">
+    <div [class]="band.parallel ? 'border-sky-500/70 bg-sky-500/10 space-y-3 rounded-xl border-2 p-3' : 'space-y-3'">
+      <ng-container *ngTemplateOutlet="nodeBandBody; context: { band: band, locked: locked }" />
+    </div>
+  </ng-template>
+
+  <ng-template #nodeBandBody let-band="band" let-locked="locked">
+        @if (band.parallel) {
+          <p class="text-sky-700 flex items-center gap-2 text-xs font-semibold">
+            @if (!locked) {
+              <button
+                type="button"
+                class="cursor-grab px-1 text-xs active:cursor-grabbing"
+                cdkDragHandle
+                aria-label="Drag parallel group"
+              >
+                ⋮⋮
+              </button>
+              <button
+                type="button"
+                class="hover:text-sky-900 px-1 text-sm font-semibold disabled:opacity-40"
+                [disabled]="reordering() || isFirstMovable(band.nodes[0].node.id)"
+                (click)="moveNode(band.nodes[0].node.id, -1)"
+                aria-label="Move parallel group up"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="hover:text-sky-900 px-1 text-sm font-semibold disabled:opacity-40"
+                [disabled]="reordering() || isLastMovable(band.nodes[0].node.id)"
+                (click)="moveNode(band.nodes[0].node.id, 1)"
+                aria-label="Move parallel group down"
+              >
+                ↓
+              </button>
+            }
+            <svg class="size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M4 4.5A1.5 1.5 0 0 1 5.5 3h2A1.5 1.5 0 0 1 9 4.5v11A1.5 1.5 0 0 1 7.5 17h-2A1.5 1.5 0 0 1 4 15.5v-11ZM11 4.5A1.5 1.5 0 0 1 12.5 3h2A1.5 1.5 0 0 1 16 4.5v11a1.5 1.5 0 0 1-1.5 1.5h-2A1.5 1.5 0 0 1 11 15.5v-11Z" />
+            </svg>
+            {{ locked ? 'Parallel — these nodes stay together' : 'Parallel — move this group together' }}
+          </p>
+        }
+        @for (item of band.nodes; track item.node.id) {
+      <div class="border-border/60 bg-card shadow-sm rounded-xl border p-4" [class.border-sky-500]="band.parallel">
         <div class="mb-3 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            class="text-muted-foreground hover:text-foreground cursor-grab px-1 text-xs active:cursor-grabbing"
-            cdkDragHandle
-            aria-label="Drag node"
-          >
-            ⋮⋮
-          </button>
-          <span class="text-muted-foreground text-xs font-medium">#{{ node.order }}</span>
-          <span class="text-foreground text-sm font-semibold">{{ node.name }}</span>
-          @if (node.isStart) {
+          @if (!band.parallel && !locked) {
+            <button
+              type="button"
+              class="text-muted-foreground hover:text-foreground cursor-grab px-1 text-xs active:cursor-grabbing"
+              cdkDragHandle
+              aria-label="Drag node"
+            >
+              ⋮⋮
+            </button>
+          }
+          <span class="text-muted-foreground text-xs font-medium">#{{ item.node.order }}</span>
+          <span class="text-foreground text-sm font-semibold">{{ item.node.name }}</span>
+          @if (band.parallel) {
+            <span class="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">Parallel</span>
+          }
+          @if (item.node.isStart) {
             <span class="text-muted-foreground text-xs">Start</span>
           }
-          @if (node.isEnd) {
+          @if (item.node.isEnd) {
             <span class="text-muted-foreground text-xs">End</span>
           }
           <span class="ml-auto flex items-center gap-2">
+            @if (!band.parallel) {
+              <button
+                type="button"
+                class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
+                [disabled]="reordering() || locked || isFirstMovable(item.node.id)"
+                (click)="moveNode(item.node.id, -1)"
+                aria-label="Move node up"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
+                [disabled]="reordering() || locked || isLastMovable(item.node.id)"
+                (click)="moveNode(item.node.id, 1)"
+                aria-label="Move node down"
+              >
+                ↓
+              </button>
+            }
             <button
+              class="text-sky-700 hover:text-sky-900 text-xs font-semibold disabled:opacity-40"
               type="button"
-              class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
-              [disabled]="reordering() || nodeIndex === 0"
-              (click)="moveNode(nodeIndex, -1)"
-              aria-label="Move node up"
+              [disabled]="reordering() || locked || item.node.isStart || item.node.isEnd || nodes().length < 2"
+              (click)="openParallel(item.node)"
             >
-              ↑
+              Run in parallel
             </button>
-            <button
-              type="button"
-              class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
-              [disabled]="reordering() || nodeIndex === nodes().length - 1"
-              (click)="moveNode(nodeIndex, 1)"
-              aria-label="Move node down"
-            >
-              ↓
-            </button>
-            <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openAddStep(node)">
+            <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openAddStep(item.node)">
               Add step
             </button>
-            <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEditNode(node)">
+            <button class="text-muted-foreground hover:text-primary text-xs font-semibold" type="button" (click)="openEditNode(item.node)">
               Edit
             </button>
-            <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askArchive('node', node.id, node.name)">
+            <button class="text-muted-foreground hover:text-destructive text-xs font-semibold" type="button" (click)="askArchive('node', item.node.id, item.node.name)">
               Archive
             </button>
           </span>
         </div>
-        @if (predecessorNames(node)) {
-          <p class="text-muted-foreground mb-2 text-xs">After {{ predecessorNames(node) }}</p>
+        @if (band.parallel) {
+          <p class="text-sky-800 mb-2 text-xs font-medium">Runs together with {{ parallelSiblingNames(item.node) }}</p>
         }
-        @if (node.steps.length) {
+        @if (predecessorNames(item.node)) {
+          <p class="text-muted-foreground mb-2 text-xs">After {{ predecessorNames(item.node) }}</p>
+        }
+        @if (item.node.steps.length) {
           <table class="text-muted-foreground table w-full table-auto text-left text-sm">
             <thead class="text-xs">
               <tr>
@@ -89,9 +174,9 @@
             <tbody
               cdkDropList
               [cdkDropListDisabled]="reordering()"
-              (cdkDropListDropped)="onStepDrop(node, $event)"
+              (cdkDropListDropped)="onStepDrop(item.node, $event)"
             >
-              @for (step of node.steps; track step.id; let stepIndex = $index) {
+              @for (step of item.node.steps; track step.id; let stepIndex = $index) {
                 <tr cdkDrag [cdkDragDisabled]="reordering()">
                   <td class="py-1">
                     <button
@@ -113,7 +198,7 @@
                         type="button"
                         class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
                         [disabled]="reordering() || stepIndex === 0"
-                        (click)="moveStep(node, stepIndex, -1)"
+                        (click)="moveStep(item.node, stepIndex, -1)"
                         aria-label="Move step up"
                       >
                         ↑
@@ -121,8 +206,8 @@
                       <button
                         type="button"
                         class="text-muted-foreground hover:text-primary text-xs font-semibold disabled:opacity-40"
-                        [disabled]="reordering() || stepIndex === node.steps.length - 1"
-                        (click)="moveStep(node, stepIndex, 1)"
+                        [disabled]="reordering() || stepIndex === item.node.steps.length - 1"
+                        (click)="moveStep(item.node, stepIndex, 1)"
                         aria-label="Move step down"
                       >
                         ↓
@@ -143,10 +228,8 @@
           <p class="text-muted-foreground text-xs">No steps yet.</p>
         }
       </div>
-    } @empty {
-      <p class="text-muted-foreground py-8 text-center text-sm">No nodes yet. Add a start node, then attach task-bank steps.</p>
-    }
-  </div>
+        }
+  </ng-template>
 } @else {
   @if (loading()) {
     <app-table-skeleton [rows]="8" [columns]="5" />
@@ -247,6 +330,9 @@
           <input type="checkbox" [(ngModel)]="nodeForm.isEnd" name="isEnd" />
           <span>End node</span>
         </label>
+        @if (anchorFlagError()) {
+          <p class="text-destructive text-xs">{{ anchorFlagError() }}</p>
+        }
         @if (otherNodes().length) {
           <fieldset class="space-y-2">
             <legend class="text-muted-foreground mb-1 text-xs font-medium">Comes after</legend>
@@ -302,6 +388,33 @@
       <div class="mt-5 flex justify-end gap-2">
         <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="closeStepForm()">Cancel</app-button>
         <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="saveStep()">Save</app-button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (parallelFor(); as source) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border w-full max-w-md rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-2 text-lg font-semibold">Run “{{ source.name }}” in parallel</h3>
+      <p class="text-muted-foreground mb-4 text-sm">Pick another node. Both will start after the same earlier node, so they run at the same time.</p>
+      <div class="max-h-72 space-y-2 overflow-y-auto">
+        @for (other of parallelChoices(source); track other.id) {
+          <button
+            type="button"
+            class="border-border hover:border-sky-500 hover:bg-sky-500/10 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm disabled:opacity-50"
+            [disabled]="alreadyParallel(source, other)"
+            (click)="makeParallel(source, other)"
+          >
+            <span class="text-foreground font-semibold">{{ other.name }}</span>
+            @if (alreadyParallel(source, other)) {
+              <span class="text-sky-700 text-xs font-semibold">Already parallel</span>
+            }
+          </button>
+        }
+      </div>
+      <div class="mt-5 flex justify-end">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="closeParallel()">Cancel</app-button>
       </div>
     </div>
   </div>
