@@ -5,12 +5,13 @@ import { catchError, map, switchMap } from 'rxjs/operators';
 import { ListPageResponse } from '@core/models/list-page.model';
 import { mapApiRole } from '@core/models/role-map';
 import { API, apiPath } from '@core/network/api/api.const';
+import { BalancesDto, mapBalances } from '@core/network/hr-map';
 import { mapHttpError } from '@core/network/http-error';
 import { NetworkService } from '@core/network/network.service';
 import { OrganizationCatalogService } from '@core/network/organization-catalog.service';
 import { RoleCatalogService } from '@core/network/role-catalog.service';
 import { UserDirectoryService } from '@core/network/user-directory.service';
-import { UserFormPayload, UserListParams } from '../../../domain/entity/user-list.entity';
+import { UserBalanceEntity, UserBalanceUpdate, UserFormPayload, UserListParams } from '../../../domain/entity/user-list.entity';
 import { UserDetailModel, UserFormOptionsModel, UserListItemModel } from '../../model/user-list.model';
 import { UserListRemoteDataSource } from './user-list-remote-datasource';
 
@@ -19,14 +20,17 @@ interface UserDetailDto {
   code: string;
   name: string;
   hrCode: string;
-  email?: string;
-  phone?: string;
-  title?: string;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
   roleId: number;
   roleName: string;
   accountType: number;
+  onBoard?: boolean;
   teamId?: number | null;
-  teamName?: string;
+  teamName?: string | null;
+  teamleaderId?: number | null;
+  teamleaderName?: string | null;
 }
 
 interface UserListItemDto {
@@ -74,6 +78,33 @@ export class UserListRemoteDataSourceImpl extends UserListRemoteDataSource {
       map((row) => this.toDetail(row)),
       catchError(mapHttpError),
     );
+  }
+
+  getUserBalance(id: number): Observable<UserBalanceEntity> {
+    return this.network.get<BalancesDto>(apiPath(API.Leaves.BalancesByUser, { userId: id })).pipe(
+      map((row) => mapBalances(row)),
+      catchError(mapHttpError),
+    );
+  }
+
+  saveUserBalance(payload: UserBalanceUpdate): Observable<UserBalanceEntity> {
+    return this.network
+      .put<BalancesDto>(apiPath(API.Leaves.BalancesByUser, { userId: payload.userId }), {
+        annualLeave: payload.annualUsed,
+        annualLeaveMax: payload.annualMax,
+        emergencyLeave: payload.emergencyUsed,
+        emergencyLeaveMax: payload.emergencyMax,
+        sickLeave: payload.sickUsed,
+        permission: payload.permissionUsed,
+        permissionMax: payload.permissionMax,
+        workFromHome: payload.wfhUsed,
+        workFromHomeMax: payload.wfhMax,
+        fromNextBalanceDaysUsed: payload.fromNextUsed,
+      })
+      .pipe(
+        map((row) => mapBalances(row)),
+        catchError(mapHttpError),
+      );
   }
 
   saveUser(payload: UserFormPayload): Observable<UserDetailModel> {
@@ -129,16 +160,20 @@ export class UserListRemoteDataSourceImpl extends UserListRemoteDataSource {
   private toDetail(row: UserDetailDto): UserDetailModel {
     return {
       id: row.id,
+      code: row.code,
       name: row.name,
       hrCode: row.hrCode || row.code,
-      email: row.email,
-      phone: row.phone,
-      title: row.title,
+      email: row.email ?? undefined,
+      phone: row.phone ?? undefined,
+      title: row.title ?? undefined,
       roleId: row.roleId,
       roleName: row.roleName,
       accountType: row.accountType,
+      onBoard: row.onBoard ?? false,
       teamId: row.teamId,
-      teamName: row.teamName,
+      teamName: row.teamName ?? undefined,
+      teamleaderId: row.teamleaderId,
+      teamleaderName: row.teamleaderName ?? undefined,
     };
   }
 }

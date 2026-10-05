@@ -1,6 +1,10 @@
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
+import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
+import { ADMIN_ROLES } from '@core/models/user-role';
+import { AuthService } from '@core/services/auth.service';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
 import { PagerComponent } from '@shared/component/pager/pager.component';
@@ -42,6 +46,8 @@ export class UserListComponent implements OnInit, OnDestroy {
     private saveUserUseCase: SaveUserUseCase,
     private archiveUserUseCase: ArchiveUserUseCase,
     private formOptionsUseCase: UserFormOptionsUseCase,
+    private auth: AuthService,
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
@@ -83,6 +89,17 @@ export class UserListComponent implements OnInit, OnDestroy {
         toast.error(err.message);
       },
     });
+  }
+
+  canOpenDetails(): boolean {
+    return this.auth.hasRole(ADMIN_ROLES);
+  }
+
+  openDetails(row: UserListItemEntity): void {
+    if (!this.canOpenDetails()) {
+      return;
+    }
+    void this.router.navigateByUrl(ROUTE_PATHS.userDetail(row.id));
   }
 
   openCreate(): void {

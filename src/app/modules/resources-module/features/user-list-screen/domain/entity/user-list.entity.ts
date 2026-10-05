@@ -34,6 +34,7 @@ export interface UserFormPayload {
 
 export interface UserDetailEntity {
   id: number;
+  code: string;
   name: string;
   hrCode: string;
   email?: string;
@@ -42,8 +43,11 @@ export interface UserDetailEntity {
   roleId: number;
   roleName: string;
   accountType: number;
+  onBoard: boolean;
   teamId?: number | null;
   teamName?: string;
+  teamleaderId?: number | null;
+  teamleaderName?: string;
 }
 
 export interface UserRoleOption {
@@ -59,4 +63,32 @@ export interface UserTeamOption {
 export interface UserFormOptions {
   roles: UserRoleOption[];
   teams: UserTeamOption[];
+}
+
+export interface UserBalanceEntity {
+  annualUsed: number;
+  annualMax: number;
+  sickUsed: number;
+  emergencyUsed: number;
+  emergencyMax: number;
+  permissionUsed: number;
+  permissionMax: number;
+  wfhUsed: number;
+  wfhMax: number;
+  fromNextUsed: number;
+  fromNextMax: number;
+}
+
+export interface UserBalanceUpdate {
+  userId: number;
+  annualUsed: number;
+  annualMax: number;
+  sickUsed: number;
+  emergencyUsed: number;
+  emergencyMax: number;
+  permissionUsed: number;
+  permissionMax: number;
+  wfhUsed: number;
+  wfhMax: number;
+  fromNextUsed: number;
 }

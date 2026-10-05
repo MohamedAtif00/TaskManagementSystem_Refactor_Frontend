@@ -17,6 +17,14 @@ export const RESOURCES_ROUTES: Routes = [
       import('./features/user-list-screen/presentation/user-list.component').then((m) => m.UserListComponent),
   },
   {
+    path: 'users/:userId',
+    canActivate: [roleGuard],
+    data: { permissions: [PermissionCodes.IdentityUsers.Read] },
+    providers: USER_LIST_DI_CONTAINER,
+    loadComponent: () =>
+      import('./features/user-list-screen/presentation/user-detail.component').then((m) => m.UserDetailComponent),
+  },
+  {
     path: 'roles',
     canActivate: [roleGuard],
     data: { permissions: [PermissionCodes.IdentityRoles.Read] },

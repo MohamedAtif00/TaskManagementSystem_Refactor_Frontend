@@ -25,6 +25,7 @@ export const ROUTE_PATHS = {
   membersLeaves: '/leaves/members',
   memberLeaveHistory: (userId: number | string) => `/leaves/members/${userId}`,
   users: '/resources/users',
+  userDetail: (userId: number | string) => `/resources/users/${userId}`,
   roles: '/resources/roles',
   teams: '/resources/teams',
   sections: '/resources/sections',

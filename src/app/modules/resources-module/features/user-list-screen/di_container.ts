@@ -6,6 +6,8 @@ import { UserListRemoteDataSourceImpl } from './data/data_source/remote/user-lis
 import { UserListLocalDataSource } from './data/data_source/local/user-list-local-datasource';
 import { UserListLocalDataSourceImpl } from './data/data_source/local/user-list-local-datasource-impl';
 import { UserListUseCase } from './domain/usecase/user-list.usecase';
+import { GetUserBalanceUseCase } from './domain/usecase/get-user-balance.usecase';
+import { SaveUserBalanceUseCase } from './domain/usecase/save-user-balance.usecase';
 import { GetUserUseCase } from './domain/usecase/get-user.usecase';
 import { SaveUserUseCase } from './domain/usecase/save-user.usecase';
 import { ArchiveUserUseCase } from './domain/usecase/archive-user.usecase';
@@ -17,6 +19,8 @@ export const USER_LIST_DI_CONTAINER: Provider[] = [
   { provide: UserListLocalDataSource, useClass: UserListLocalDataSourceImpl },
   UserListUseCase,
   GetUserUseCase,
+  GetUserBalanceUseCase,
+  SaveUserBalanceUseCase,
   SaveUserUseCase,
   ArchiveUserUseCase,
   UserFormOptionsUseCase,

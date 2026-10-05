@@ -1,0 +1,225 @@
+<app-page-header title="User details" subtitle="Profile for this person" [backLink]="usersLink" backLabel="Back to users">
+  @if (!loading() && user() && !editing()) {
+    <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="startEdit()">Edit</app-button>
+  }
+</app-page-header>
+
+@if (loading()) {
+  <app-table-skeleton [rows]="6" [columns]="2" />
+} @else if (user(); as person) {
+  @if (editing()) {
+    <section class="border-border/60 bg-card max-w-3xl rounded-xl border p-5 shadow-sm">
+      <h2 class="text-foreground text-lg font-semibold">Edit user</h2>
+      <div class="mt-4 space-y-3">
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Name</span>
+          <input type="text" [(ngModel)]="form.name" name="userName" />
+        </label>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">HR code</span>
+          <input type="text" class="uppercase" [(ngModel)]="form.hrCode" name="hrCode" />
+        </label>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Email</span>
+            <input type="email" [(ngModel)]="form.email" name="email" />
+          </label>
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Phone</span>
+            <input type="text" [(ngModel)]="form.phone" name="phone" />
+          </label>
+        </div>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Title</span>
+          <input type="text" [(ngModel)]="form.title" name="title" />
+        </label>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Role</span>
+          <select [(ngModel)]="form.roleId" name="roleId">
+            @for (role of options().roles; track role.id) {
+              <option [ngValue]="role.id">{{ role.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Team</span>
+          <select [(ngModel)]="form.teamId" name="teamId">
+            <option [ngValue]="0">None</option>
+            @for (team of options().teams; track team.id) {
+              <option [ngValue]="team.id">{{ team.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Account type</span>
+          <select [(ngModel)]="form.accountType" name="accountType">
+            <option [ngValue]="0">Internal</option>
+            <option [ngValue]="1">External</option>
+          </select>
+        </label>
+        @if (formError) {
+          <p class="text-destructive text-xs">{{ formError }}</p>
+        }
+      </div>
+      <div class="mt-5 flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="cancelEdit()">Cancel</app-button>
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="save()">Save</app-button>
+      </div>
+    </section>
+  } @else {
+    <section class="border-border/60 bg-card max-w-3xl rounded-xl border p-5 shadow-sm">
+      <h2 class="text-foreground text-lg font-semibold">{{ person.name }}</h2>
+      <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Login code</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ text(person.code) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">HR code</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ text(person.hrCode) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Title</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ text(person.title) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Role</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ text(person.roleName) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Email</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ text(person.email) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Phone</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ text(person.phone) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Team</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ text(person.teamName) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Team leader</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ text(person.teamleaderName) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Account type</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ accountType(person.accountType) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">On board</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ onBoard(person.onBoard) }}</dd>
+        </div>
+      </dl>
+    </section>
+  }
+
+  <section class="border-border/60 bg-card mt-4 max-w-3xl rounded-xl border p-5 shadow-sm">
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="text-foreground text-lg font-semibold">Employee balance</h2>
+      @if (balance() && !editingBalance()) {
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="startBalanceEdit()">Edit balance</app-button>
+      }
+    </div>
+    @if (balanceLoading()) {
+      <app-table-skeleton [rows]="3" [columns]="2" />
+    } @else if (balance(); as figures) {
+      <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Annual</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ usedOf(figures.annualUsed, figures.annualMax) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Sick</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ figures.sickUsed }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Emergency</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ usedOf(figures.emergencyUsed, figures.emergencyMax) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Permission</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ usedOf(figures.permissionUsed, figures.permissionMax) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">Work from home</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ usedOf(figures.wfhUsed, figures.wfhMax) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted-foreground text-xs font-medium">From next balance</dt>
+          <dd class="text-foreground mt-1 text-sm">{{ usedOf(figures.fromNextUsed, figures.fromNextMax) }}</dd>
+        </div>
+      </dl>
+    } @else if (balanceMissing()) {
+      <p class="text-muted-foreground mt-4 text-sm">This balance could not be loaded.</p>
+    }
+  </section>
+} @else {
+  <p class="text-muted-foreground text-sm">This user could not be loaded.</p>
+}
+
+@if (editingBalance()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-card border-border max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-5 shadow-lg">
+      <h3 class="text-foreground mb-4 text-lg font-semibold">Edit balance</h3>
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Annual used</span>
+            <input type="number" min="0" [(ngModel)]="balanceForm.annualUsed" name="annualUsed" />
+          </label>
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Annual max</span>
+            <input type="number" min="0" [(ngModel)]="balanceForm.annualMax" name="annualMax" />
+          </label>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Emergency used</span>
+            <input type="number" min="0" [(ngModel)]="balanceForm.emergencyUsed" name="emergencyUsed" />
+          </label>
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Emergency max</span>
+            <input type="number" min="0" [(ngModel)]="balanceForm.emergencyMax" name="emergencyMax" />
+          </label>
+        </div>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">Sick used</span>
+          <input type="number" min="0" [(ngModel)]="balanceForm.sickUsed" name="sickUsed" />
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Permission used</span>
+            <input type="number" min="0" [(ngModel)]="balanceForm.permissionUsed" name="permissionUsed" />
+          </label>
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Permission max</span>
+            <input type="number" min="0" [(ngModel)]="balanceForm.permissionMax" name="permissionMax" />
+          </label>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Work from home used</span>
+            <input type="number" min="0" [(ngModel)]="balanceForm.wfhUsed" name="wfhUsed" />
+          </label>
+          <label class="block">
+            <span class="text-muted-foreground mb-1 block text-xs font-medium">Work from home max</span>
+            <input type="number" min="0" [(ngModel)]="balanceForm.wfhMax" name="wfhMax" />
+          </label>
+        </div>
+        <label class="block">
+          <span class="text-muted-foreground mb-1 block text-xs font-medium">From next balance used</span>
+          <input type="number" min="0" [(ngModel)]="balanceForm.fromNextUsed" name="fromNextUsed" />
+          <span class="text-muted-foreground mt-1 block text-xs">Maximum {{ balanceForm.fromNextMax }}</span>
+        </label>
+        @if (balanceError) {
+          <p class="text-destructive text-xs">{{ balanceError }}</p>
+        }
+      </div>
+      <div class="mt-5 flex justify-end gap-2">
+        <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="cancelBalanceEdit()">Cancel</app-button>
+        <app-button impact="bold" tone="primary" size="small" type="button" (buttonClick)="saveBalance()">Save</app-button>
+      </div>
+    </div>
+  </div>
+}

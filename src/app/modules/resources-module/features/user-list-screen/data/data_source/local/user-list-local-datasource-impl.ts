@@ -4,7 +4,7 @@ import { delay, map } from 'rxjs/operators';
 import { ListPageResponse } from '@core/models/list-page.model';
 import { mapApiRole } from '@core/models/role-map';
 import { TmsMockStore } from '@core/mock/tms-mock.store';
-import { UserFormPayload, UserListParams } from '../../../domain/entity/user-list.entity';
+import { UserBalanceEntity, UserBalanceUpdate, UserFormPayload, UserListParams } from '../../../domain/entity/user-list.entity';
 import { UserDetailModel, UserFormOptionsModel, UserListItemModel } from '../../model/user-list.model';
 import { UserListLocalDataSource } from './user-list-local-datasource';
 
@@ -48,6 +48,45 @@ export class UserListLocalDataSourceImpl extends UserListLocalDataSource {
     return of(this.toDetail(user)).pipe(delay(80));
   }
 
+  getUserBalance(id: number): Observable<UserBalanceEntity> {
+    const user = this.store.getAdminUser(id);
+    if (!user) {
+      return throwError(() => new Error('User not found'));
+    }
+    return of({ ...user.balances }).pipe(delay(80));
+  }
+
+  saveUserBalance(payload: UserBalanceUpdate): Observable<UserBalanceEntity> {
+    const user = this.store.users.find((row) => row.id === payload.userId && !row.archived);
+    if (!user) {
+      return throwError(() => new Error('User not found'));
+    }
+    const current = user.balances;
+    if (
+      payload.annualUsed > payload.annualMax
+      || payload.emergencyUsed > payload.emergencyMax
+      || payload.permissionUsed > payload.permissionMax
+      || payload.wfhUsed > payload.wfhMax
+      || payload.fromNextUsed > current.fromNextMax
+    ) {
+      return throwError(() => new Error('Used balance cannot be above its maximum.'));
+    }
+    user.balances = {
+      ...current,
+      annualUsed: payload.annualUsed,
+      annualMax: payload.annualMax,
+      sickUsed: payload.sickUsed,
+      emergencyUsed: payload.emergencyUsed,
+      emergencyMax: payload.emergencyMax,
+      permissionUsed: payload.permissionUsed,
+      permissionMax: payload.permissionMax,
+      wfhUsed: payload.wfhUsed,
+      wfhMax: payload.wfhMax,
+      fromNextUsed: payload.fromNextUsed,
+    };
+    return of({ ...user.balances }).pipe(delay(80));
+  }
+
   saveUser(payload: UserFormPayload): Observable<UserDetailModel> {
     const saved = this.store.saveAdminUser(payload);
     if (!saved) {
@@ -74,6 +113,7 @@ export class UserListLocalDataSourceImpl extends UserListLocalDataSource {
     const row = user as NonNullable<ReturnType<TmsMockStore['getAdminUser']>>;
     return {
       id: row.id,
+      code: row.code,
       name: row.name,
       hrCode: row.code,
       email: row.email,
@@ -82,6 +122,7 @@ export class UserListLocalDataSourceImpl extends UserListLocalDataSource {
       roleId: row.roleId,
       roleName: row.roleName,
       accountType: row.accountType,
+      onBoard: true,
       teamId: row.teamId,
       teamName: row.teamName ?? undefined,
     };

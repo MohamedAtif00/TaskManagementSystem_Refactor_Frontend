@@ -3,6 +3,8 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 import {
+  UserBalanceEntity,
+  UserBalanceUpdate,
   UserDetailEntity,
   UserFormOptions,
   UserFormPayload,
@@ -34,6 +36,14 @@ export class UserListImplementationRepository implements UserListRepository {
   getUser(id: number): Observable<UserDetailEntity> {
     const source = environment.useMock ? this.local.getUser(id) : this.remote.getUser(id);
     return source.pipe(map((row) => UserListMapper.toDetail(row)));
+  }
+
+  getUserBalance(id: number): Observable<UserBalanceEntity> {
+    return environment.useMock ? this.local.getUserBalance(id) : this.remote.getUserBalance(id);
+  }
+
+  saveUserBalance(payload: UserBalanceUpdate): Observable<UserBalanceEntity> {
+    return environment.useMock ? this.local.saveUserBalance(payload) : this.remote.saveUserBalance(payload);
   }
 
   saveUser(payload: UserFormPayload): Observable<UserDetailEntity> {
