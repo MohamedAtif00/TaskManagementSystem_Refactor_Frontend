@@ -1,4 +1,4 @@
-const API_BASE = process.env.TMS_API_URL ?? 'http://localhost:61173';
+const API_BASE = process.env.TMS_API_URL ?? 'http://localhost:5100';
 
 async function globalSetup(): Promise<void> {
   let openapiOk = false;
@@ -26,8 +26,9 @@ async function globalSetup(): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code: 'TST001' }),
   });
+  const loginBody = (await loginResponse.json().catch(() => null)) as { accessToken?: string } | null;
 
-  if (!loginResponse.ok) {
+  if (!loginResponse.ok || !loginBody?.accessToken) {
     throw new Error(
       'TST001 login failed. Run .\\scripts\\seed-stack.ps1 to migrate and seed the database (including TST001 Owner).',
     );

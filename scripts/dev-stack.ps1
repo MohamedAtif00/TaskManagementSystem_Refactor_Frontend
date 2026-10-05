@@ -1,4 +1,4 @@
-# Starts backend API (:61173) and Angular frontend (:4200) against a seeded SQL Server database.
+# Starts backend API (:5100) and Angular frontend (:4200) against a seeded SQL Server database.
 # Usage:
 #   ./scripts/dev-stack.ps1                 # start servers only
 #   ./scripts/dev-stack.ps1 -Seed           # migrate + seed first, then start
@@ -30,14 +30,14 @@ if ($Seed) {
     & $seedScript @seedArgs
 }
 
-if (Test-PortInUse 61173) {
-    Write-Warning "Port 61173 is already in use. Backend may already be running."
+if (Test-PortInUse 5100) {
+    Write-Warning "Port 5100 is already in use. Backend may already be running."
 } else {
-    Write-Host "Starting backend on http://localhost:61173 ..."
+    Write-Host "Starting backend on http://localhost:5100 ..."
     Start-Process powershell -ArgumentList @(
         "-NoExit",
         "-Command",
-        "cd '$backendRoot'; dotnet run --project '$apiProject' --urls 'http://localhost:61173'"
+        "cd '$backendRoot'; dotnet run --project '$apiProject' --urls 'http://localhost:5100'"
     ) | Out-Null
 }
 

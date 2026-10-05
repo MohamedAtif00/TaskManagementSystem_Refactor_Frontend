@@ -6,6 +6,9 @@ const apiProject = path.join(
   backendRoot,
   'src/Api/TaskManagementSystem.Api/TaskManagementSystem.Api.csproj',
 );
+const seedConnectionString =
+  process.env.TMS_CONNECTION_STRING ??
+  'Server=localhost;Database=TaskManagementSystem;Trusted_Connection=True;TrustServerCertificate=True';
 
 export default defineConfig({
   testDir: './e2e/integration',
@@ -28,11 +31,14 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `dotnet run --project "${apiProject}" --urls http://localhost:61173`,
-      url: 'http://localhost:61173/openapi/v1.json',
+      command: `dotnet run --project "${apiProject}" --urls http://localhost:5100`,
+      url: 'http://localhost:5100/openapi/v1.json',
       reuseExistingServer: !process.env.CI,
       timeout: 300_000,
       cwd: backendRoot,
+      env: {
+        ConnectionStrings__DefaultConnection: seedConnectionString,
+      },
     },
     {
       command: 'npx ng serve --host 127.0.0.1 --port 4200',

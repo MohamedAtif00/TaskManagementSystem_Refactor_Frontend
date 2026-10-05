@@ -1,4 +1,4 @@
-const target = 'http://localhost:61173';
+const target = 'http://localhost:5100';
 
 /** Full-page loads must hit the Angular app, not the API (paths like /workflows/schemas overlap). */
 function bypassSpaNavigation(req) {

@@ -58,7 +58,7 @@ Or manually:
 ```powershell
 # Terminal 1 — API
 cd D:\Full-Stack\TaskManagementSystem_Refactor\TaskManagementSystem
-dotnet run --project src\Api\TaskManagementSystem.Api --urls http://localhost:61173
+dotnet run --project src\Api\TaskManagementSystem.Api --urls http://localhost:5100
 
 # Terminal 2 — Angular (proxies API via proxy.conf.json)
 cd D:\Full-Stack\frontend_refactor
