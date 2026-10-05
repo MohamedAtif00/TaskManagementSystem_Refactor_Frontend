@@ -13,6 +13,10 @@ export interface TicketSnapshot {
   userId?: number | null;
   learningObjectiveId: number;
   subjectId: number;
+  name: string;
+  subjectName: string;
+  learningObjectiveName: string;
+  lessonName: string;
 }
 
 export interface LoStats {
@@ -110,6 +114,10 @@ export class TicketStatsService {
           userId: ticket.userId,
           learningObjectiveId: ticket.learningObjectiveId,
           subjectId: ticket.subjectId,
+          name: ticket.name?.trim() || `Task #${ticket.id}`,
+          subjectName: ticket.subjectName?.trim() || `Subject ${ticket.subjectId}`,
+          learningObjectiveName: ticket.learningObjectiveName?.trim() || '',
+          lessonName: ticket.lessonName?.trim() || '',
         })),
         los: response.learningObjectives ?? [],
       })),

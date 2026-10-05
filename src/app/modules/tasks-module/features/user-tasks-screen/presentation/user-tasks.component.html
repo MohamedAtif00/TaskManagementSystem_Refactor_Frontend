@@ -52,10 +52,21 @@
         @for (ticket of userTickets(); track ticket.id) {
           <button
             type="button"
-            class="border-border hover:bg-muted/30 mb-2 flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left"
+            class="border-border hover:bg-muted/30 mb-2 flex w-full items-center justify-between gap-4 rounded-lg border px-4 py-3 text-left"
             (click)="openSubject(ticket.subjectId)">
-            <span class="text-foreground text-sm font-semibold">Task #{{ ticket.id }}</span>
-            <span class="text-muted-foreground text-xs">{{ statusLabel(ticket.status) }} · Subject {{ ticket.subjectId }}</span>
+            <span class="min-w-0">
+              <span class="text-foreground block truncate text-sm font-semibold">{{ ticket.name }}</span>
+              @if (ticket.lessonName) {
+                <span class="text-muted-foreground mt-1 block truncate text-xs">{{ ticket.lessonName }}</span>
+              }
+              @if (ticket.learningObjectiveName) {
+                <span class="text-muted-foreground mt-0.5 block truncate text-xs">{{ ticket.learningObjectiveName }}</span>
+              }
+            </span>
+            <span class="shrink-0 text-right">
+              <span class="text-foreground block text-xs font-semibold">{{ statusLabel(ticket.status) }}</span>
+              <span class="text-muted-foreground mt-1 block text-xs">{{ ticket.subjectName }}</span>
+            </span>
           </button>
         } @empty {
           <p class="text-muted-foreground text-sm">No active tasks for this user.</p>

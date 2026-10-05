@@ -115,6 +115,10 @@ export interface TicketStatsTicket {
   userId?: number | null;
   learningObjectiveId: number;
   subjectId: number;
+  name?: string | null;
+  subjectName?: string | null;
+  learningObjectiveName?: string | null;
+  lessonName?: string | null;
 }
 
 export interface TicketStatsLearningObjective {

@@ -113,10 +113,11 @@ export class UserTasksComponent implements OnInit {
       return;
     }
     downloadCsv(`user-${user.id}-tasks.csv`, tickets, [
-      { header: 'Task ID', value: (row) => row.id },
+      { header: 'Task', value: (row) => row.name },
       { header: 'Status', value: (row) => this.statusLabels[row.status as 0 | 1 | 2 | 3 | 4] ?? row.status },
-      { header: 'Subject ID', value: (row) => row.subjectId },
-      { header: 'LO ID', value: (row) => row.learningObjectiveId },
+      { header: 'Lesson', value: (row) => row.lessonName },
+      { header: 'Learning objective', value: (row) => row.learningObjectiveName },
+      { header: 'Subject', value: (row) => row.subjectName },
     ]);
     toast.success('Exported task list');
   }
