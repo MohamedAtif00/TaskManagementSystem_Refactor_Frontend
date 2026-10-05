@@ -8,12 +8,13 @@ test.describe('Projects (integration)', () => {
 
   test('lists seeded projects', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
-    await expect(page.getByText(/SEED_Project_Y/)).toBeVisible();
+    await expect(page.getByText(/SEED_Project_Y/).first()).toBeVisible();
   });
 
   test('search filters project list', async ({ page }) => {
     await page.getByPlaceholder('Search projects').fill('SEED_Project_Y1');
-    await expect(page.getByText(/SEED_Project_Y1/)).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'SEED_Project_Y1_P1' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: /SEED_Project_Y2/ })).toHaveCount(0);
   });
 
   test('create project modal opens', async ({ page }) => {

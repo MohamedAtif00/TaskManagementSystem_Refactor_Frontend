@@ -1,6 +1,6 @@
-import { Page, expect } from '@playwright/test';
+import { Page, test, expect } from '@playwright/test';
 
-export { expect };
+export { test, expect };
 
 export async function loginAsTST001(page: Page): Promise<void> {
   await page.goto('/auth/sign-in', { waitUntil: 'domcontentloaded' });

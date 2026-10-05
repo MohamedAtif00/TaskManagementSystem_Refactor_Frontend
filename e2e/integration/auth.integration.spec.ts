@@ -10,7 +10,7 @@ test.describe('Authentication (integration)', () => {
     await page.goto('/auth/sign-in');
     await page.locator('#code').fill('NOTREAL');
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page.getByText('Invalid employee code')).toBeVisible();
+    await expect(page.getByText('Invalid code')).toBeVisible();
     await expect(page).toHaveURL(/\/auth\/sign-in/);
   });
 });

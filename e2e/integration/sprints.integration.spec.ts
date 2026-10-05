@@ -8,7 +8,7 @@ test.describe('Sprints (integration)', () => {
 
   test('lists seeded sprints', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Sprints', exact: true })).toBeVisible();
-    await expect(page.getByText(/SEED_Sprint_/)).toBeVisible();
+    await expect(page.getByText(/SEED_Sprint_/).first()).toBeVisible();
   });
 
   test('opens sprint board', async ({ page }) => {

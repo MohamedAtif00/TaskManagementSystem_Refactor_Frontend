@@ -8,7 +8,7 @@ test.describe('Tasks / Kanban (integration)', () => {
   test('lists seeded subjects', async ({ page }) => {
     await page.goto('/tasks');
     await expect(page.getByRole('heading', { name: 'Kanban', exact: true })).toBeVisible();
-    await expect(page.getByText(/SEED_Subject_/)).toBeVisible();
+    await expect(page.getByText(/SEED_Subject_/).first()).toBeVisible();
   });
 
   test('opens a subject board with columns', async ({ page }) => {

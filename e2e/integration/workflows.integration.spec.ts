@@ -8,7 +8,7 @@ test.describe('Workflows (integration)', () => {
   test('schemas list shows seeded schemas', async ({ page }) => {
     await page.goto('/workflows/schemas');
     await expect(page.getByRole('heading', { name: 'Schemas', exact: true })).toBeVisible();
-    await expect(page.getByText(/SEED_Schema_/)).toBeVisible();
+    await expect(page.getByText(/SEED_Schema_/).first()).toBeVisible();
   });
 
   test('task bank list loads', async ({ page }) => {

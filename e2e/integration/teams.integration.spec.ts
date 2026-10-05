@@ -8,7 +8,7 @@ test.describe('Teams (integration)', () => {
 
   test('lists seeded teams', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Teams', exact: true })).toBeVisible();
-    await expect(page.getByText(/SEED_Team_/)).toBeVisible();
+    await expect(page.getByText(/SEED_Team_/).first()).toBeVisible();
   });
 
   test('opens edit form for a team', async ({ page }) => {

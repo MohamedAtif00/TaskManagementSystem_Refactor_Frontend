@@ -14,12 +14,12 @@ test.describe('Resources (integration)', () => {
   test('roles list loads', async ({ page }) => {
     await page.goto('/resources/roles');
     await expect(page.getByRole('heading', { name: 'Roles', exact: true })).toBeVisible();
-    await expect(page.getByText('Owner')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Owner', exact: true })).toBeVisible();
   });
 
   test('sections list shows seeded sections', async ({ page }) => {
     await page.goto('/resources/sections');
     await expect(page.getByRole('heading', { name: 'Sections', exact: true })).toBeVisible();
-    await expect(page.getByText(/SEED_Section_/)).toBeVisible();
+    await expect(page.getByText(/SEED_Section_/).first()).toBeVisible();
   });
 });

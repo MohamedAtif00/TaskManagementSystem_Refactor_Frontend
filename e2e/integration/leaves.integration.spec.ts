@@ -4,7 +4,7 @@ test.describe('Leaves (integration)', () => {
   test('owner sees approval calendar', async ({ page }) => {
     await loginAsTST001(page);
     await page.goto('/leaves/calendar');
-    await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Approvals', exact: true })).toBeVisible();
   });
 
   test('members leaves table loads', async ({ page }) => {
