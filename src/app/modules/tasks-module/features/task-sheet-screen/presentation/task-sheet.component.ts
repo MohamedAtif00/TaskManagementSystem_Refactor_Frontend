@@ -1,6 +1,6 @@
 import { NgClass } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
 import { LoCodeDisplayService } from '@core/lo-code/lo-code-display.service';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
@@ -8,24 +8,29 @@ import { downloadCsv } from '@core/utils/csv-export';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import { LoCodeDisplayToggleComponent } from '@shared/component/lo-code-display-toggle/lo-code-display-toggle.component';
 import { PageHeaderComponent } from '@shared/component/page-header/page-header.component';
+import { PagerComponent } from '@shared/component/pager/pager.component';
 import { TableSkeletonComponent } from '@shared/component/skeleton/table-skeleton.component';
 import { LoCodeLabelPipe } from '@shared/pipes/lo-code-label.pipe';
 import { BoardSource, TaskDetailsEntity, TaskStatus, TASK_STATUS_LABELS } from '../../task-board-screen/domain/entity/task-board.entity';
 import { GetTaskDetailsUseCase } from '../../task-board-screen/domain/usecase/get-task-details.usecase';
 import { TaskDrawerComponent } from '../../task-board-screen/presentation/task-drawer.component';
-import { TaskSheetEntity } from '../domain/entity/task-sheet.entity';
+import { SheetUnitEntity, TaskSheetEntity } from '../domain/entity/task-sheet.entity';
 import { GetTaskSheetUseCase } from '../domain/usecase/get-task-sheet.usecase';
 
 @Component({
   selector: 'app-task-sheet',
-  imports: [NgClass, RouterLink, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, TaskDrawerComponent, TableSkeletonComponent, LoCodeLabelPipe],
+  imports: [NgClass, PageHeaderComponent, LoCodeDisplayToggleComponent, ButtonComponent, TaskDrawerComponent, TableSkeletonComponent, LoCodeLabelPipe, PagerComponent],
   templateUrl: './task-sheet.component.html',
 })
 export class TaskSheetComponent implements OnInit {
   readonly loDisplay = inject(LoCodeDisplayService);
+  readonly pageSize = 10;
   readonly loading = signal(true);
   readonly sheet = signal<TaskSheetEntity | null>(null);
+  readonly page = signal(1);
   readonly selected = signal<TaskDetailsEntity | null>(null);
+  readonly learningObjectiveCount = computed(() => countLearningObjectives(this.sheet()));
+  readonly pagedUnits = computed(() => pageSheetUnits(this.sheet(), this.page(), this.pageSize));
 
   source: BoardSource = 'project';
   entityId = 0;
@@ -58,7 +63,7 @@ export class TaskSheetComponent implements OnInit {
     this.loading.set(true);
     this.sheetUseCase.execute({ source: this.source, id: this.entityId }).subscribe({
       next: (sheet) => {
-        this.sheet.set(sheet);
+        this.placeSheet(sheet, true);
         this.loading.set(false);
       },
       error: (err: Error) => {
@@ -66,6 +71,10 @@ export class TaskSheetComponent implements OnInit {
         toast.error(err.message);
       },
     });
+  }
+
+  onPageChange(page: number): void {
+    this.page.set(page);
   }
 
   chipClass(status: TaskStatus): string {
@@ -133,9 +142,17 @@ export class TaskSheetComponent implements OnInit {
     toast.success('Sheet exported');
   }
 
+  private placeSheet(sheet: TaskSheetEntity, resetPage: boolean): void {
+    this.sheet.set(sheet);
+    const lastPage = Math.max(1, Math.ceil(countLearningObjectives(sheet) / this.pageSize));
+    if (resetPage || this.page() > lastPage) {
+      this.page.set(resetPage ? 1 : lastPage);
+    }
+  }
+
   private refreshSheet(): void {
     this.sheetUseCase.execute({ source: this.source, id: this.entityId }).subscribe({
-      next: (sheet) => this.sheet.set(sheet),
+      next: (sheet) => this.placeSheet(sheet, false),
       error: (err: Error) => toast.error(err.message),
     });
   }
@@ -150,4 +167,42 @@ export class TaskSheetComponent implements OnInit {
     }
     void this.router.navigateByUrl(this.boardPath());
   }
+}
+
+function countLearningObjectives(sheet: TaskSheetEntity | null): number {
+  if (!sheet) {
+    return 0;
+  }
+  return sheet.units.reduce(
+    (total, unit) => total + unit.lessons.reduce((lessonTotal, lesson) => lessonTotal + lesson.learningObjectives.length, 0),
+    0,
+  );
+}
+
+function pageSheetUnits(sheet: TaskSheetEntity | null, page: number, pageSize: number): SheetUnitEntity[] {
+  if (!sheet) {
+    return [];
+  }
+  const rows = sheet.units.flatMap((unit) =>
+    unit.lessons.flatMap((lesson) =>
+      lesson.learningObjectives.map((learningObjective) => ({ unit, lesson, learningObjective })),
+    ),
+  );
+  const start = Math.max(0, (page - 1) * pageSize);
+  const slice = rows.slice(start, start + pageSize);
+  const units: SheetUnitEntity[] = [];
+  for (const row of slice) {
+    let unit = units.at(-1);
+    if (!unit || unit.id !== row.unit.id) {
+      unit = { id: row.unit.id, name: row.unit.name, lessons: [] };
+      units.push(unit);
+    }
+    let lesson = unit.lessons.at(-1);
+    if (!lesson || lesson.id !== row.lesson.id) {
+      lesson = { id: row.lesson.id, name: row.lesson.name, learningObjectives: [] };
+      unit.lessons.push(lesson);
+    }
+    lesson.learningObjectives.push(row.learningObjective);
+  }
+  return units;
 }

@@ -240,39 +240,16 @@ export class CurriculumCatalogService {
     units: { id: number; name: string; lessons: { id: number; name: string; learningObjectives: LoItem[] }[] }[];
   }> {
     if (!this.subjectSheetCache.has(subjectId)) {
-      this.subjectSheetCache.set(subjectId, this.loadSubjectSheet(subjectId).pipe(shareReplay(1)));
+      this.subjectSheetCache.set(
+        subjectId,
+        this.network
+          .get<{ units: { id: number; name: string; lessons: { id: number; name: string; learningObjectives: LoItem[] }[] }[] }>(
+            apiPath(API.Curriculum.SubjectOutline, { subjectId }),
+          )
+          .pipe(catchError(mapHttpError), shareReplay(1)),
+      );
     }
     return this.subjectSheetCache.get(subjectId)!;
-  }
-
-  private loadSubjectSheet(subjectId: number): Observable<{
-    units: { id: number; name: string; lessons: { id: number; name: string; learningObjectives: LoItem[] }[] }[];
-  }> {
-    return this.getSubjectUnits(subjectId).pipe(
-      switchMap((units) => {
-        if (!units.length) {
-          return of({ units: [] });
-        }
-        return forkJoin(
-          units.map((unit) =>
-            this.getUnitLessons(unit.id).pipe(
-              switchMap((lessons) => {
-                if (!lessons.length) {
-                  return of({ ...unit, lessons: [] as { id: number; name: string; learningObjectives: LoItem[] }[] });
-                }
-                return forkJoin(
-                  lessons.map((lesson) =>
-                    this.getLessonLos(lesson.id).pipe(
-                      map((los) => ({ id: lesson.id, name: lesson.name, learningObjectives: los })),
-                    ),
-                  ),
-                ).pipe(map((lessonRows) => ({ id: unit.id, name: unit.name, lessons: lessonRows })));
-              }),
-            ),
-          ),
-        ).pipe(map((unitRows) => ({ units: unitRows })));
-      }),
-    );
   }
 
   getLosForSubject(subjectId: number): Observable<{ id: number; name: string; unitName: string; lessonName: string }[]> {

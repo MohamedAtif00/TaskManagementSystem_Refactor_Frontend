@@ -61,6 +61,7 @@ export const API = {
     SubjectUsers: '/curriculum/subjects/{id}/users',
     SubjectUnassign: '/curriculum/subjects/{id}/users/unassign',
     SubjectUnits: '/curriculum/subjects/{subjectId}/units',
+    SubjectOutline: '/curriculum/subjects/{subjectId}/outline',
     UnitById: '/curriculum/units/{id}',
     UnitLessons: '/curriculum/units/{unitId}/lessons',
     LessonById: '/curriculum/lessons/{id}',
@@ -94,6 +95,7 @@ export const API = {
   },
   Tickets: {
     ListBySubject: '/subjects/{id}/tickets',
+    SheetBySubject: '/subjects/{id}/tickets/sheet',
     AssignmentLinksBySubject: '/subjects/{id}/tickets/assignments',
     ListBySprint: '/sprints/{id}/tickets',
     AssignmentLinksBySprint: '/sprints/{id}/tickets/assignments',

@@ -18,6 +18,7 @@ interface TicketDto {
   status: number;
   learningObjectiveId: number;
   userId?: number | null;
+  userName?: string | null;
   flagged?: boolean;
   pause?: boolean;
   isRollback?: boolean;
@@ -60,7 +61,7 @@ export class TaskSheetRemoteDataSourceImpl extends TaskSheetRemoteDataSource {
     return forkJoin({
       subject: this.network.get<SubjectDto>(apiPath(API.Curriculum.Subject, { id: projectId })),
       sheet: this.catalog.getSubjectSheet(projectId),
-      tickets: this.fetchAllTickets(apiPath(API.Tickets.ListBySubject, { id: projectId })),
+      tickets: this.network.get<TicketDto[]>(apiPath(API.Tickets.SheetBySubject, { id: projectId })),
       directory: this.users.list(),
       assigned: this.network.get<{ id: number; name: string }[]>(apiPath(API.Curriculum.SubjectUsers, { id: projectId })).pipe(
         catchError(() => of([] as { id: number; name: string }[])),
@@ -195,7 +196,12 @@ export class TaskSheetRemoteDataSourceImpl extends TaskSheetRemoteDataSource {
     return tickets
       .filter((ticket) => ticket.learningObjectiveId === loId)
       .map((ticket) => {
-        const user = ticket.userId ? directory.find((row) => row.id === ticket.userId) : undefined;
+        const named = ticket.userName?.trim();
+        const user = named
+          ? { id: ticket.userId as number, name: named }
+          : ticket.userId
+            ? directory.find((row) => row.id === ticket.userId)
+            : undefined;
         return {
           id: ticket.id,
           name: ticket.name,

@@ -1,15 +1,14 @@
 @if (loading()) {
   <app-table-skeleton [rows]="8" [columns]="4" />
 } @else if (sheet(); as current) {
-  <app-page-header [title]="current.name" [subtitle]="sheetSubtitle()">
+  <app-page-header [title]="current.name" [subtitle]="sheetSubtitle()" [backLink]="backLink()">
     <app-lo-code-display-toggle />
-    <a class="text-muted-foreground hover:text-primary text-sm font-semibold" [routerLink]="backLink()">Back to list</a>
     <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="exportSheet()">Export CSV</app-button>
     <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="goBoard()">Board View</app-button>
   </app-page-header>
 
   <div class="space-y-6">
-    @for (unit of current.units; track unit.id) {
+    @for (unit of pagedUnits(); track unit.id) {
       <section class="border-border/60 bg-card shadow-sm rounded-xl border p-4">
         <h3 class="text-foreground mb-3 text-base font-semibold">{{ unit.name }}</h3>
         @for (lesson of unit.lessons; track lesson.id) {
@@ -46,6 +45,12 @@
       <p class="text-muted-foreground text-sm">No curriculum rows</p>
     }
   </div>
+
+  <app-pager
+    [page]="page()"
+    [pageSize]="pageSize"
+    [totalCount]="learningObjectiveCount()"
+    (pageChange)="onPageChange($event)" />
 
 }
 
