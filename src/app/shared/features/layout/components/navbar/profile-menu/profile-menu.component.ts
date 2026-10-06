@@ -62,10 +62,12 @@ export class ProfileMenuComponent {
     this.isOpen = !this.isOpen;
   }
 
-  toggleThemeMode() {
+  setThemeMode(mode: string) {
+    if (mode === this.themeService.theme().mode) {
+      return;
+    }
     this.themeService.theme.update((theme: Theme) => {
-      const mode = !this.themeService.isDark ? 'dark' : 'light';
-      return { ...theme, mode: mode };
+      return { ...theme, mode };
     });
   }
 
