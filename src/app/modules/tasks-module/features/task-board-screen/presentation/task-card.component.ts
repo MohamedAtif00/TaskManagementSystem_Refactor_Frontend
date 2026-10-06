@@ -11,7 +11,10 @@ import { TaskCardEntity, TASK_PRIORITY_LABELS } from '../domain/entity/task-boar
 export class TaskCardComponent {
   @Input({ required: true }) card!: TaskCardEntity;
   @Input() moving = false;
+  @Input() contextMenu = false;
+  @Input() menuActive = false;
   @Output() open = new EventEmitter<TaskCardEntity>();
+  @Output() cardContextMenu = new EventEmitter<{ card: TaskCardEntity; x: number; y: number }>();
 
   readonly loDisplay = inject(LoCodeDisplayService);
   readonly priorityLabels = TASK_PRIORITY_LABELS;
@@ -21,5 +24,14 @@ export class TaskCardComponent {
       return;
     }
     this.open.emit(this.card);
+  }
+
+  onContextMenu(event: MouseEvent): void {
+    if (!this.contextMenu || this.moving) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.cardContextMenu.emit({ card: this.card, x: event.clientX, y: event.clientY });
   }
 }

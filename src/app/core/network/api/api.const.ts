@@ -54,6 +54,7 @@ export const API = {
     GroupById: '/curriculum/subject-groups/{id}',
     GroupSubjects: '/curriculum/subject-groups/{subjectGroupId}/subjects',
     SubjectsCatalog: '/curriculum/subjects',
+    SubjectNames: '/curriculum/subjects/names',
     SubjectFilterOptions: '/curriculum/subjects/filter-options',
     SubjectsExport: '/curriculum/subjects/export',
     Subject: '/curriculum/subjects/{id}',

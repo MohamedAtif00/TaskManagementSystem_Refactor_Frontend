@@ -8,7 +8,11 @@
         {{ backLabel() }}
       </a>
     }
-    <h3 class="text-foreground font-semibold">{{ title() }}</h3>
+    @if (replaceTitle()) {
+      <ng-content select="[pageTitle]" />
+    } @else {
+      <h3 class="text-foreground font-semibold">{{ title() }}</h3>
+    }
     @if (subtitle()) {
       <div class="text-muted-foreground text-xs font-medium">{{ subtitle() }}</div>
     }

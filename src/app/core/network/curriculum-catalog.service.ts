@@ -94,6 +94,7 @@ export class CurriculumCatalogService {
   private readonly subjectSheetCache = new Map<number, Observable<{ units: { id: number; name: string; lessons: { id: number; name: string; learningObjectives: LoItem[] }[] }[] }>>();
   private readonly losForSubjectCache = new Map<number, Observable<{ id: number; name: string; unitName: string; lessonName: string }[]>>();
   private readonly loByIdCache = new Map<number, Observable<{ id: number; name: string }>>();
+  private subjectNamesCache?: Observable<{ id: number; name: string }[]>;
 
   constructor(private network: NetworkService) {}
 
@@ -125,6 +126,21 @@ export class CurriculumCatalogService {
     return loaded$;
   }
 
+  listSubjectNames(): Observable<{ id: number; name: string }[]> {
+    const loaded$ = this.subjectNamesCache;
+    if (loaded$) {
+      return loaded$;
+    }
+
+    const request$ = this.network.get<{ id: number; name: string }[]>(API.Curriculum.SubjectNames).pipe(
+      map((rows) => (rows ?? []).map((row) => ({ id: row.id, name: row.name }))),
+      catchError(mapHttpError),
+      shareReplay(1),
+    );
+    this.subjectNamesCache = request$;
+    return request$;
+  }
+
   clearCache(): void {
     this.treesCache.clear();
     this.subjectUnitsCache.clear();
@@ -133,6 +149,7 @@ export class CurriculumCatalogService {
     this.subjectSheetCache.clear();
     this.losForSubjectCache.clear();
     this.loByIdCache.clear();
+    this.subjectNamesCache = undefined;
   }
 
   getLearningObjectiveById(id: number): Observable<{ id: number; name: string }> {

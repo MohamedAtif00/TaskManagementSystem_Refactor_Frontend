@@ -527,6 +527,7 @@ export class TaskBoardRemoteDataSourceImpl extends TaskBoardRemoteDataSource {
       status: ticket.status as TaskStatus,
       priority: mapApiPriority(ticket.priority),
       user,
+      teamId: ticket.teamId ?? null,
       learningObjective: this.learningObjectiveFor(ticket, los),
       flagged: !!ticket.flagged,
       paused: !!ticket.pause,

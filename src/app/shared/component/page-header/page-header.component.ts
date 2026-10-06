@@ -8,6 +8,7 @@ import { RouterLink } from '@angular/router';
 })
 export class PageHeaderComponent {
   title = input.required<string>();
+  replaceTitle = input(false);
   subtitle = input('');
   backLink = input<string | null>(null);
   backLabel = input('Back to list');

@@ -1,7 +1,44 @@
 @if (loading()) {
   <app-kanban-skeleton />
 } @else if (board(); as current) {
-  <app-page-header [title]="current.name" [subtitle]="source === 'project' ? 'Project board' : 'Sprint board'" [backLink]="backLink()">
+  <app-page-header
+    [title]="current.name"
+    [subtitle]="source === 'project' ? 'Project board' : 'Sprint board'"
+    [backLink]="backLink()"
+    [replaceTitle]="source === 'project' && subjectOptions().length > 0"
+  >
+    @if (source === 'project' && subjectOptions().length) {
+      <div pageTitle class="relative" (click)="$event.stopPropagation()">
+        <button
+          type="button"
+          class="text-foreground inline-flex cursor-pointer items-center gap-1 bg-inherit text-base font-semibold"
+          (click)="toggleSubjectMenu($event)"
+          [attr.aria-expanded]="subjectMenuOpen()"
+          aria-label="Subject"
+        >
+          {{ current.name }}
+          <svg class="size-3.5 text-slate-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        @if (subjectMenuOpen()) {
+          <ul class="border-border bg-card absolute z-30 mt-1 max-h-48 w-max min-w-full overflow-auto rounded-md border py-1 text-xs shadow-md">
+            @for (subject of subjectOptions(); track subject.id) {
+              <li>
+                <button
+                  type="button"
+                  class="hover:bg-muted w-full px-2 py-0.5 text-left whitespace-nowrap"
+                  [class.font-semibold]="subject.id === entityId"
+                  (click)="pickSubject(subject.id)"
+                >
+                  {{ subject.name }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
     <app-lo-code-display-toggle />
     <app-button impact="light" tone="light" size="small" type="button" (buttonClick)="goSheet()">Sheet View</app-button>
     @if (canCreate()) {
@@ -30,10 +67,12 @@
         [dropForbidden]="isDropForbidden(column.key)"
         [totalCount]="totalFor(column)"
         [movingIds]="movingIds()"
+        [menuCardId]="cardMenu()?.card.id ?? null"
         (openCard)="openCard($event)"
         (dragStarted)="onColumnDragStart(column.key)"
         (dragEnded)="onColumnDragEnd($event, column.key)"
-        (dropped)="onCardDropped($event, column)" />
+        (dropped)="onCardDropped($event, column)"
+        (cardContextMenu)="openCardMenu($event)" />
     }
   </div>
 
@@ -110,4 +149,19 @@
     [users]="board()?.users ?? []"
     (closed)="closeDrawer()"
     (changed)="onDrawerChanged()" />
+}
+
+@if (cardMenu(); as menu) {
+  <app-task-card-menu
+    [card]="menu.card"
+    [users]="board()?.users ?? []"
+    [x]="menu.x"
+    [y]="menu.y"
+    (add)="onMenuAdd(menu.card)"
+    (assign)="onMenuAssign(menu.card, $event)"
+    (priority)="onMenuPriority(menu.card, $event)"
+    (skip)="onMenuSkip(menu.card)"
+    (jump)="onMenuJump(menu.card, $event)"
+    (open)="onMenuOpen(menu.card)"
+    (closed)="cardMenu.set(null)" />
 }

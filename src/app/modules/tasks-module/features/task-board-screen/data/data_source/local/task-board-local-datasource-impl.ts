@@ -391,6 +391,7 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
     status: TaskCardModel['status'];
     priority: TaskCardModel['priority'];
     user?: TaskCardModel['user'];
+    teamId?: number | null;
     learningObjective: TaskCardModel['learningObjective'];
     flagged: boolean;
     paused: boolean;
@@ -403,6 +404,7 @@ export class TaskBoardLocalDataSourceImpl extends TaskBoardLocalDataSource {
       status: task.status,
       priority: this.priorityOverrides.get(task.id) ?? task.priority,
       user: task.user,
+      teamId: task.teamId ?? null,
       learningObjective: task.learningObjective,
       flagged: task.flagged,
       paused: task.paused,

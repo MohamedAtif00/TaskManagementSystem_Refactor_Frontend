@@ -2,8 +2,8 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '@environments/environment';
-import { PermissionCodes } from '@core/models/permission-codes';
 import { AuthService } from '@core/services/auth.service';
+import { taskAccessFor } from '../../domain/task-access';
 import {
   AssignTaskPayload,
   ChangePriorityPayload,
@@ -155,34 +155,6 @@ export class TaskBoardImplementationRepository implements TaskBoardRepository {
   }
 
   private accessFor(task: { status: number; teamId?: number | null; user?: { id: number } }): TaskAccess {
-    const user = this.auth.user();
-    if (!user || task.status === 3 || task.status === 4) {
-      return 'None';
-    }
-
-    const assignedToSelf = task.user?.id === user.id;
-    const unassigned = !task.user;
-    const backlog = task.status === 0;
-    const canTake = assignedToSelf || unassigned || backlog;
-    const sameTeam = task.teamId != null && user.teamId != null && task.teamId === user.teamId;
-    const inHeadedSection = task.teamId != null && (user.headedTeamIds ?? []).includes(task.teamId);
-    const hasOrgScope = user.teamId != null || (user.headedTeamIds?.length ?? 0) > 0;
-
-    if (this.auth.hasPermission(PermissionCodes.Tickets.Manage)) {
-      return canTake ? 'WorkOnAndManage' : 'Manage';
-    }
-
-    if (this.auth.hasPermission(PermissionCodes.Tickets.Update)) {
-      if (hasOrgScope && !sameTeam && !inHeadedSection) {
-        return 'None';
-      }
-      return canTake ? 'WorkOnAndManage' : 'Manage';
-    }
-
-    if (this.auth.hasPermission(PermissionCodes.Tickets.Read) && sameTeam && (assignedToSelf || backlog)) {
-      return 'WorkOn';
-    }
-
-    return 'None';
+    return taskAccessFor(this.auth.user(), task);
   }
 }

@@ -1,8 +1,14 @@
 <button
   type="button"
-  class="bg-card border-border hover:border-primary relative flex w-full items-start gap-2 rounded-lg border p-3 text-left shadow-sm"
+  class="bg-card hover:border-primary relative flex w-full items-start gap-2 rounded-lg border p-3 text-left shadow-sm"
+  [class.border-border]="!menuActive"
+  [class.border-primary]="menuActive"
+  [class.ring-2]="menuActive"
+  [class.ring-primary]="menuActive"
+  [class.bg-primary/10]="menuActive"
   [attr.aria-busy]="moving"
-  (click)="onOpen()">
+  (click)="onOpen()"
+  (contextmenu)="onContextMenu($event)">
   <div class="min-w-0 flex-1">
   <p class="text-foreground mb-1 text-sm font-semibold">{{ card.name }}</p>
   <p class="text-muted-foreground mb-2 text-xs" [title]="card.learningObjective.name">

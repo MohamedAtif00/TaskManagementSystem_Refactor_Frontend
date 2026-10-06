@@ -17,6 +17,7 @@ export interface TaskCardEntity {
   status: TaskStatus;
   priority: TaskPriority;
   user?: TaskIdName;
+  teamId?: number | null;
   learningObjective: TaskIdName;
   flagged: boolean;
   paused: boolean;

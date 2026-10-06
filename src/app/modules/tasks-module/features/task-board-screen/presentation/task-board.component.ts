@@ -1,8 +1,8 @@
 import { CdkDragDrop, CdkDragEnd } from '@angular/cdk/drag-drop';
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
-import { forkJoin, of, Subscription } from 'rxjs';
+import { forkJoin, Observable, of, Subscription } from 'rxjs';
 import { PermissionCodes } from '@core/models/permission-codes';
 import { ROUTE_PATHS } from '@core/navigation/route-paths.const';
 import { CurriculumCatalogService } from '@core/network/curriculum-catalog.service';
@@ -22,6 +22,7 @@ import {
   TaskColumnPageParams,
   TaskDetailsEntity,
   TaskIdName,
+  TaskPriority,
   TaskStatus,
 } from '../domain/entity/task-board.entity';
 import { learningObjectivesForAssignment, pruneLearningObjectiveIds } from '../domain/board-assignment-scope';
@@ -31,6 +32,11 @@ import { GetTaskColumnPageUseCase } from '../domain/usecase/get-task-column-page
 import { GetTaskDetailsUseCase } from '../domain/usecase/get-task-details.usecase';
 import { PauseTaskUseCase } from '../domain/usecase/pause-task.usecase';
 import { ProceedTaskUseCase } from '../domain/usecase/proceed-task.usecase';
+import { AssignTaskUseCase } from '../domain/usecase/assign-task.usecase';
+import { ChangePriorityUseCase } from '../domain/usecase/change-priority.usecase';
+import { JumpTaskUseCase } from '../domain/usecase/jump-task.usecase';
+import { SkipTaskUseCase } from '../domain/usecase/skip-task.usecase';
+import { TaskCardMenuComponent } from './task-card-menu.component';
 import { KanbanSkeletonComponent } from '@shared/component/skeleton/kanban-skeleton.component';
 import { TaskBoardFiltersComponent } from './task-board-filters.component';
 import { NewTaskModalComponent } from './new-task-modal.component';
@@ -66,6 +72,7 @@ const COLUMN_PAGE_SIZE = 10;
     TaskColumnComponent,
     TaskDrawerComponent,
     NewTaskModalComponent,
+    TaskCardMenuComponent,
     KanbanSkeletonComponent,
   ],
   templateUrl: './task-board.component.html',
@@ -89,15 +96,31 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   readonly movingIds = signal<ReadonlySet<number>>(new Set());
   readonly draggingFrom = signal<string | null>(null);
   readonly learningObjectivesLoading = signal(false);
+  readonly subjects = signal<{ id: number; name: string }[]>([]);
+  readonly subjectMenuOpen = signal(false);
+  readonly cardMenu = signal<{ card: TaskCardEntity; x: number; y: number } | null>(null);
+  readonly subjectOptions = computed(() => {
+    const items = this.subjects();
+    const current = this.board();
+    if (!current || items.some((item) => item.id === this.entityId)) {
+      return items;
+    }
+    return [{ id: this.entityId, name: current.name }, ...items];
+  });
   source: BoardSource = 'project';
   entityId = 0;
   private ticketUpdates?: Subscription;
+  private routeSub?: Subscription;
+  private boardSub?: Subscription;
+  private subjectNamesSub?: Subscription;
   private boardPageSub?: Subscription;
   private refreshDebounce?: ReturnType<typeof setTimeout>;
   private fullLosLoading = false;
   private fullLosLoaded = false;
+  private routeReady = false;
   private readonly moves = new Map<number, InflightMove>();
   private readonly moveSubs = new Map<number, Subscription>();
+  private menuActionSub?: Subscription;
 
   readonly backLink = computed(() => (this.source === 'project' ? ROUTE_PATHS.tasks : ROUTE_PATHS.sprints));
   readonly canCreate = computed(
@@ -125,6 +148,10 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     private columnPageUseCase: GetTaskColumnPageUseCase,
     private detailsUseCase: GetTaskDetailsUseCase,
     private proceedUseCase: ProceedTaskUseCase,
+    private assignUseCase: AssignTaskUseCase,
+    private changePriorityUseCase: ChangePriorityUseCase,
+    private skipUseCase: SkipTaskUseCase,
+    private jumpUseCase: JumpTaskUseCase,
     private completeUseCase: CompleteTaskUseCase,
     private pauseUseCase: PauseTaskUseCase,
     private realtime: RealtimeService,
@@ -134,14 +161,32 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    const projectId = this.route.snapshot.paramMap.get('projectId');
-    const sprintId = this.route.snapshot.paramMap.get('sprintId');
-    this.source = projectId ? 'project' : 'sprint';
-    this.entityId = Number(projectId ?? sprintId);
-    if (this.source === 'project') {
-      localStorage.setItem('tasks:view', 'board');
-    }
-    this.load();
+    this.routeSub = this.route.paramMap.subscribe((params) => {
+      const projectId = params.get('projectId');
+      const sprintId = params.get('sprintId');
+      const source: BoardSource = projectId ? 'project' : 'sprint';
+      const id = Number(projectId ?? sprintId);
+      if (this.routeReady && source === this.source && id === this.entityId) {
+        return;
+      }
+      const changed = this.routeReady;
+      this.routeReady = true;
+      this.source = source;
+      this.entityId = id;
+      if (source === 'project') {
+        localStorage.setItem('tasks:view', 'board');
+        this.loadSubjectNames();
+      }
+      if (changed) {
+        this.selected.set(null);
+        this.showCreate.set(false);
+        this.subjectMenuOpen.set(false);
+        this.cardMenu.set(null);
+        this.fullLosLoaded = false;
+        this.fullLosLoading = false;
+      }
+      this.load();
+    });
     this.ticketUpdates = this.realtime.onTicketUpdated().subscribe(() => {
       this.scheduleBoardRefresh();
     });
@@ -149,10 +194,14 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.ticketUpdates?.unsubscribe();
+    this.routeSub?.unsubscribe();
+    this.boardSub?.unsubscribe();
+    this.subjectNamesSub?.unsubscribe();
     this.boardPageSub?.unsubscribe();
     for (const sub of this.moveSubs.values()) {
       sub.unsubscribe();
     }
+    this.menuActionSub?.unsubscribe();
     if (this.refreshDebounce) {
       clearTimeout(this.refreshDebounce);
     }
@@ -173,17 +222,56 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     }, 300);
   }
 
+  @HostListener('document:click')
+  closeSubjectMenu(): void {
+    this.subjectMenuOpen.set(false);
+  }
+
+  toggleSubjectMenu(event: Event): void {
+    event.stopPropagation();
+    this.subjectMenuOpen.update((open) => !open);
+  }
+
+  pickSubject(id: number): void {
+    this.subjectMenuOpen.set(false);
+    if (!id || id === this.entityId) {
+      return;
+    }
+    void this.router.navigateByUrl(ROUTE_PATHS.taskBoard(id));
+  }
+
   load(): void {
+    this.boardSub?.unsubscribe();
+    this.boardPageSub?.unsubscribe();
     this.loading.set(true);
-    this.boardUseCase.execute({ source: this.source, id: this.entityId }).subscribe({
+    this.board.set(null);
+    const source = this.source;
+    const id = this.entityId;
+    this.boardSub = this.boardUseCase.execute({ source, id }).subscribe({
       next: (board) => {
+        if (this.source !== source || this.entityId !== id) {
+          return;
+        }
         this.board.set(board);
         this.loadBoardPage();
       },
       error: (err: Error) => {
+        if (this.source !== source || this.entityId !== id) {
+          return;
+        }
         this.loading.set(false);
         toast.error(err.message);
       },
+    });
+  }
+
+  private loadSubjectNames(): void {
+    if (this.subjectNamesSub) {
+      return;
+    }
+    this.subjectNamesSub = this.catalog.listSubjectNames().subscribe({
+      next: (subjects) => this.subjects.set(subjects),
+      error: (err: Error) => toast.error(err.message),
     });
   }
 
@@ -247,42 +335,48 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     if (event.previousContainer === event.container) {
       return;
     }
+    this.startColumnMove(event.item.data as TaskCardEntity, event.previousContainer.id, targetColumn.key);
+  }
 
-    const card = event.item.data as TaskCardEntity;
-    const sourceKey = event.previousContainer.id;
-    const targetKey = targetColumn.key;
-    const existing = this.moves.get(card.id);
-    if (existing && (existing.queuedKey ?? existing.targetKey) === targetKey) {
+  openCardMenu(request: { card: TaskCardEntity; x: number; y: number }): void {
+    if (this.movingIds().has(request.card.id)) {
       return;
     }
+    this.subjectMenuOpen.set(false);
+    this.cardMenu.set(request);
+  }
 
-    const stepSource = existing ? (existing.queuedKey ?? existing.targetKey) : sourceKey;
-    const step = this.legalMove(existing ? stepSource : sourceKey, targetKey, existing?.card ?? card);
-    if (!step) {
-      toast.error('That column move is not allowed');
+  onMenuAdd(card: TaskCardEntity): void {
+    this.cardMenu.set(null);
+    this.startColumnMove(card, 'backlog', 'todo');
+  }
+
+  onMenuAssign(card: TaskCardEntity, userId: number): void {
+    this.cardMenu.set(null);
+    this.runMenuAction(this.assignUseCase.execute({ taskId: card.id, userId }), 'Assigned');
+  }
+
+  onMenuPriority(card: TaskCardEntity, priority: TaskPriority): void {
+    this.cardMenu.set(null);
+    if (priority === card.priority) {
       return;
     }
+    this.runMenuAction(this.changePriorityUseCase.execute({ taskId: card.id, priority }), 'Priority updated');
+  }
 
-    const nextCard = { ...(existing?.card ?? card), ...step.patch };
-    this.placeCard(nextCard, targetKey);
-    if (existing) {
-      existing.queuedKey = targetKey;
-      existing.card = nextCard;
-      this.moves.set(card.id, existing);
-      this.markMoving(card.id, true);
-      return;
-    }
+  onMenuSkip(card: TaskCardEntity): void {
+    this.cardMenu.set(null);
+    this.runMenuAction(this.skipUseCase.execute(card.id), 'Skipped');
+  }
 
-    this.moves.set(card.id, {
-      sourceKey,
-      targetKey,
-      queuedKey: null,
-      originCard: card,
-      card: nextCard,
-      message: step.message,
-    });
-    this.markMoving(card.id, true);
-    this.sendMove(card.id, step.action);
+  onMenuJump(card: TaskCardEntity, stepId: number): void {
+    this.cardMenu.set(null);
+    this.runMenuAction(this.jumpUseCase.execute({ taskId: card.id, stepIds: [stepId] }), 'Jumped');
+  }
+
+  onMenuOpen(card: TaskCardEntity): void {
+    this.cardMenu.set(null);
+    this.openCard(card);
   }
 
   openCard(card: TaskCardEntity): void {
@@ -331,8 +425,16 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     this.learningObjectivesLoading.set(true);
     this.catalog.getLosForSubject(this.entityId).subscribe({
       next: (los) => {
-        this.mergeLearningObjectives(los.map((lo) => ({ id: lo.id, name: lo.name })));
+        const active = los.map((lo) => ({ id: lo.id, name: lo.name }));
         this.fullLosLoaded = true;
+        this.replaceLearningObjectives(active);
+        const selected = this.filters().learningObjectiveIds;
+        const pruned = pruneLearningObjectiveIds(selected, active);
+        if (pruned.length !== selected.length) {
+          this.filters.update((current) => ({ ...current, learningObjectiveIds: pruned }));
+          this.boardPage.set(1);
+          this.loadBoardPage();
+        }
         this.fullLosLoading = false;
         this.learningObjectivesLoading.set(false);
       },
@@ -365,6 +467,8 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
 
   private loadBoardPage(): void {
     this.boardPageSub?.unsubscribe();
+    const source = this.source;
+    const id = this.entityId;
     const requests = this.columns.map((column) => {
       const params = this.columnPageParams(column);
       if (!params.statuses.length) {
@@ -379,6 +483,9 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     });
     this.boardPageSub = forkJoin(requests).subscribe({
       next: (pages) => {
+        if (this.source !== source || this.entityId !== id) {
+          return;
+        }
         const totals = this.emptyColumnTotals();
         const cardsByColumn = this.emptyCardsByColumn();
         let hasAnyCards = false;
@@ -474,6 +581,11 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
     return lo.name === `LO ${lo.id}`;
   }
 
+  private replaceLearningObjectives(incoming: TaskIdName[]): void {
+    this.board.update((current) => (current ? { ...current, learningObjectives: incoming } : current));
+    this.refreshCardLearningObjectiveNames();
+  }
+
   private mergeLearningObjectives(incoming: TaskIdName[]): void {
     if (!incoming.length) {
       return;
@@ -485,6 +597,9 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
       const byId = new Map(current.learningObjectives.map((lo) => [lo.id, lo]));
       for (const lo of incoming) {
         const existing = byId.get(lo.id);
+        if (this.fullLosLoaded && !existing) {
+          continue;
+        }
         if (existing && !this.isPlaceholderLo(existing) && this.isPlaceholderLo(lo)) {
           continue;
         }
@@ -492,6 +607,10 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
       }
       return { ...current, learningObjectives: [...byId.values()] };
     });
+    this.refreshCardLearningObjectiveNames();
+  }
+
+  private refreshCardLearningObjectiveNames(): void {
     this.cardsByColumn.update((columns) => {
       const next = { ...columns };
       for (const key of Object.keys(next)) {
@@ -530,6 +649,52 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
       }
     }
     return null;
+  }
+
+  private startColumnMove(card: TaskCardEntity, sourceKey: string, targetKey: string): void {
+    const existing = this.moves.get(card.id);
+    if (existing && (existing.queuedKey ?? existing.targetKey) === targetKey) {
+      return;
+    }
+
+    const stepSource = existing ? (existing.queuedKey ?? existing.targetKey) : sourceKey;
+    const step = this.legalMove(stepSource, targetKey, existing?.card ?? card);
+    if (!step) {
+      toast.error('That column move is not allowed');
+      return;
+    }
+
+    const nextCard = { ...(existing?.card ?? card), ...step.patch };
+    this.placeCard(nextCard, targetKey);
+    if (existing) {
+      existing.queuedKey = targetKey;
+      existing.card = nextCard;
+      this.moves.set(card.id, existing);
+      this.markMoving(card.id, true);
+      return;
+    }
+
+    this.moves.set(card.id, {
+      sourceKey,
+      targetKey,
+      queuedKey: null,
+      originCard: card,
+      card: nextCard,
+      message: step.message,
+    });
+    this.markMoving(card.id, true);
+    this.sendMove(card.id, step.action);
+  }
+
+  private runMenuAction(request: Observable<unknown>, message: string): void {
+    this.menuActionSub?.unsubscribe();
+    this.menuActionSub = request.subscribe({
+      next: () => {
+        toast.success(message);
+        this.loadBoardPage();
+      },
+      error: (err: Error) => toast.error(err.message),
+    });
   }
 
   private legalMove(
