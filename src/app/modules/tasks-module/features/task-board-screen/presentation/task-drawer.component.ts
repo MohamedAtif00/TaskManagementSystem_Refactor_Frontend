@@ -1,6 +1,5 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AngularSvgIconModule } from 'angular-svg-icon';
 import { toast } from 'ngx-sonner';
 import { ButtonComponent } from '@shared/component/button/button.component';
 import {
@@ -38,7 +37,7 @@ import { StopWorkUseCase } from '../domain/usecase/stop-work.usecase';
 
 @Component({
   selector: 'app-task-drawer',
-  imports: [FormsModule, AngularSvgIconModule, ButtonComponent],
+  imports: [FormsModule, ButtonComponent],
   templateUrl: './task-drawer.component.html',
   styles: [
     `
@@ -55,6 +54,16 @@ import { StopWorkUseCase } from '../domain/usecase/stop-work.usecase';
         font-weight: 600;
       }
 
+      .task-actions-toolbar ::ng-deep app-button.action-quiet button {
+        background-color: var(--background);
+        color: var(--foreground);
+        border: 1px solid var(--border);
+      }
+
+      .task-actions-toolbar ::ng-deep app-button.action-quiet button:hover {
+        background-color: var(--muted);
+      }
+
       .task-actions-toolbar ::ng-deep button span {
         font-size: inherit;
         line-height: inherit;
@@ -63,8 +72,8 @@ import { StopWorkUseCase } from '../domain/usecase/stop-work.usecase';
 
       .task-actions-toolbar ::ng-deep svg-icon svg,
       .task-actions-toolbar ::ng-deep button svg {
-        width: 0.875rem;
-        height: 0.875rem;
+        width: 1rem;
+        height: 1rem;
         flex-shrink: 0;
       }
     `,
@@ -85,7 +94,7 @@ export class TaskDrawerComponent implements OnChanges {
     { value: 3 as TaskPriority, label: 'High' },
   ];
   readonly actionLabelClass = 'inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold leading-4';
-  readonly actionIconClass = 'size-3.5 shrink-0';
+  readonly actionIconWrapClass = 'inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/10';
 
   assignUserId = '';
   priorityChoice: TaskPriority = 0;
