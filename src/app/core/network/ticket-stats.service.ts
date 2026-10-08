@@ -3,6 +3,7 @@ import { HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map, shareReplay } from 'rxjs/operators';
 import { TicketStatsResponse } from '@core/api/tms-contracts';
+import { DEFAULT_PAGE_SIZE } from '@core/models/list-page.model';
 import { API } from './api/api.const';
 import { mapHttpError } from './http-error';
 import { NetworkService } from './network.service';
@@ -92,17 +93,21 @@ export class TicketStatsService {
     subjectIds?: number[];
     learningObjectiveIds?: number[];
   }): Observable<{ tickets: TicketSnapshot[]; los: { id: number; subjectId: number }[] }> {
-    const cacheKey = this.buildCacheKey(filters);
+    const requestFilters = {
+      subjectIds: this.idsForRequest(filters.subjectIds),
+      learningObjectiveIds: this.idsForRequest(filters.learningObjectiveIds),
+    };
+    const cacheKey = this.buildCacheKey(requestFilters);
     const cached = this.snapshotCache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
     let params = new HttpParams();
-    for (const id of filters.subjectIds ?? []) {
+    for (const id of requestFilters.subjectIds ?? []) {
       params = params.append('subjectId', String(id));
     }
-    for (const id of filters.learningObjectiveIds ?? []) {
+    for (const id of requestFilters.learningObjectiveIds ?? []) {
       params = params.append('learningObjectiveId', String(id));
     }
 
@@ -127,6 +132,14 @@ export class TicketStatsService {
 
     this.snapshotCache.set(cacheKey, request$);
     return request$;
+  }
+
+  private idsForRequest(ids?: number[]): number[] | undefined {
+    if (!ids || ids.length === 0 || ids.length > DEFAULT_PAGE_SIZE) {
+      return undefined;
+    }
+
+    return ids;
   }
 
   private buildCacheKey(filters: {

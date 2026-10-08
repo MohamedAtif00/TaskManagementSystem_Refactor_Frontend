@@ -1,5 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import { environment } from '@environments/environment';
 import { RealtimeMessage } from '../api/tms-contracts';
 import { TOKEN_KEY } from './auth.service';
 
@@ -84,7 +85,7 @@ export class RealtimeService implements OnDestroy {
   private async connect(): Promise<void> {
     try {
       const token = localStorage.getItem(TOKEN_KEY) ?? '';
-      const negotiate = await fetch('/realtime/negotiate?negotiateVersion=1', {
+      const negotiate = await fetch(`${environment.baseURL}/realtime/negotiate?negotiateVersion=1`, {
         method: 'POST',
         credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -100,7 +101,7 @@ export class RealtimeService implements OnDestroy {
         params.set('access_token', token);
       }
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const socket = new WebSocket(`${protocol}//${location.host}/realtime?${params.toString()}`);
+      const socket = new WebSocket(`${protocol}//${location.host}${environment.baseURL}/realtime?${params.toString()}`);
       this.socket = socket;
       socket.addEventListener('open', () => {
         socket.send(`{"protocol":"json","version":1}${RECORD_SEPARATOR}`);
